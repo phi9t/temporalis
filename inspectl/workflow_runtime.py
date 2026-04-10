@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import timedelta
+import inspect
 from typing import Any, get_type_hints
 
 from temporalio import workflow
@@ -63,7 +64,12 @@ class WorkflowStepDispatcher:
 
 
 def _pipeline_state_type(pipeline) -> type[PipelineState]:
-    state_type = get_type_hints(pipeline.fn).get("state")
+    params = list(inspect.signature(pipeline.fn).parameters.values())
+    if not params:
+        raise TypeError(f"pipeline '{pipeline.name}' is missing a valid state annotation")
+
+    state_param = params[0]
+    state_type = get_type_hints(pipeline.fn).get(state_param.name, state_param.annotation)
     if not isinstance(state_type, type) or not issubclass(state_type, PipelineState):
         raise TypeError(f"pipeline '{pipeline.name}' is missing a valid state annotation")
     return state_type

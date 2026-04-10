@@ -41,6 +41,113 @@ def _enum_type_for_annotation(annotation: Any) -> type[Enum] | None:
     return None
 
 
+def _is_dataclass_type(annotation: Any) -> bool:
+    return isinstance(annotation, type) and is_dataclass(annotation)
+
+
+def _is_special_union_candidate(annotation: Any) -> bool:
+    return (
+        _enum_type_for_annotation(annotation) is not None
+        or annotation is Path
+        or _is_dataclass_type(annotation)
+        or get_origin(annotation) in {list, tuple, set, frozenset, dict}
+    )
+
+
+def _deserialize(value: Any, annotation: Any, *, field_name: str | None = None) -> Any:
+    if value is None:
+        return None
+
+    origin = get_origin(annotation)
+    enum_type = _enum_type_for_annotation(annotation)
+    if origin is None and enum_type is not None:
+        if isinstance(value, enum_type):
+            return value
+        return enum_type(value)
+
+    if annotation is Path:
+        if isinstance(value, Path):
+            return value
+        return Path(value)
+
+    if origin is list:
+        item_annotation = get_args(annotation)[0] if get_args(annotation) else Any
+        return [_deserialize(item, item_annotation, field_name=field_name) for item in value]
+    if origin is tuple:
+        item_annotations = get_args(annotation)
+        if len(item_annotations) == 2 and item_annotations[1] is Ellipsis:
+            return tuple(
+                _deserialize(item, item_annotations[0], field_name=field_name) for item in value
+            )
+        if item_annotations:
+            if len(value) != len(item_annotations):
+                label = f" '{field_name}'" if field_name is not None else ""
+                raise ValueError(
+                    f"tuple field{label} expected {len(item_annotations)} items but got {len(value)}"
+                )
+            return tuple(
+                _deserialize(item, item_annotations[index], field_name=field_name)
+                for index, item in enumerate(value)
+            )
+        return tuple(value)
+    if origin is set:
+        item_annotation = get_args(annotation)[0] if get_args(annotation) else Any
+        return {_deserialize(item, item_annotation, field_name=field_name) for item in value}
+    if origin is frozenset:
+        item_annotation = get_args(annotation)[0] if get_args(annotation) else Any
+        return frozenset(_deserialize(item, item_annotation, field_name=field_name) for item in value)
+    if origin is dict:
+        key_annotation, value_annotation = (get_args(annotation) + (Any, Any))[:2]
+        return {
+            _deserialize(key, key_annotation, field_name=field_name): _deserialize(
+                item, value_annotation, field_name=field_name
+            )
+            for key, item in value.items()
+        }
+    if origin is not None:
+        candidates = [arg for arg in get_args(annotation) if arg is not type(None)]
+        special_candidates = [candidate for candidate in candidates if _is_special_union_candidate(candidate)]
+        primitive_candidates = [candidate for candidate in candidates if candidate not in special_candidates]
+
+        for candidate in special_candidates:
+            candidate_enum_type = _enum_type_for_annotation(candidate)
+            if candidate_enum_type is not None:
+                try:
+                    converted = _deserialize(value, candidate, field_name=field_name)
+                except (TypeError, ValueError):
+                    continue
+            else:
+                converted = _deserialize(value, candidate, field_name=field_name)
+            if converted is not value:
+                return converted
+            if isinstance(candidate, type) and isinstance(value, candidate):
+                return converted
+
+        for candidate in primitive_candidates:
+            if isinstance(candidate, type) and isinstance(value, candidate):
+                return value
+        return value
+
+    if _is_dataclass_type(annotation):
+        if isinstance(value, annotation):
+            return value
+        if not isinstance(value, Mapping):
+            return value
+        type_hints = get_type_hints(annotation)
+        kwargs: dict[str, Any] = {}
+        for field in fields(annotation):
+            if field.name not in value:
+                continue
+            kwargs[field.name] = _deserialize(
+                value[field.name],
+                type_hints.get(field.name, field.type),
+                field_name=field.name,
+            )
+        return annotation(**kwargs)
+
+    return value
+
+
 StateT = TypeVar("StateT", bound="PipelineState")
 
 
@@ -60,21 +167,17 @@ class PipelineState:
 
     @classmethod
     def from_dict(cls: type[StateT], data: Mapping[str, Any]) -> StateT:
-        enum_fields = dict(getattr(cls, "_enum_fields", {}))
         type_hints = get_type_hints(cls)
         kwargs: dict[str, Any] = {}
         for field in fields(cls):
             if field.name not in data:
                 continue
 
-            value = data[field.name]
-            enum_type = enum_fields.get(field.name) or _enum_type_for_annotation(
-                type_hints.get(field.name, field.type)
+            kwargs[field.name] = _deserialize(
+                data[field.name],
+                type_hints.get(field.name, field.type),
+                field_name=field.name,
             )
-            if enum_type is not None and value is not None and not isinstance(value, enum_type):
-                kwargs[field.name] = enum_type(value)
-            else:
-                kwargs[field.name] = value
         return cls(**kwargs)
 
 

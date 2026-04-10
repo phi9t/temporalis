@@ -10,6 +10,9 @@ from inspectl.decorators import pipeline, reset_dispatcher, set_dispatcher, step
 from inspectl.errors import DuplicateStepNameError, PipelineDefinitionError
 from inspectl.models import PipelineState
 from inspectl.registry import clear_registry
+from inspectl.activity_runtime import _state_type_for_step
+from inspectl.registry import get_pipeline
+from inspectl.workflow_runtime import _pipeline_state_type
 
 
 @dataclass
@@ -91,3 +94,25 @@ def test_pipeline_must_be_async() -> None:
         @pipeline(name="bad-pipeline")
         def not_async(state: ExampleState) -> ExampleState:
             return state
+
+
+def test_step_state_annotation_uses_first_parameter_name_not_literal_state() -> None:
+    @step(name="payload-step")
+    def mutate(payload: ExampleState) -> ExampleState:
+        payload.value += 1
+        return payload
+
+    definition = mutate._inspectl_step  # type: ignore[attr-defined]
+
+    assert _state_type_for_step(definition) is ExampleState
+
+
+def test_pipeline_state_annotation_uses_first_parameter_name_not_literal_state() -> None:
+    @pipeline(name="payload-pipeline")
+    async def mutate(payload: ExampleState) -> ExampleState:
+        payload.value += 1
+        return payload
+
+    definition = get_pipeline("payload-pipeline")
+
+    assert _pipeline_state_type(definition) is ExampleState

@@ -24,7 +24,12 @@ def _decode_input(args: Sequence[RawValue]) -> dict[str, Any]:
 
 
 def _state_type_for_step(definition: StepDefinition) -> type[PipelineState]:
-    state_type = get_type_hints(definition.fn).get("state")
+    params = list(inspect.signature(definition.fn).parameters.values())
+    if not params:
+        raise StepExecutionError(f"step '{definition.name}' is missing a valid state annotation")
+
+    state_param = params[0]
+    state_type = get_type_hints(definition.fn).get(state_param.name, state_param.annotation)
     if not isinstance(state_type, type) or not issubclass(state_type, PipelineState):
         raise StepExecutionError(f"step '{definition.name}' is missing a valid state annotation")
     return state_type

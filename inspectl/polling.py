@@ -96,7 +96,9 @@ def poll_until(
                 attempt=attempt,
             )
             return result
-        if time.monotonic() - started >= policy.timeout:
+        elapsed = time.monotonic() - started
+        remaining = policy.timeout - elapsed
+        if remaining <= 0:
             _emit_poll_event(
                 ctx,
                 level="WARN",
@@ -107,7 +109,7 @@ def poll_until(
             )
             raise PollTimeout(f"poll '{label}' timed out after {attempt} attempts")
         if attempt < policy.max_attempts:
-            time.sleep(delay)
+            time.sleep(min(delay, remaining))
             delay = min(delay * policy.backoff_factor, policy.max_interval)
     _emit_poll_event(
         ctx,
@@ -152,7 +154,9 @@ async def async_poll_until(
                 attempt=attempt,
             )
             return result
-        if time.monotonic() - started >= policy.timeout:
+        elapsed = time.monotonic() - started
+        remaining = policy.timeout - elapsed
+        if remaining <= 0:
             _emit_poll_event(
                 ctx,
                 level="WARN",
@@ -163,7 +167,7 @@ async def async_poll_until(
             )
             raise PollTimeout(f"poll '{label}' timed out after {attempt} attempts")
         if attempt < policy.max_attempts:
-            await asyncio.sleep(delay)
+            await asyncio.sleep(min(delay, remaining))
             delay = min(delay * policy.backoff_factor, policy.max_interval)
     _emit_poll_event(
         ctx,

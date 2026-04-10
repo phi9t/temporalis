@@ -57,6 +57,39 @@ def test_poll_until_emits_events_with_ctx(tmp_path) -> None:
     assert any(payload["event"] == "poll.success" for payload in payloads)
 
 
+def test_poll_until_caps_sleep_by_remaining_timeout(monkeypatch) -> None:
+    times = [0.0, 0.9, 1.1]
+    index = {"value": 0}
+    sleeps: list[float] = []
+
+    def fake_monotonic() -> float:
+        current = times[min(index["value"], len(times) - 1)]
+        index["value"] += 1
+        return current
+
+    monkeypatch.setattr(
+        "inspectl.polling.time.monotonic",
+        fake_monotonic,
+    )
+    monkeypatch.setattr(
+        "inspectl.polling.time.sleep",
+        lambda seconds: sleeps.append(seconds),
+    )
+
+    def fetch() -> str:
+        return "pending"
+
+    with pytest.raises(PollTimeout):
+        poll_until(
+            fn=fetch,
+            check=lambda value: value == "done",
+            policy=PollPolicy(max_attempts=2, interval=10.0, timeout=1.0),
+            label="build-124",
+        )
+
+    assert sleeps == [pytest.approx(0.1)]
+
+
 @pytest.mark.asyncio
 async def test_async_poll_until_times_out() -> None:
     async def fetch() -> str:
@@ -69,6 +102,41 @@ async def test_async_poll_until_times_out() -> None:
             policy=PollPolicy(max_attempts=2, interval=0.0, timeout=0.1),
             label="build-456",
         )
+
+
+@pytest.mark.asyncio
+async def test_async_poll_until_caps_sleep_by_remaining_timeout(monkeypatch) -> None:
+    times = [0.0, 0.9, 1.1]
+    index = {"value": 0}
+    sleeps: list[float] = []
+
+    def fake_monotonic() -> float:
+        current = times[min(index["value"], len(times) - 1)]
+        index["value"] += 1
+        return current
+
+    monkeypatch.setattr(
+        "inspectl.polling.time.monotonic",
+        fake_monotonic,
+    )
+
+    async def record_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+
+    monkeypatch.setattr("inspectl.polling.asyncio.sleep", record_sleep)
+
+    async def fetch() -> str:
+        return "pending"
+
+    with pytest.raises(PollTimeout):
+        await async_poll_until(
+            fn=fetch,
+            check=lambda value: value == "done",
+            policy=PollPolicy(max_attempts=2, interval=10.0, timeout=1.0),
+            label="build-457",
+        )
+
+    assert sleeps == [pytest.approx(0.1)]
 
 
 def test_poll_policy_rejects_invalid_values() -> None:
