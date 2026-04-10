@@ -37,7 +37,13 @@ def set_dispatcher(dispatcher: StepDispatcher | None) -> Token[StepDispatcher | 
 
 
 def reset_dispatcher(token: Token[StepDispatcher | None]) -> None:
-    _DISPATCHER.reset(token)
+    try:
+        _DISPATCHER.reset(token)
+    except ValueError:
+        # Temporal workflow teardown can resume cleanup in a different Context
+        # during GeneratorExit. In that case, restore the safe default instead
+        # of surfacing an unraisable cross-context token reset error.
+        _DISPATCHER.set(None)
 
 
 def step(
