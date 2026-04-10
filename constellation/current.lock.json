@@ -1,0 +1,86 @@
+{
+  "generated_at": "2026-04-10T17:34:17Z",
+  "repos": [
+    {
+      "id": "temporal",
+      "path": "../temporal",
+      "branch": "main",
+      "head": "f9e2d99713c1304d6ac426fee7453ef97863d2be",
+      "describe": "v1.29.0-135.0-769-gf9e2d9971",
+      "is_dirty": false,
+      "dirty_summary": [],
+      "remotes": {
+        "origin": "git@github.com:temporalio/temporal.git"
+      }
+    },
+    {
+      "id": "cli",
+      "path": "../cli",
+      "branch": "main",
+      "head": "f727f31421136d56419fe4e853f7c6dbdd8070f3",
+      "describe": "v1.5.1-20-gf727f31-dirty",
+      "is_dirty": true,
+      "dirty_summary": [
+        " M install.sh",
+        " M internal/temporalcli/commands.yaml"
+      ],
+      "remotes": {
+        "origin": "git@github.com:temporalio/cli.git"
+      }
+    },
+    {
+      "id": "sdk-core",
+      "path": "../sdk-core",
+      "branch": "master",
+      "head": "5c9bcd104ce234bd475b49f45d577204de3b7553",
+      "describe": "5c9bcd1-dirty",
+      "is_dirty": true,
+      "dirty_summary": [
+        " M AGENTS.md",
+        " M README.md",
+        "?? TECHNICAL_DEEP_DIVE.md"
+      ],
+      "remotes": {
+        "origin": "git@github.com:temporalio/sdk-core.git"
+      }
+    },
+    {
+      "id": "sdk-go",
+      "path": "../sdk-go",
+      "branch": "master",
+      "head": "81673515d90aa5ab849cee3e31f091fb8d4f0053",
+      "describe": "contrib/aws/s3driver/awssdkv2/v0.1.1-2-g81673515",
+      "is_dirty": false,
+      "dirty_summary": [],
+      "remotes": {
+        "origin": "git@github.com:temporalio/sdk-go.git"
+      }
+    },
+    {
+      "id": "sdk-python",
+      "path": "../sdk-python",
+      "branch": "main",
+      "head": "1138ff29bb1afc86ffaeef0a99b632e74e3acd4b",
+      "describe": "1.21.1-8-g1138ff2",
+      "is_dirty": false,
+      "dirty_summary": [],
+      "remotes": {
+        "origin": "git@github.com:temporalio/sdk-python.git"
+      }
+    },
+    {
+      "id": "ai-cookbook",
+      "path": "../ai-cookbook",
+      "branch": "main",
+      "head": "d8b59dba1b219bedfde9cdc4f3b5f6fb99c30efb",
+      "describe": "d8b59db-dirty",
+      "is_dirty": true,
+      "dirty_summary": [
+        " M mcp/hello_world_durable_mcp_server/README.md"
+      ],
+      "remotes": {
+        "origin": "git@github.com:temporalio/ai-cookbook.git"
+      }
+    }
+  ]
+}

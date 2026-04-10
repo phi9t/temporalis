@@ -1,0 +1,74 @@
+repos:
+  - id: temporal
+    path: ../temporal
+    role: engine
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/temporal.git
+    expected_default_branch: main
+    criticality: high
+    depends_on: []
+    check_commands:
+      - make -C temporal test
+    notes: Primary Temporal server repository.
+  - id: cli
+    path: ../cli
+    role: cli
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/cli.git
+    expected_default_branch: main
+    criticality: high
+    depends_on:
+      - temporal
+    check_commands:
+      - make -C cli test
+    notes: Temporal CLI and dev server surface.
+  - id: sdk-core
+    path: ../sdk-core
+    role: shared runtime
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/sdk-core.git
+    expected_default_branch: master
+    criticality: critical
+    depends_on:
+      - temporal
+    check_commands:
+      - cargo test --manifest-path sdk-core/Cargo.toml
+    notes: Shared runtime used by multiple language SDKs.
+  - id: sdk-go
+    path: ../sdk-go
+    role: sdk
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/sdk-go.git
+    expected_default_branch: master
+    criticality: critical
+    depends_on:
+      - temporal
+    check_commands:
+      - go test ./...
+    notes: Go SDK with contrib packages.
+  - id: sdk-python
+    path: ../sdk-python
+    role: sdk
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/sdk-python.git
+    expected_default_branch: main
+    criticality: critical
+    depends_on:
+      - sdk-core
+      - temporal
+    check_commands:
+      - poe test
+    notes: Python SDK layered on sdk-core.
+  - id: ai-cookbook
+    path: ../ai-cookbook
+    role: examples
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/ai-cookbook.git
+    expected_default_branch: main
+    criticality: medium
+    depends_on:
+      - sdk-python
+      - temporal
+    check_commands:
+      - uv run --project ai-cookbook pytest
+    notes: Durable AI and MCP examples.

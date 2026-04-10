@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "monoctl"
+version = "0.1.0"
+description = "Workspace control plane for the temporalis repo constellation"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+monoctl = "monoctl.cli:run"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

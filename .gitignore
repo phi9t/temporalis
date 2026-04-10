@@ -1,0 +1,15 @@
+.codex
+.pytest_cache/
+__pycache__/
+*.pyc
+AGENTS.md
+ai-cookbook/
+cli/
+docs/*
+!docs/constellation/
+!docs/constellation/**
+local-temporal-tooling/
+sdk-core/
+sdk-go/
+sdk-python/
+temporal/
