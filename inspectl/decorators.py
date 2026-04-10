@@ -17,7 +17,9 @@ from inspectl.registry import (
 
 
 class StepDispatcher(Protocol):
-    def call_step(self, definition: StepDefinition, state: Any) -> Awaitable[Any]:
+    def call_step(
+        self, definition: StepDefinition, state: Any, *args: Any, **kwargs: Any
+    ) -> Awaitable[Any]:
         ...
 
 
@@ -64,7 +66,7 @@ def step(
             dispatcher = current_dispatcher()
             if dispatcher is None or definition.transient:
                 return fn(state, *args, **kwargs)
-            return dispatcher.call_step(definition, state)
+            return dispatcher.call_step(definition, state, *args, **kwargs)
 
         wrapper._inspectl_step = definition  # type: ignore[attr-defined]
         return wrapper
