@@ -27,3 +27,15 @@ make constellation-snapshot
 ```
 
 `monoctl doctor` is intentionally read-only. It reports drift such as dirty worktrees, branch mismatches, missing remotes, and missing repos, but it does not mutate the managed subrepos.
+
+## Inspectl
+`inspectl` is a local-first facade for state-threaded Python pipelines that uses Temporal underneath. `run(...)` boots or connects to a local Temporal dev server when needed.
+
+Public API:
+
+- `@step`
+- `@pipeline`
+- `run(...)`
+- `inspectl ...`
+
+See [docs/inspectl/README.md](docs/inspectl/README.md) for the quickstart and debugging workflow.
