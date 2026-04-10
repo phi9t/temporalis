@@ -7,10 +7,15 @@ name = "monoctl"
 version = "0.1.0"
 description = "Workspace control plane for the temporalis repo constellation"
 requires-python = ">=3.11"
-dependencies = ["PyYAML>=6.0"]
+dependencies = ["PyYAML>=6.0", "temporalio>=1.9,<2"]
 
 [project.scripts]
 monoctl = "monoctl.cli:run"
+inspectl = "inspectl.cli:run"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["monoctl*", "inspectl*"]

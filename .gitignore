@@ -15,3 +15,5 @@ sdk-core/
 sdk-go/
 sdk-python/
 temporal/
+.inspectl/
+runs/
