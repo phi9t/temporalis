@@ -103,7 +103,7 @@ repos:
     reports = list(report_dir.glob("*.md"))
     assert len(reports) == 1
     assert "cli" in lockfile.read_text(encoding="utf-8")
-    assert "Constellation Snapshot" in reports[0].read_text(encoding="utf-8")
+    assert "Monorepo Snapshot" in reports[0].read_text(encoding="utf-8")
     assert "Wrote" in captured.out
 
 

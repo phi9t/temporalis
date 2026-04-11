@@ -23,6 +23,6 @@ def test_render_snapshot_markdown_includes_repo_summary() -> None:
 
     rendered = render_snapshot_markdown(snapshot)
 
-    assert "# Constellation Snapshot" in rendered
+    assert "# Monorepo Snapshot" in rendered
     assert "Generated: 2026-04-10T12:00:00Z" in rendered
     assert "| temporal | temporal | main | abc123 | clean |" in rendered

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "monoctl"
 version = "0.1.0"
-description = "Workspace control plane for the temporalis repo constellation"
+description = "Workspace control plane for the temporalis monorepo workspace"
 requires-python = ">=3.11"
 dependencies = ["PyYAML>=6.0", "temporalio>=1.9,<2"]
 

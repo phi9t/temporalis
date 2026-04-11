@@ -4,9 +4,9 @@ This workspace root is a lightweight control repo for the Temporal multi-repo wo
 
 The control layer does three things:
 
-- defines the curated repo constellation in `constellation/repos.yaml`
-- records the latest observed workspace state in `constellation/current.lock.json`
-- provides `monoctl` to inspect drift, validate expectations, and write human-readable snapshots
+- defines the curated repo set in `.monorepo/repos.yaml`
+- records the latest observed workspace state in `.monorepo/current.lock.json`
+- provides `./.monorepo/monoctl` to inspect drift, validate expectations, and write human-readable snapshots
 
 ## Managed repos
 
@@ -20,13 +20,13 @@ The control layer does three things:
 ## Common commands
 
 ```bash
-make constellation-list
-make constellation-status
-make constellation-doctor
-make constellation-snapshot
+make monorepo-list
+make monorepo-status
+make monorepo-doctor
+make monorepo-snapshot
 ```
 
-`monoctl doctor` is intentionally read-only. It reports drift such as dirty worktrees, branch mismatches, missing remotes, and missing repos, but it does not mutate the managed subrepos.
+`./.monorepo/monoctl doctor` is intentionally read-only. It reports drift such as dirty worktrees, branch mismatches, missing remotes, and missing repos, but it does not mutate the managed subrepos.
 
 ## Inspectl
 `inspectl` is a local-first facade for state-threaded Python pipelines that uses Temporal underneath. `run(...)` boots or connects to a local Temporal dev server when needed.

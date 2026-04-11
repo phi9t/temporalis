@@ -6,8 +6,8 @@ AGENTS.md
 ai-cookbook/
 cli/
 docs/*
-!docs/constellation/
-!docs/constellation/**
+!docs/.monorepo/
+!docs/.monorepo/**
 !docs/inspectl/
 !docs/inspectl/**
 !docs/superpowers/

@@ -5,7 +5,7 @@ from monoctl.models import Snapshot
 
 def render_snapshot_markdown(snapshot: Snapshot) -> str:
     lines = [
-        "# Constellation Snapshot",
+        "# Monorepo Snapshot",
         "",
         f"Generated: {snapshot.generated_at}",
         "",

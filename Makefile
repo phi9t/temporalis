@@ -1,16 +1,16 @@
-.PHONY: constellation-list constellation-status constellation-doctor constellation-snapshot test
+.PHONY: monorepo-list monorepo-status monorepo-doctor monorepo-snapshot test
 
-constellation-list:
-	python3 -m monoctl.cli list
+monorepo-list:
+	./.monorepo/monoctl list
 
-constellation-status:
-	python3 -m monoctl.cli status
+monorepo-status:
+	./.monorepo/monoctl status
 
-constellation-doctor:
-	python3 -m monoctl.cli doctor
+monorepo-doctor:
+	./.monorepo/monoctl doctor
 
-constellation-snapshot:
-	python3 -m monoctl.cli snapshot
+monorepo-snapshot:
+	./.monorepo/monoctl snapshot
 
 test:
 	pytest -q

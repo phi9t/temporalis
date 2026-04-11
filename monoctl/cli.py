@@ -12,9 +12,9 @@ from monoctl.models import Manifest, RepoState, RepositorySpec, Snapshot
 from monoctl.render import render_snapshot_markdown
 
 
-DEFAULT_MANIFEST = Path("constellation/repos.yaml")
-DEFAULT_LOCKFILE = Path("constellation/current.lock.json")
-DEFAULT_REPORT_DIR = Path("docs/constellation/snapshots")
+DEFAULT_MANIFEST = Path(".monorepo/repos.yaml")
+DEFAULT_LOCKFILE = Path(".monorepo/current.lock.json")
+DEFAULT_REPORT_DIR = Path("docs/.monorepo/snapshots")
 
 
 def _manifest_path(value: str | None) -> Path:

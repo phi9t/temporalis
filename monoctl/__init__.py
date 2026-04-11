@@ -1,1 +1,1 @@
-"""Workspace constellation control plane."""
+"""Workspace monorepo control plane."""
