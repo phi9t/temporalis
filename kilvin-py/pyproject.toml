@@ -1,0 +1,14 @@
+[project]
+name = "kilvin-py"
+version = "0.1.0"
+description = "Temporal reference implementation scaffold for Kilvin training orchestration (Python)."
+requires-python = ">=3.10"
+dependencies = [
+    "temporalio>=1.11.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.5.0",
+]
