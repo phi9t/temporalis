@@ -44,3 +44,17 @@ Public API:
 - `inspectl ...`
 
 See [docs/inspectl/README.md](docs/inspectl/README.md) for the quickstart and debugging workflow.
+
+## Temporal Explorer
+
+`explorer/` is a local React app that explains how a Kilvin-inspired Python asyncio workflow moves through sdk-python, the Python bridge, sdk-core, and Temporal server.
+
+Common commands:
+
+```bash
+make explorer-gen-data
+make explorer-build
+make explorer-dev
+```
+
+The generator reads the initialized managed repos and writes static JSON under `explorer/public/data/`. Run `make monorepo-init` and confirm `make monorepo-doctor` passes before regenerating explorer data.

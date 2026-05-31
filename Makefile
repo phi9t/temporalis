@@ -1,4 +1,4 @@
-.PHONY: monorepo-init monorepo-list monorepo-status monorepo-doctor monorepo-snapshot test
+.PHONY: monorepo-init monorepo-list monorepo-status monorepo-doctor monorepo-snapshot test explorer-gen-data explorer-build explorer-dev
 
 monorepo-init:
 	./.monorepo/monoctl init
@@ -17,3 +17,12 @@ monorepo-snapshot:
 
 test:
 	pytest -q
+
+explorer-gen-data:
+	./explorer/scripts/workflow.sh gen-data
+
+explorer-build:
+	./explorer/scripts/workflow.sh build
+
+explorer-dev:
+	./explorer/scripts/workflow.sh dev
