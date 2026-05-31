@@ -54,31 +54,53 @@
     {
       "script": "hacks/001_source_map.py",
       "guide_anchor": "where-to-inspect-source-next",
+      "guide_anchors": [
+        "where-to-inspect-source-next"
+      ],
       "hack_summary": "Print the source anchors used by the Temporal guide and explorer."
     },
     {
       "script": "hacks/002_lifecycle_manifest.py",
       "guide_anchor": "happy-path-start-workflow-to-first-activation",
+      "guide_anchors": [
+        "happy-path-start-workflow-to-first-activation",
+        "activity-execution-and-heartbeats"
+      ],
       "hack_summary": "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
     },
     {
       "script": "hacks/003_task_queue_polling.py",
       "guide_anchor": "workflow-task-polling-matching---sdk-core---bridge---python",
+      "guide_anchors": [
+        "workflow-task-polling-matching---sdk-core---bridge---python"
+      ],
       "hack_summary": "Trace Matching -> sdk-core -> bridge -> Python workflow-task polling."
     },
     {
       "script": "hacks/004_history_replay.py",
       "guide_anchor": "history-as-source-of-truth-and-replay",
+      "guide_anchors": [
+        "history-as-source-of-truth-and-replay"
+      ],
       "hack_summary": "Show how History, sdk-core, and Python activation refs explain replay."
     },
     {
       "script": "hacks/005_control_paths.py",
       "guide_anchor": "retry-and-failure-handling",
+      "guide_anchors": [
+        "retry-and-failure-handling",
+        "pause-resume-as-signalupdate-driven-coordination",
+        "activity-execution-and-heartbeats",
+        "sticky-workflow-cache-and-eviction"
+      ],
       "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
     },
     {
       "script": "hacks/006_optional_local_run.py",
       "guide_anchor": "hands-on-hacks",
+      "guide_anchors": [
+        "hands-on-hacks"
+      ],
       "hack_summary": "Optional heavier local Temporal run; skipped unless TEMPORALIS_RUN_OPTIONAL_HACK=1."
     }
   ]

@@ -4,6 +4,12 @@ from __future__ import annotations
 from _common import load_json, print_header
 
 GUIDE_ANCHOR = "retry-and-failure-handling"
+GUIDE_ANCHORS = (
+    "retry-and-failure-handling",
+    "pause-resume-as-signalupdate-driven-coordination",
+    "activity-execution-and-heartbeats",
+    "sticky-workflow-cache-and-eviction",
+)
 SUMMARY = "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
 
 

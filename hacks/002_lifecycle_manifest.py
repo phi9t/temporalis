@@ -4,6 +4,10 @@ from __future__ import annotations
 from _common import load_json, print_header
 
 GUIDE_ANCHOR = "happy-path-start-workflow-to-first-activation"
+GUIDE_ANCHORS = (
+    "happy-path-start-workflow-to-first-activation",
+    "activity-execution-and-heartbeats",
+)
 SUMMARY = "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
 
 

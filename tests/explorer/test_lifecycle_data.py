@@ -5,10 +5,15 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "explorer" / "public" / "data"
+SCRIPTS = ROOT / "explorer" / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+
+from build_lifecycle_data import guide_link, read_hack_metadata
 
 
 def run_generator() -> None:
@@ -169,6 +174,64 @@ def test_generated_guide_anchors_are_linkable_from_guide() -> None:
     generated_anchors |= {scenario["guide_anchor"] for scenario in control_scenarios}
 
     assert generated_anchors <= linkable_anchors
+
+
+def test_hack_metadata_includes_supported_guide_anchors() -> None:
+    run_generator()
+    guide = json.loads((OUT / "guide" / "index.json").read_text(encoding="utf-8"))
+    hacks = {entry["script"]: entry for entry in guide["hacks"]}
+
+    lifecycle = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    control_index = json.loads((OUT / "control-paths" / "index.json").read_text(encoding="utf-8"))
+    control_scenarios = [load_json(OUT / entry["manifest"]) for entry in control_index]
+
+    for item in [*lifecycle["phases"], *control_scenarios]:
+        hack = hacks[item["hack_script"]]
+        assert item["guide_anchor"] in hack["guide_anchors"]
+
+
+def test_guide_link_rejects_anchor_not_supported_by_hack(tmp_path: Path) -> None:
+    repo = tmp_path
+    (repo / "hacks").mkdir()
+    script = repo / "hacks" / "001_demo.py"
+    script.write_text(
+        'GUIDE_ANCHOR = "primary"\nSUMMARY = "Demo hack."\n',
+        encoding="utf-8",
+    )
+    hacks = read_hack_metadata(repo)
+
+    with pytest.raises(ValueError, match="does not support guide anchor"):
+        guide_link(repo, {"primary": "Primary", "secondary": "Secondary"}, hacks, "secondary", "hacks/001_demo.py")
+
+
+def test_read_hack_metadata_requires_valid_numbered_metadata(tmp_path: Path) -> None:
+    repo = tmp_path
+    (repo / "hacks").mkdir()
+
+    (repo / "hacks" / "001_missing_summary.py").write_text(
+        'GUIDE_ANCHOR = "primary"\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="missing SUMMARY"):
+        read_hack_metadata(repo)
+
+    (repo / "hacks" / "001_missing_summary.py").write_text(
+        'GUIDE_ANCHOR = "primary"\nSUMMARY = "Demo hack."\n',
+        encoding="utf-8",
+    )
+    (repo / "hacks" / "002_bad_anchor.py").write_text(
+        'GUIDE_ANCHOR = ["primary"]\nSUMMARY = "Demo hack."\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="GUIDE_ANCHOR must be a string"):
+        read_hack_metadata(repo)
+
+    (repo / "hacks" / "002_bad_anchor.py").write_text(
+        'GUIDE_ANCHOR = "primary"\nGUIDE_ANCHORS = ("primary", 2)\nSUMMARY = "Demo hack."\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="GUIDE_ANCHORS must contain only strings"):
+        read_hack_metadata(repo)
 
 
 def test_lifecycle_phases_have_guide_and_hack_links() -> None:

@@ -83,30 +83,68 @@ def guide_sections(repo_root: Path) -> dict[str, str]:
     return sections
 
 
-def read_hack_metadata(repo_root: Path) -> dict[str, dict[str, str]]:
-    metadata: dict[str, dict[str, str]] = {}
+def _string_constant(path: Path, name: str, value: ast.expr) -> str:
+    if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+        raise ValueError(f"{path.relative_to(path.parents[1])}: {name} must be a string")
+    return value.value
+
+
+def _string_tuple_constant(path: Path, name: str, value: ast.expr) -> tuple[str, ...]:
+    if not isinstance(value, ast.Tuple):
+        raise ValueError(f"{path.relative_to(path.parents[1])}: {name} must be a tuple of strings")
+    anchors: list[str] = []
+    for item in value.elts:
+        if not isinstance(item, ast.Constant) or not isinstance(item.value, str):
+            raise ValueError(f"{path.relative_to(path.parents[1])}: {name} must contain only strings")
+        anchors.append(item.value)
+    if not anchors:
+        raise ValueError(f"{path.relative_to(path.parents[1])}: {name} must not be empty")
+    return tuple(anchors)
+
+
+def read_hack_metadata(repo_root: Path) -> dict[str, dict[str, Any]]:
+    metadata: dict[str, dict[str, Any]] = {}
     for path in sorted((repo_root / "hacks").glob("[0-9][0-9][0-9]_*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        values: dict[str, str] = {}
+        values: dict[str, str | tuple[str, ...]] = {}
         for node in tree.body:
             if not isinstance(node, ast.Assign):
                 continue
             if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
                 continue
-            if node.targets[0].id not in {"GUIDE_ANCHOR", "SUMMARY"}:
+            name = node.targets[0].id
+            if name not in {"GUIDE_ANCHOR", "GUIDE_ANCHORS", "SUMMARY"}:
                 continue
-            if not isinstance(node.value, ast.Constant) or not isinstance(node.value.value, str):
-                continue
-            values[node.targets[0].id] = node.value.value
-        if "GUIDE_ANCHOR" in values and "SUMMARY" in values:
-            metadata[f"hacks/{path.name}"] = {
-                "guide_anchor": values["GUIDE_ANCHOR"],
-                "hack_summary": values["SUMMARY"],
-            }
+            if name == "GUIDE_ANCHORS":
+                values[name] = _string_tuple_constant(path, name, node.value)
+            else:
+                values[name] = _string_constant(path, name, node.value)
+
+        for required in ("GUIDE_ANCHOR", "SUMMARY"):
+            if required not in values:
+                raise ValueError(f"hacks/{path.name}: missing {required}")
+
+        guide_anchor = values["GUIDE_ANCHOR"]
+        hack_summary = values["SUMMARY"]
+        if not isinstance(guide_anchor, str):
+            raise ValueError(f"hacks/{path.name}: GUIDE_ANCHOR must be a string")
+        if not isinstance(hack_summary, str):
+            raise ValueError(f"hacks/{path.name}: SUMMARY must be a string")
+        guide_anchors = values.get("GUIDE_ANCHORS", (guide_anchor,))
+        if not isinstance(guide_anchors, tuple):
+            raise ValueError(f"hacks/{path.name}: GUIDE_ANCHORS must be a tuple of strings")
+        if guide_anchor not in guide_anchors:
+            raise ValueError(f"hacks/{path.name}: GUIDE_ANCHORS must include GUIDE_ANCHOR {guide_anchor!r}")
+
+        metadata[f"hacks/{path.name}"] = {
+            "guide_anchor": guide_anchor,
+            "guide_anchors": list(guide_anchors),
+            "hack_summary": hack_summary,
+        }
     return metadata
 
 
-def guide_link(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str, str]], anchor: str, script: str) -> dict[str, str]:
+def guide_link(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str, Any]], anchor: str, script: str) -> dict[str, str]:
     if anchor not in guide:
         raise ValueError(f"guide anchor {anchor!r} missing from HACKERS_GUIDE.md")
     if script not in hacks:
@@ -114,6 +152,8 @@ def guide_link(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str
     script_anchor = hacks[script]["guide_anchor"]
     if script_anchor not in guide:
         raise ValueError(f"{script} points to missing guide anchor {script_anchor!r}")
+    if anchor not in hacks[script]["guide_anchors"]:
+        raise ValueError(f"{script} does not support guide anchor {anchor!r}")
     if not (repo_root / script).exists():
         raise ValueError(f"hack script {script!r} does not exist")
     return {
