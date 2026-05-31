@@ -44,8 +44,8 @@ export default function LifecycleDrawer({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span>{ref.label}</span>
-                <span className="font-mono text-[11px] text-ink-muted">
+                <span className="source-link-label">{ref.label}</span>
+                <span className="source-link-path font-mono text-[11px] text-ink-muted">
                   {ref.path}:{ref.line}
                 </span>
                 <ExternalLink size={12} aria-hidden="true" />

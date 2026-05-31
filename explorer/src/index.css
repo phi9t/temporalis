@@ -353,7 +353,7 @@ body {
 
 .source-link {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
   padding: 8px 10px;
@@ -362,6 +362,12 @@ body {
   color: var(--color-ink-soft);
   text-decoration: none;
   background: rgba(15, 23, 42, 0.44);
+}
+
+.source-link-label,
+.source-link-path {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .source-link:hover {

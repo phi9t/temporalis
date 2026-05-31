@@ -38,15 +38,27 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   useEffect(() => {
     if (!entry) return
 
+    let isCurrent = true
+
     setManifest(null)
     setManifestError(null)
     fetchExplorerJson<LifecycleManifest>(entry.manifest)
       .then((loaded) => {
+        if (!isCurrent) return
+
         setManifest(loaded)
         setPhaseId(loaded.phases[0]?.id ?? '')
         setSelected(null)
       })
-      .catch((error: unknown) => setManifestError(errorMessage(error)))
+      .catch((error: unknown) => {
+        if (!isCurrent) return
+
+        setManifestError(errorMessage(error))
+      })
+
+    return () => {
+      isCurrent = false
+    }
   }, [entry])
 
   const phase = manifest?.phases.find((item) => item.id === phaseId) ?? manifest?.phases[0] ?? null
