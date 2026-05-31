@@ -1,65 +1,77 @@
 {
-  "generated_at": "2026-05-31T02:06:41Z",
+  "generated_at": "2026-05-31T02:47:28Z",
   "repos": [
     {
       "id": "temporal",
       "path": "../temporal",
-      "branch": null,
-      "head": "missing",
-      "describe": null,
+      "branch": "main",
+      "head": "c2c4bc1928c3606ebad477ae6c0bf3728115ef42",
+      "describe": "v1.29.0-135.0-1513-gc2c4bc192",
       "is_dirty": false,
       "dirty_summary": [],
-      "remotes": {}
+      "remotes": {
+        "origin": "git@github.com:temporalio/temporal.git"
+      }
     },
     {
       "id": "cli",
       "path": "../cli",
-      "branch": null,
-      "head": "missing",
-      "describe": null,
+      "branch": "main",
+      "head": "7e5ba380c9a4a117333045a3dace75555b906aa1",
+      "describe": "v1.7.0-18-g7e5ba38",
       "is_dirty": false,
       "dirty_summary": [],
-      "remotes": {}
+      "remotes": {
+        "origin": "git@github.com:temporalio/cli.git"
+      }
     },
     {
       "id": "sdk-core",
       "path": "../sdk-core",
-      "branch": null,
-      "head": "missing",
-      "describe": null,
+      "branch": "main",
+      "head": "6a8355ac4c49884433b0502f31bddace0c6ce884",
+      "describe": "v0.4.0-33-g6a8355ac",
       "is_dirty": false,
       "dirty_summary": [],
-      "remotes": {}
+      "remotes": {
+        "origin": "git@github.com:temporalio/sdk-core.git"
+      }
     },
     {
       "id": "sdk-go",
       "path": "../sdk-go",
-      "branch": null,
-      "head": "missing",
-      "describe": null,
+      "branch": "main",
+      "head": "f2fb1ce1200a9373b21e32c0c4937d64d9c05e17",
+      "describe": "v1.44.1-2-gf2fb1ce1",
       "is_dirty": false,
       "dirty_summary": [],
-      "remotes": {}
+      "remotes": {
+        "origin": "git@github.com:temporalio/sdk-go.git"
+      }
     },
     {
       "id": "sdk-python",
       "path": "../sdk-python",
-      "branch": null,
-      "head": "missing",
-      "describe": null,
+      "branch": "main",
+      "head": "d53a604d694bd5dcef0c4c9da6650aa7bc199be0",
+      "describe": "1.27.2-26-gd53a604d",
       "is_dirty": false,
       "dirty_summary": [],
-      "remotes": {}
+      "remotes": {
+        "origin": "git@github.com:temporalio/sdk-python.git"
+      }
     },
     {
       "id": "sdk-rust",
       "path": "../sdk-rust",
-      "branch": null,
-      "head": "missing",
-      "describe": null,
+      "branch": "main",
+      "head": "6a8355ac4c49884433b0502f31bddace0c6ce884",
+      "describe": "v0.4.0-33-g6a8355ac",
       "is_dirty": false,
       "dirty_summary": [],
-      "remotes": {}
+      "remotes": {
+        "origin": "git@github.com:temporalio/sdk-rust.git"
+      }
     }
   ]
 }
