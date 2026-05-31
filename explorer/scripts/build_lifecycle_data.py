@@ -144,6 +144,14 @@ def read_hack_metadata(repo_root: Path) -> dict[str, dict[str, Any]]:
     return metadata
 
 
+def validate_hack_guide_anchors(guide: dict[str, str], hacks: dict[str, dict[str, Any]]) -> None:
+    for script, metadata in sorted(hacks.items()):
+        anchors = [metadata["guide_anchor"], *metadata["guide_anchors"]]
+        for anchor in anchors:
+            if anchor not in guide:
+                raise ValueError(f"{script} advertises unsupported guide anchor {anchor!r}")
+
+
 def guide_link(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str, Any]], anchor: str, script: str) -> dict[str, str]:
     if anchor not in guide:
         raise ValueError(f"guide anchor {anchor!r} missing from HACKERS_GUIDE.md")
@@ -168,6 +176,7 @@ def build(repo_root: Path) -> dict[str, Any]:
     repos = load_repos(repo_root)
     guide = guide_sections(repo_root)
     hacks = read_hack_metadata(repo_root)
+    validate_hack_guide_anchors(guide, hacks)
     nodes = [
         {
             "id": "kilvin-client",
@@ -392,7 +401,7 @@ def build(repo_root: Path) -> dict[str, Any]:
     }
 
 
-def control_scenarios(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str, str]]) -> list[dict[str, Any]]:
+def control_scenarios(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     return [
         {
             "slug": "pause-resume",
@@ -481,6 +490,7 @@ def main() -> None:
     out = repo_root / "explorer" / "public" / "data"
     guide = guide_sections(repo_root)
     hacks = read_hack_metadata(repo_root)
+    validate_hack_guide_anchors(guide, hacks)
     write_public_guide(repo_root)
 
     lifecycle = build(repo_root)

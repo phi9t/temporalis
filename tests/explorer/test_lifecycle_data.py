@@ -13,7 +13,7 @@ OUT = ROOT / "explorer" / "public" / "data"
 SCRIPTS = ROOT / "explorer" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from build_lifecycle_data import guide_link, read_hack_metadata
+from build_lifecycle_data import guide_link, read_hack_metadata, validate_hack_guide_anchors
 
 
 def run_generator() -> None:
@@ -202,6 +202,19 @@ def test_guide_link_rejects_anchor_not_supported_by_hack(tmp_path: Path) -> None
 
     with pytest.raises(ValueError, match="does not support guide anchor"):
         guide_link(repo, {"primary": "Primary", "secondary": "Secondary"}, hacks, "secondary", "hacks/001_demo.py")
+
+
+def test_hack_metadata_rejects_supported_anchor_missing_from_guide(tmp_path: Path) -> None:
+    repo = tmp_path
+    (repo / "hacks").mkdir()
+    (repo / "hacks" / "001_demo.py").write_text(
+        'GUIDE_ANCHOR = "primary"\nGUIDE_ANCHORS = ("primary", "typo")\nSUMMARY = "Demo hack."\n',
+        encoding="utf-8",
+    )
+    hacks = read_hack_metadata(repo)
+
+    with pytest.raises(ValueError, match="unsupported guide anchor 'typo'"):
+        validate_hack_guide_anchors({"primary": "Primary"}, hacks)
 
 
 def test_read_hack_metadata_requires_valid_numbered_metadata(tmp_path: Path) -> None:
