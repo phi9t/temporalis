@@ -22,8 +22,9 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def local_head() -> str:
-    return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+def lock_heads() -> dict[str, str]:
+    lock = load_json(ROOT / ".monorepo" / "current.lock.json")
+    return {repo["id"]: repo["head"] for repo in lock["repos"]}
 
 
 def ref_line(ref: dict) -> str:
@@ -87,15 +88,25 @@ def test_important_source_refs_resolve_to_intended_lines() -> None:
     start_ref = find_ref(refs, "kilvin", "kilvin-py/start_workflow.py", "start_workflow.py")
     activation_ref = find_ref(refs, "sdk-python", "temporalio/worker/_workflow.py", "_handle_activation")
     frontend_ref = find_ref(refs, "temporal", "service/frontend/workflow_handler.go", "StartWorkflowExecution")
-    kilvin_worker_ref = find_ref(refs, "kilvin", "kilvin-py/worker.py", "kilvin worker")
 
     assert "await client.execute_workflow(" in ref_line(start_ref)
     assert "async def _handle_activation(" in ref_line(activation_ref)
     assert "func" in ref_line(frontend_ref)
     assert "StartWorkflowExecution(" in ref_line(frontend_ref)
-    assert local_head() in start_ref["url"]
-    assert local_head() in kilvin_worker_ref["url"]
-    assert "phi9t-mainline" not in start_ref["url"]
+
+
+def test_source_ref_urls_follow_pinning_policy() -> None:
+    run_generator()
+    manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    refs = [ref for node in manifest["nodes"] for ref in node["refs"]]
+    heads = lock_heads()
+
+    for ref in refs:
+        if ref["repo"] == "kilvin":
+            assert ref["url"].startswith("https://github.com/phi9t/temporalis/blob/phi9t-mainline/")
+            assert ref.get("ref") == "phi9t-mainline"
+        else:
+            assert heads[ref["repo"]] in ref["url"]
 
 
 def test_control_path_overlays_reference_existing_nodes_and_edges() -> None:

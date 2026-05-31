@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -31,10 +30,6 @@ def ref(
     }
 
 
-def local_head(repo_root: Path) -> str:
-    return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo_root, text=True).strip()
-
-
 def local_ref(
     repo_root: Path,
     path: str,
@@ -45,11 +40,12 @@ def local_ref(
 ) -> dict[str, Any]:
     return {
         "repo": "kilvin",
+        "ref": "phi9t-mainline",
         "label": label,
         "path": path,
         "line": resolve_line(repo_root, path, symbol, pattern=pattern),
         "symbol": symbol,
-        "url": f"https://github.com/phi9t/temporalis/blob/{local_head(repo_root)}/{path}",
+        "url": f"https://github.com/phi9t/temporalis/blob/phi9t-mainline/{path}",
     }
 
 
