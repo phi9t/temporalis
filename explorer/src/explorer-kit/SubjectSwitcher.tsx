@@ -32,13 +32,12 @@ export function SubjectSwitcher<T extends string>({
           ))}
         </select>
       ) : (
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label={ariaLabel}>
+        <div className="flex flex-wrap gap-2" aria-label={ariaLabel}>
           {options.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              role="tab"
-              aria-selected={value === opt.value}
+              aria-pressed={value === opt.value}
               onClick={() => onChange(opt.value)}
               className={cn(
                 'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',

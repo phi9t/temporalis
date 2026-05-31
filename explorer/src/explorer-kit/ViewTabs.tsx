@@ -1,10 +1,5 @@
 import { cn } from '@/lib/utils'
 
-/**
- * Pill tablist for switching sub-views within a mode (Data tabs, Component
- * pager, Architecture lens). The canonical control vocabulary of the explorer —
- * reuse this instead of hand-rolling pill buttons.
- */
 export function ViewTabs<T extends string>({
   value,
   options,
@@ -17,13 +12,12 @@ export function ViewTabs<T extends string>({
   ariaLabel?: string
 }) {
   return (
-    <div className="flex flex-wrap gap-2" role="tablist" aria-label={ariaLabel}>
+    <div className="flex flex-wrap gap-2" aria-label={ariaLabel}>
       {options.map(({ value: v, label }) => (
         <button
           key={v}
           type="button"
-          role="tab"
-          aria-selected={value === v}
+          aria-pressed={value === v}
           onClick={() => onChange(v)}
           className={cn(
             'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
