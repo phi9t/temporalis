@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,9 +49,16 @@ def github_url(remote: str) -> str:
     return remote.removesuffix(".git")
 
 
-def resolve_line(base: Path, rel_path: str, symbol: str) -> int:
+def resolve_line(base: Path, rel_path: str, symbol: str, *, pattern: str | None = None) -> int:
     path = base / rel_path
     lines = path.read_text(encoding="utf-8").splitlines()
+    if pattern is not None:
+        compiled = re.compile(pattern)
+        for idx, line in enumerate(lines, start=1):
+            if compiled.search(line):
+                return idx
+        raise ValueError(f"pattern {pattern!r} not found in {path}")
+
     for idx, line in enumerate(lines, start=1):
         if symbol in line:
             return idx

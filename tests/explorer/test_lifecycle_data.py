@@ -22,6 +22,25 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def local_head() -> str:
+    return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+
+
+def ref_line(ref: dict) -> str:
+    if ref["repo"] == "kilvin":
+        base = ROOT
+    else:
+        base = ROOT / ref["repo"]
+    return (base / ref["path"]).read_text(encoding="utf-8").splitlines()[ref["line"] - 1]
+
+
+def find_ref(refs: list[dict], repo: str, path: str, label: str) -> dict:
+    for ref in refs:
+        if ref["repo"] == repo and ref["path"] == path and ref["label"] == label:
+            return ref
+    raise AssertionError(f"missing ref {repo}:{path}:{label}")
+
+
 def test_lifecycle_manifest_is_schema_consistent() -> None:
     run_generator()
     manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
@@ -58,6 +77,25 @@ def test_source_refs_resolve_to_real_lines() -> None:
     got = {(ref["repo"], ref["path"]) for ref in refs}
     assert required <= got
     assert all(isinstance(ref["line"], int) and ref["line"] > 0 for ref in refs)
+
+
+def test_important_source_refs_resolve_to_intended_lines() -> None:
+    run_generator()
+    manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    refs = [ref for node in manifest["nodes"] for ref in node["refs"]]
+
+    start_ref = find_ref(refs, "kilvin", "kilvin-py/start_workflow.py", "start_workflow.py")
+    activation_ref = find_ref(refs, "sdk-python", "temporalio/worker/_workflow.py", "_handle_activation")
+    frontend_ref = find_ref(refs, "temporal", "service/frontend/workflow_handler.go", "StartWorkflowExecution")
+    kilvin_worker_ref = find_ref(refs, "kilvin", "kilvin-py/worker.py", "kilvin worker")
+
+    assert "await client.execute_workflow(" in ref_line(start_ref)
+    assert "async def _handle_activation(" in ref_line(activation_ref)
+    assert "func" in ref_line(frontend_ref)
+    assert "StartWorkflowExecution(" in ref_line(frontend_ref)
+    assert local_head() in start_ref["url"]
+    assert local_head() in kilvin_worker_ref["url"]
+    assert "phi9t-mainline" not in start_ref["url"]
 
 
 def test_control_path_overlays_reference_existing_nodes_and_edges() -> None:
