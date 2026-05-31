@@ -3,7 +3,6 @@
 __pycache__/
 *.pyc
 AGENTS.md
-ai-cookbook/
 cli/
 docs/*
 !docs/.monorepo/
@@ -16,6 +15,7 @@ local-temporal-tooling/
 sdk-core/
 sdk-go/
 sdk-python/
+sdk-rust/
 temporal/
 .inspectl/
 runs/

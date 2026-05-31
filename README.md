@@ -15,16 +15,21 @@ The control layer does three things:
 - `sdk-core`
 - `sdk-go`
 - `sdk-python`
-- `ai-cookbook`
+- `sdk-rust`
 
 ## Common commands
 
 ```bash
+make monorepo-init
 make monorepo-list
 make monorepo-status
 make monorepo-doctor
 make monorepo-snapshot
 ```
+
+`./.monorepo/monoctl init` clones missing managed repos from their configured SSH remotes and
+fast-forward pulls existing clean repos on their expected branch. It fails without mutating when
+an existing repo is dirty, on the wrong branch, detached, or has an unexpected remote.
 
 `./.monorepo/monoctl doctor` is intentionally read-only. It reports drift such as dirty worktrees, branch mismatches, missing remotes, and missing repos, but it does not mutate the managed subrepos.
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -119,6 +120,84 @@ def _write_snapshot(snapshot: Snapshot, lockfile: Path, report_dir: Path) -> Pat
     return report_path
 
 
+def _run_git_command(command: list[str], cwd: Path) -> None:
+    subprocess.run(command, cwd=cwd, check=True)
+
+
+def _init_findings(
+    manifest_path: Path, manifest: Manifest, states: list[RepoState]
+) -> list[str]:
+    failures: list[str] = []
+    for repo, state in zip(manifest.repos, states, strict=True):
+        repo_path = _resolve_repo_path(manifest_path, repo)
+        if not repo_path.exists():
+            if not repo.expected_remote_url:
+                failures.append(f"{repo.id}: missing expected_remote_url for clone")
+            continue
+        if not is_git_repo(repo_path):
+            failures.append(f"{repo.id}: path is not a git repo ({repo.path})")
+            continue
+        remote_url = state.remotes.get(repo.upstream_remote)
+        if remote_url is None:
+            failures.append(f"{repo.id}: missing upstream remote {repo.upstream_remote}")
+        elif repo.expected_remote_url and remote_url != repo.expected_remote_url:
+            failures.append(
+                f"{repo.id}: remote {repo.upstream_remote} URL mismatch "
+                f"({remote_url} != {repo.expected_remote_url})"
+            )
+        if state.branch is None:
+            failures.append(f"{repo.id}: detached HEAD")
+        elif state.branch != repo.expected_default_branch:
+            failures.append(
+                f"{repo.id}: branch mismatch ({state.branch} != {repo.expected_default_branch})"
+            )
+        if state.is_dirty:
+            failures.append(f"{repo.id}: dirty worktree")
+    return failures
+
+
+def _init_repos(manifest_path: Path, manifest: Manifest, states: list[RepoState]) -> int:
+    failures = _init_findings(manifest_path, manifest, states)
+    for failure in failures:
+        print(f"FAIL: {failure}")
+    if failures:
+        return 1
+
+    for repo, state in zip(manifest.repos, states, strict=True):
+        repo_path = _resolve_repo_path(manifest_path, repo)
+        if not repo_path.exists():
+            repo_path.parent.mkdir(parents=True, exist_ok=True)
+            command = [
+                "git",
+                "clone",
+                "--branch",
+                repo.expected_default_branch,
+                repo.expected_remote_url or "",
+                str(repo_path),
+            ]
+            try:
+                _run_git_command(command, cwd=manifest_path.parent.resolve())
+            except subprocess.CalledProcessError as exc:
+                print(f"FAIL: {repo.id}: git command failed with exit {exc.returncode}")
+                return 1
+            print(f"Cloned {repo.id} -> {repo.path}")
+            continue
+        command = [
+            "git",
+            "pull",
+            "--ff-only",
+            repo.upstream_remote,
+            repo.expected_default_branch,
+        ]
+        try:
+            _run_git_command(command, cwd=repo_path)
+        except subprocess.CalledProcessError as exc:
+            print(f"FAIL: {repo.id}: git command failed with exit {exc.returncode}")
+            return 1
+        print(f"Pulled {repo.id}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="monoctl")
     common = argparse.ArgumentParser(add_help=False)
@@ -127,6 +206,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("list", parents=[common])
     subparsers.add_parser("status", parents=[common])
     subparsers.add_parser("doctor", parents=[common])
+    subparsers.add_parser("init", parents=[common])
     snapshot = subparsers.add_parser("snapshot", parents=[common])
     snapshot.add_argument("--lockfile", default=str(DEFAULT_LOCKFILE))
     snapshot.add_argument("--report-dir", default=str(DEFAULT_REPORT_DIR))
@@ -153,6 +233,8 @@ def main(argv: list[str] | None = None) -> int:
         for failure in failures:
             print(f"FAIL: {failure}")
         return 1 if failures else 0
+    if args.command == "init":
+        return _init_repos(manifest_path, manifest, states)
     if args.command == "snapshot":
         snapshot = _snapshot(states)
         report_path = _write_snapshot(

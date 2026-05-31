@@ -1,4 +1,7 @@
-.PHONY: monorepo-list monorepo-status monorepo-doctor monorepo-snapshot test
+.PHONY: monorepo-init monorepo-list monorepo-status monorepo-doctor monorepo-snapshot test
+
+monorepo-init:
+	./.monorepo/monoctl init
 
 monorepo-list:
 	./.monorepo/monoctl list

@@ -170,3 +170,176 @@ repos:
     assert exit_code == 0
     assert "describe=" in captured.out
     assert "origin=git@github.com:example/sdk-core.git" in captured.out
+
+
+def test_init_clones_missing_repos_from_manifest(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo_path = tmp_path / "temporal"
+    manifest = tmp_path / "repos.yaml"
+    manifest.write_text(
+        f"""
+repos:
+  - id: temporal
+    path: {repo_path}
+    role: engine
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/temporal.git
+    expected_default_branch: main
+    criticality: high
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], cwd: Path) -> None:
+        commands.append(command)
+
+    monkeypatch.setattr("monoctl.cli._run_git_command", fake_run, raising=False)
+
+    exit_code = main(["init", "--manifest", str(manifest)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert commands == [
+        [
+            "git",
+            "clone",
+            "--branch",
+            "main",
+            "git@github.com:temporalio/temporal.git",
+            str(repo_path),
+        ]
+    ]
+    assert "Cloned temporal" in captured.out
+
+
+def test_init_pulls_clean_existing_repos(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo_path = tmp_path / "sdk-python"
+    init_git_repo(repo_path, branch="main")
+    manifest = tmp_path / "repos.yaml"
+    manifest.write_text(
+        f"""
+repos:
+  - id: sdk-python
+    path: {repo_path}
+    role: sdk
+    upstream_remote: origin
+    expected_remote_url: git@github.com:example/sdk-python.git
+    expected_default_branch: main
+    criticality: critical
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], cwd: Path) -> None:
+        commands.append(command)
+
+    monkeypatch.setattr("monoctl.cli._run_git_command", fake_run, raising=False)
+
+    exit_code = main(["init", "--manifest", str(manifest)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert commands == [["git", "pull", "--ff-only", "origin", "main"]]
+    assert "Pulled sdk-python" in captured.out
+
+
+def test_init_fails_without_mutating_dirty_repo(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo_path = tmp_path / "sdk-go"
+    init_git_repo(repo_path, branch="main")
+    (repo_path / "README.md").write_text("# changed\n", encoding="utf-8")
+    manifest = tmp_path / "repos.yaml"
+    manifest.write_text(
+        f"""
+repos:
+  - id: sdk-go
+    path: {repo_path}
+    role: sdk
+    upstream_remote: origin
+    expected_remote_url: git@github.com:example/sdk-go.git
+    expected_default_branch: main
+    criticality: critical
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], cwd: Path) -> None:
+        commands.append(command)
+
+    monkeypatch.setattr("monoctl.cli._run_git_command", fake_run, raising=False)
+
+    exit_code = main(["init", "--manifest", str(manifest)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert commands == []
+    assert "dirty worktree" in captured.out.lower()
+
+
+def test_init_fails_without_mutating_wrong_branch_repo(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    repo_path = tmp_path / "sdk-core"
+    init_git_repo(repo_path, branch="feature")
+    manifest = tmp_path / "repos.yaml"
+    manifest.write_text(
+        f"""
+repos:
+  - id: sdk-core
+    path: {repo_path}
+    role: shared runtime
+    upstream_remote: origin
+    expected_remote_url: git@github.com:example/sdk-core.git
+    expected_default_branch: main
+    criticality: critical
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], cwd: Path) -> None:
+        commands.append(command)
+
+    monkeypatch.setattr("monoctl.cli._run_git_command", fake_run, raising=False)
+
+    exit_code = main(["init", "--manifest", str(manifest)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert commands == []
+    assert "branch mismatch" in captured.out.lower()
+
+
+def test_init_reports_git_command_failure(tmp_path: Path, monkeypatch, capsys) -> None:
+    repo_path = tmp_path / "temporal"
+    manifest = tmp_path / "repos.yaml"
+    manifest.write_text(
+        f"""
+repos:
+  - id: temporal
+    path: {repo_path}
+    role: engine
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/temporal.git
+    expected_default_branch: main
+    criticality: high
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    def fake_run(command: list[str], cwd: Path) -> None:
+        raise subprocess.CalledProcessError(returncode=128, cmd=command)
+
+    monkeypatch.setattr("monoctl.cli._run_git_command", fake_run, raising=False)
+
+    exit_code = main(["init", "--manifest", str(manifest)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "FAIL: temporal: git command failed with exit 128" in captured.out

@@ -27,7 +27,7 @@ repos:
     role: shared runtime
     upstream_remote: origin
     expected_remote_url: git@github.com:temporalio/sdk-core.git
-    expected_default_branch: master
+    expected_default_branch: main
     criticality: critical
     depends_on:
       - temporal
@@ -39,7 +39,7 @@ repos:
     role: sdk
     upstream_remote: origin
     expected_remote_url: git@github.com:temporalio/sdk-go.git
-    expected_default_branch: master
+    expected_default_branch: main
     criticality: critical
     depends_on:
       - temporal
@@ -59,16 +59,16 @@ repos:
     check_commands:
       - poe test
     notes: Python SDK layered on sdk-core.
-  - id: ai-cookbook
-    path: ../ai-cookbook
-    role: examples
+  - id: sdk-rust
+    path: ../sdk-rust
+    role: sdk
     upstream_remote: origin
-    expected_remote_url: git@github.com:temporalio/ai-cookbook.git
+    expected_remote_url: git@github.com:temporalio/sdk-rust.git
     expected_default_branch: main
-    criticality: medium
+    criticality: critical
     depends_on:
-      - sdk-python
+      - sdk-core
       - temporal
     check_commands:
-      - uv run --project ai-cookbook pytest
-    notes: Durable AI and MCP examples.
+      - cargo test --manifest-path sdk-rust/Cargo.toml
+    notes: Rust SDK layered on sdk-core.
