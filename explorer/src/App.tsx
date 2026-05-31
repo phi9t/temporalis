@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { ArrowLeft, Network, Route } from 'lucide-react'
+import { ArrowLeft, BookOpen, Network, Route } from 'lucide-react'
 import { REPO_HOME, logoMarkUrl } from './lib/assets'
 import type { ExplorerMode } from './explorer-kit/mode'
 import LifecycleExplorer from './lifecycle/LifecycleExplorer'
 import ControlPathsExplorer from './control/ControlPathsExplorer'
+import GuideExplorer from './guide/GuideExplorer'
 
 const MODES: ExplorerMode[] = [
   {
@@ -19,6 +20,13 @@ const MODES: ExplorerMode[] = [
     icon: Network,
     subtitle: 'Retry, replay, pause/resume, heartbeats, cancellation, and sticky workflow cache',
     View: ControlPathsExplorer,
+  },
+  {
+    id: 'guide',
+    label: "Hacker's Guide",
+    icon: BookOpen,
+    subtitle: 'Temporal internals, code-first - rendered from HACKERS_GUIDE.md',
+    View: GuideExplorer,
   },
 ]
 

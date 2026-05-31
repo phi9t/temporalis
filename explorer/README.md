@@ -8,6 +8,7 @@ The explorer is guide-backed: root `../HACKERS_GUIDE.md` is the canonical narrat
 
 - Lifecycle Deep Dive: happy-path mental model from client start through server history, task queues, sdk-core polling, Python workflow activation, activity execution, and completions. Each phase links to its `HACKERS_GUIDE.md` section, matching hack command, and source refs.
 - Control Paths: overlays for pause/resume, retry, replay, heartbeat cancellation, and sticky-cache eviction. Each scenario explains the ownership boundary and links to the relevant guide section and hack script.
+- Hacker's Guide: rendered `HACKERS_GUIDE.md` with a sticky contents rail, GitHub-rewritten source links, GFM tables, and Mermaid diagram support.
 
 ## Commands
 

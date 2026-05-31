@@ -479,7 +479,12 @@ def write_json(path: Path, value: object) -> None:
 def write_public_guide(repo_root: Path) -> None:
     source = repo_root / "HACKERS_GUIDE.md"
     target = repo_root / "explorer" / "public" / "HACKERS_GUIDE.md"
-    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    markdown = source.read_text(encoding="utf-8")
+    target.write_text(markdown, encoding="utf-8")
+    (repo_root / "explorer" / "public" / "data" / "guide.md").write_text(
+        markdown,
+        encoding="utf-8",
+    )
 
 
 def main() -> None:

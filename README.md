@@ -50,6 +50,7 @@ See [docs/inspectl/README.md](docs/inspectl/README.md) for the quickstart and de
 `explorer/` is a local React app that explains how a Kilvin-inspired Python asyncio workflow moves through sdk-python, the Python bridge, sdk-core, and Temporal server.
 
 The explorer is backed by the root [HACKERS_GUIDE.md](HACKERS_GUIDE.md), generated manifests under `explorer/public/data/`, and deterministic teaching probes in `hacks/`.
+It includes a rendered Hacker's Guide family alongside the Lifecycle Deep Dive and Control Paths views.
 
 Start with:
 

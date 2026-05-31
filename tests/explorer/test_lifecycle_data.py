@@ -155,9 +155,9 @@ def test_guide_index_contains_required_anchors() -> None:
 
 def test_public_guide_copy_matches_root_guide() -> None:
     run_generator()
-    assert (ROOT / "explorer" / "public" / "HACKERS_GUIDE.md").read_text(encoding="utf-8") == (
-        ROOT / "HACKERS_GUIDE.md"
-    ).read_text(encoding="utf-8")
+    root_guide = (ROOT / "HACKERS_GUIDE.md").read_text(encoding="utf-8")
+    assert (ROOT / "explorer" / "public" / "HACKERS_GUIDE.md").read_text(encoding="utf-8") == root_guide
+    assert (OUT / "guide.md").read_text(encoding="utf-8") == root_guide
 
 
 def test_generated_guide_anchors_are_linkable_from_guide() -> None:
