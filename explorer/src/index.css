@@ -287,3 +287,92 @@ body {
   border-radius: 4px;
   padding: 1px 5px;
 }
+
+.lifecycle-svg {
+  width: 100%;
+  max-width: 1120px;
+  font-family: var(--font-mono);
+}
+
+.lifecycle-lane {
+  fill: rgba(15, 23, 42, 0.46);
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.lifecycle-lane-label {
+  fill: var(--color-ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.lifecycle-edge line {
+  stroke: rgba(148, 163, 184, 0.32);
+  stroke-width: 1.4;
+}
+
+.lifecycle-edge.active line {
+  stroke: var(--color-cyan);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.35));
+}
+
+.lifecycle-node {
+  cursor: pointer;
+  opacity: 0.55;
+  outline: none;
+}
+
+.lifecycle-node rect {
+  fill: rgba(17, 24, 39, 0.94);
+  stroke: rgba(99, 102, 241, 0.45);
+  stroke-width: 1.4;
+}
+
+.lifecycle-node text {
+  fill: var(--color-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lifecycle-node.active,
+.lifecycle-node.selected {
+  opacity: 1;
+}
+
+.lifecycle-node.selected rect {
+  stroke: var(--color-cyan);
+  stroke-width: 2.4;
+  filter: drop-shadow(0 0 9px rgba(56, 189, 248, 0.4));
+}
+
+.lifecycle-node:focus-visible rect {
+  stroke: var(--color-cyan);
+  stroke-width: 3;
+}
+
+.source-link {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--color-panelborder);
+  border-radius: var(--radius-btn);
+  color: var(--color-ink-soft);
+  text-decoration: none;
+  background: rgba(15, 23, 42, 0.44);
+}
+
+.source-link:hover {
+  border-color: var(--color-panelborder-active);
+  color: var(--color-cyan);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lifecycle-edge line,
+  .lifecycle-node,
+  .lifecycle-node rect {
+    transition: none;
+  }
+}
