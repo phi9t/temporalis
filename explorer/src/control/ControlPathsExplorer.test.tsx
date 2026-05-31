@@ -71,6 +71,15 @@ const scenario: ControlScenario = {
   summary: 'Signals change workflow state; replay preserves deterministic history.',
   highlight_node_ids: ['workflow-activation', 'history-service'],
   highlight_edge_ids: ['workflow-complete'],
+  guide_anchor: 'pause-resume-as-signalupdate-driven-coordination',
+  guide_title: '9. Pause/resume as signal/update-driven coordination',
+  hack_script: 'hacks/005_control_paths.py',
+  hack_summary: 'Print control-path overlays.',
+  details: [
+    'Python workflow code records pause state.',
+    'History stores signal or update events.',
+    'sdk-core replays history before the next activation.',
+  ],
 }
 
 describe('ControlPathsExplorer', () => {
@@ -84,6 +93,11 @@ describe('ControlPathsExplorer', () => {
     })
 
     expect(screen.getByText('Signals change workflow state; replay preserves deterministic history.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /9\. Pause\/resume/ }).getAttribute('href')).toBe(
+      '/HACKERS_GUIDE.md#pause-resume-as-signalupdate-driven-coordination',
+    )
+    expect(screen.getByText('python hacks/005_control_paths.py')).toBeTruthy()
+    expect(screen.getByText('sdk-core replays history before the next activation.')).toBeTruthy()
     expect(screen.getByRole('group', { name: 'Temporal lifecycle diagram' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Activation' })).toBeTruthy()
   })

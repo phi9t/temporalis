@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { BookOpen, Terminal } from 'lucide-react'
 import { AsyncBoundary } from '@/explorer-kit/AsyncBoundary'
 import { SubjectSwitcher } from '@/explorer-kit/SubjectSwitcher'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ExplorerModeProps } from '@/explorer-kit/mode'
+import { guideUrl } from '@/lib/assets'
 import { errorMessage, fetchExplorerJson } from '@/lib/fetch'
 import LifecycleDiagram from '@/lifecycle/LifecycleDiagram'
 import LifecycleDrawer from '@/lifecycle/LifecycleDrawer'
@@ -106,8 +108,29 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
           <CardHeader>
             <CardTitle>{scenario.label}</CardTitle>
             <p className="text-sm text-ink-soft">{scenario.summary}</p>
+            <div className="guide-hack-panel compact">
+              <a
+                className="guide-action"
+                href={guideUrl(scenario.guide_anchor)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <BookOpen size={13} aria-hidden="true" />
+                <span>{scenario.guide_title}</span>
+              </a>
+              <div className="guide-command">
+                <Terminal size={13} aria-hidden="true" />
+                <code>python {scenario.hack_script}</code>
+              </div>
+              <p className="text-xs text-ink-soft">{scenario.hack_summary}</p>
+            </div>
           </CardHeader>
           <CardContent>
+            <ul className="control-details">
+              {scenario.details.map((detail) => (
+                <li key={detail}>{detail}</li>
+              ))}
+            </ul>
             <LifecycleDiagram
               nodes={lifecycle.nodes}
               edges={lifecycle.edges}

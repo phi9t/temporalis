@@ -28,7 +28,14 @@ export interface LifecycleEdge {
   label: string
 }
 
-export interface LifecyclePhase {
+export interface GuideHackLink {
+  guide_anchor: string
+  guide_title: string
+  hack_script: string
+  hack_summary: string
+}
+
+export interface LifecyclePhase extends GuideHackLink {
   id: string
   label: string
   summary: string
@@ -44,10 +51,11 @@ export interface LifecycleManifest {
   edges: LifecycleEdge[]
 }
 
-export interface ControlScenario {
+export interface ControlScenario extends GuideHackLink {
   slug: string
   label: string
   summary: string
+  details: string[]
   highlight_node_ids: string[]
   highlight_edge_ids: string[]
 }

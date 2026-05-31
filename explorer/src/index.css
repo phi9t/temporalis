@@ -375,6 +375,60 @@ body {
   color: var(--color-cyan);
 }
 
+.guide-hack-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-panelborder);
+  border-radius: var(--radius-btn);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.guide-hack-panel.compact {
+  margin-top: 12px;
+}
+
+.guide-action,
+.guide-command {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--color-ink-soft);
+}
+
+.guide-action {
+  text-decoration: none;
+}
+
+.guide-action span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.guide-action:hover {
+  color: var(--color-cyan);
+}
+
+.guide-command code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: var(--color-ink);
+}
+
+.control-details {
+  margin: 0 0 18px;
+  padding-left: 18px;
+  color: var(--color-ink-soft);
+  font-size: 13px;
+}
+
+.control-details li + li {
+  margin-top: 6px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lifecycle-edge line,
   .lifecycle-node,
