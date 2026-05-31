@@ -40,8 +40,6 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
 
     let isCurrent = true
 
-    setManifest(null)
-    setManifestError(null)
     fetchExplorerJson<LifecycleManifest>(entry.manifest)
       .then((loaded) => {
         if (!isCurrent) return
@@ -60,6 +58,13 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
       isCurrent = false
     }
   }, [entry])
+
+  function handleSlugChange(nextSlug: string) {
+    setSlug(nextSlug)
+    setManifest(null)
+    setManifestError(null)
+    setSelected(null)
+  }
 
   const phase = manifest?.phases.find((item) => item.id === phaseId) ?? manifest?.phases[0] ?? null
   const activeNodeIds = useMemo(() => new Set(phase?.node_ids ?? []), [phase])
@@ -103,7 +108,7 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
           ariaLabel="Lifecycle subject"
           value={slug}
           options={index.map((item) => ({ value: item.slug, label: item.label }))}
-          onChange={setSlug}
+          onChange={handleSlugChange}
         />
         <ViewTabs
           ariaLabel="Lifecycle phase"

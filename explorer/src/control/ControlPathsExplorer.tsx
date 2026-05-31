@@ -54,9 +54,6 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
 
     let isCurrent = true
 
-    setScenario(null)
-    setError(null)
-    setSelected(null)
     fetchExplorerJson<ControlScenario>(entry.manifest)
       .then((loaded) => {
         if (!isCurrent) return
@@ -73,6 +70,13 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
       isCurrent = false
     }
   }, [entry])
+
+  function handleSlugChange(nextSlug: string) {
+    setSlug(nextSlug)
+    setScenario(null)
+    setError(null)
+    setSelected(null)
+  }
 
   const activeNodeIds = useMemo(() => new Set(scenario?.highlight_node_ids ?? []), [scenario])
   const activeEdgeIds = useMemo(() => new Set(scenario?.highlight_edge_ids ?? []), [scenario])
@@ -95,7 +99,7 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
         ariaLabel="Control path"
         value={slug}
         options={index.map((item) => ({ value: item.slug, label: item.label }))}
-        onChange={setSlug}
+        onChange={handleSlugChange}
       />
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
         <Card>
