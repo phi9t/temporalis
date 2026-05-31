@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -40,6 +41,11 @@ def find_ref(refs: list[dict], repo: str, path: str, label: str) -> dict:
         if ref["repo"] == repo and ref["path"] == path and ref["label"] == label:
             return ref
     raise AssertionError(f"missing ref {repo}:{path}:{label}")
+
+
+def explicit_guide_anchors() -> set[str]:
+    guide = (ROOT / "HACKERS_GUIDE.md").read_text(encoding="utf-8")
+    return set(re.findall(r'<a\s+id="([^"]+)"></a>', guide))
 
 
 def test_lifecycle_manifest_is_schema_consistent() -> None:
@@ -140,6 +146,22 @@ def test_guide_index_contains_required_anchors() -> None:
         "pause-resume-as-signalupdate-driven-coordination",
         "sticky-workflow-cache-and-eviction",
     } <= anchors
+
+
+def test_generated_guide_anchors_are_linkable_from_guide() -> None:
+    run_generator()
+    linkable_anchors = explicit_guide_anchors()
+    guide = json.loads((OUT / "guide" / "index.json").read_text(encoding="utf-8"))
+    lifecycle = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    control_index = json.loads((OUT / "control-paths" / "index.json").read_text(encoding="utf-8"))
+    control_scenarios = [load_json(OUT / entry["manifest"]) for entry in control_index]
+
+    generated_anchors = {entry["anchor"] for entry in guide["sections"]}
+    generated_anchors |= {entry["guide_anchor"] for entry in guide["hacks"]}
+    generated_anchors |= {phase["guide_anchor"] for phase in lifecycle["phases"]}
+    generated_anchors |= {scenario["guide_anchor"] for scenario in control_scenarios}
+
+    assert generated_anchors <= linkable_anchors
 
 
 def test_lifecycle_phases_have_guide_and_hack_links() -> None:

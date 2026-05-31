@@ -60,24 +60,26 @@ def lock_generated_at(repo_root: Path) -> str:
     return raw["generated_at"]
 
 
-def slugify_heading(text: str) -> str:
-    text = text.lower()
-    text = re.sub(r"^\d+\.\s*", "", text)
-    text = text.replace("pause/resume", "pause-resume")
-    text = re.sub(r"[^\w\s-]", "", text)
-    text = re.sub(r"\s+", "-", text.strip())
-    return text
-
-
 def guide_sections(repo_root: Path) -> dict[str, str]:
     path = repo_root / "HACKERS_GUIDE.md"
     sections: dict[str, str] = {}
+    pending_anchor: str | None = None
     for line in path.read_text(encoding="utf-8").splitlines():
+        anchor_match = re.fullmatch(r'<a\s+id="([^"]+)"></a>', line.strip())
+        if anchor_match:
+            pending_anchor = anchor_match.group(1)
+            continue
         if not line.startswith("## "):
             continue
+        if pending_anchor is None:
+            raise ValueError(f"guide heading {line!r} is missing an explicit anchor")
         title = line.removeprefix("## ").strip()
-        anchor = slugify_heading(title)
-        sections[anchor] = title
+        if pending_anchor in sections:
+            raise ValueError(f"duplicate guide anchor {pending_anchor!r}")
+        sections[pending_anchor] = title
+        pending_anchor = None
+    if pending_anchor is not None:
+        raise ValueError(f"guide anchor {pending_anchor!r} is not attached to a section heading")
     return sections
 
 
