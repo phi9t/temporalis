@@ -1,0 +1,14 @@
+{
+  "slug": "retry",
+  "label": "Retry",
+  "summary": "Activity failure appends history and server/core coordinate retry dispatch.",
+  "highlight_node_ids": [
+    "activity-task",
+    "history-service",
+    "matching-service"
+  ],
+  "highlight_edge_ids": [
+    "activity-complete",
+    "activity-dispatch"
+  ]
+}

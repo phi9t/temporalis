@@ -1,0 +1,13 @@
+{
+  "slug": "pause-resume",
+  "label": "Pause / resume",
+  "summary": "Signals change workflow state; replay preserves deterministic history.",
+  "highlight_node_ids": [
+    "workflow-activation",
+    "history-service"
+  ],
+  "highlight_edge_ids": [
+    "workflow-complete",
+    "schedule-wft"
+  ]
+}

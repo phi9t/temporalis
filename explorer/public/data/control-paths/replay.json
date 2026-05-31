@@ -1,0 +1,14 @@
+{
+  "slug": "replay",
+  "label": "Replay",
+  "summary": "History events rebuild workflow state before new commands are accepted.",
+  "highlight_node_ids": [
+    "history-service",
+    "core-worker",
+    "workflow-activation"
+  ],
+  "highlight_edge_ids": [
+    "activation-up",
+    "workflow-complete"
+  ]
+}

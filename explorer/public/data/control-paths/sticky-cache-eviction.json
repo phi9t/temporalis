@@ -1,0 +1,14 @@
+{
+  "slug": "sticky-cache-eviction",
+  "label": "Sticky cache eviction",
+  "summary": "Core cache eviction moves execution back to replay from history.",
+  "highlight_node_ids": [
+    "core-worker",
+    "history-service",
+    "matching-service"
+  ],
+  "highlight_edge_ids": [
+    "core-matching",
+    "activation-up"
+  ]
+}

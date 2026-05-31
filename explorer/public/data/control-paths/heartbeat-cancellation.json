@@ -1,0 +1,14 @@
+{
+  "slug": "heartbeat-cancellation",
+  "label": "Heartbeat cancellation",
+  "summary": "Activity heartbeats let cancellation and progress flow through core.",
+  "highlight_node_ids": [
+    "activity-task",
+    "core-worker",
+    "history-service"
+  ],
+  "highlight_edge_ids": [
+    "heartbeat",
+    "activity-complete"
+  ]
+}
