@@ -1,0 +1,85 @@
+{
+  "guide": "HACKERS_GUIDE.md",
+  "sections": [
+    {
+      "anchor": "30-second-architecture",
+      "title": "2. 30-second architecture"
+    },
+    {
+      "anchor": "activity-execution-and-heartbeats",
+      "title": "6. Activity execution and heartbeats"
+    },
+    {
+      "anchor": "hands-on-hacks",
+      "title": "12. Hands-on hacks"
+    },
+    {
+      "anchor": "happy-path-start-workflow-to-first-activation",
+      "title": "4. Happy path: start workflow to first activation"
+    },
+    {
+      "anchor": "history-as-source-of-truth-and-replay",
+      "title": "7. History as source of truth and replay"
+    },
+    {
+      "anchor": "how-to-read-this-guide",
+      "title": "1. How to read this guide"
+    },
+    {
+      "anchor": "pause-resume-as-signalupdate-driven-coordination",
+      "title": "9. Pause/resume as signal/update-driven coordination"
+    },
+    {
+      "anchor": "retry-and-failure-handling",
+      "title": "8. Retry and failure handling"
+    },
+    {
+      "anchor": "running-example-kilvin-inspired-training-workflow",
+      "title": "3. Running example: Kilvin-inspired training workflow"
+    },
+    {
+      "anchor": "sticky-workflow-cache-and-eviction",
+      "title": "10. Sticky workflow cache and eviction"
+    },
+    {
+      "anchor": "where-to-inspect-source-next",
+      "title": "11. Where to inspect source next"
+    },
+    {
+      "anchor": "workflow-task-polling-matching---sdk-core---bridge---python",
+      "title": "5. Workflow task polling: Matching -> sdk-core -> bridge -> Python"
+    }
+  ],
+  "hacks": [
+    {
+      "script": "hacks/001_source_map.py",
+      "guide_anchor": "where-to-inspect-source-next",
+      "hack_summary": "Print the source anchors used by the Temporal guide and explorer."
+    },
+    {
+      "script": "hacks/002_lifecycle_manifest.py",
+      "guide_anchor": "happy-path-start-workflow-to-first-activation",
+      "hack_summary": "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
+    },
+    {
+      "script": "hacks/003_task_queue_polling.py",
+      "guide_anchor": "workflow-task-polling-matching---sdk-core---bridge---python",
+      "hack_summary": "Trace Matching -> sdk-core -> bridge -> Python workflow-task polling."
+    },
+    {
+      "script": "hacks/004_history_replay.py",
+      "guide_anchor": "history-as-source-of-truth-and-replay",
+      "hack_summary": "Show how History, sdk-core, and Python activation refs explain replay."
+    },
+    {
+      "script": "hacks/005_control_paths.py",
+      "guide_anchor": "retry-and-failure-handling",
+      "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
+    },
+    {
+      "script": "hacks/006_optional_local_run.py",
+      "guide_anchor": "hands-on-hacks",
+      "hack_summary": "Optional heavier local Temporal run; skipped unless TEMPORALIS_RUN_OPTIONAL_HACK=1."
+    }
+  ]
+}

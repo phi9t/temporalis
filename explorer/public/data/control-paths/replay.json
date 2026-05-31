@@ -10,5 +10,14 @@
   "highlight_edge_ids": [
     "activation-up",
     "workflow-complete"
-  ]
+  ],
+  "details": [
+    "History is the authoritative log of prior workflow decisions.",
+    "sdk-core rebuilds workflow state machines from that log.",
+    "sdk-python re-executes deterministic workflow code without re-running activity side effects."
+  ],
+  "guide_anchor": "history-as-source-of-truth-and-replay",
+  "guide_title": "7. History as source of truth and replay",
+  "hack_script": "hacks/004_history_replay.py",
+  "hack_summary": "Show how History, sdk-core, and Python activation refs explain replay."
 }

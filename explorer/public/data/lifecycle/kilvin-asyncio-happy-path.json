@@ -11,7 +11,11 @@
         "kilvin-client",
         "frontend-service",
         "history-service"
-      ]
+      ],
+      "guide_anchor": "happy-path-start-workflow-to-first-activation",
+      "guide_title": "4. Happy path: start workflow to first activation",
+      "hack_script": "hacks/002_lifecycle_manifest.py",
+      "hack_summary": "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
     },
     {
       "id": "poll",
@@ -22,7 +26,11 @@
         "bridge-worker",
         "core-worker",
         "matching-service"
-      ]
+      ],
+      "guide_anchor": "workflow-task-polling-matching---sdk-core---bridge---python",
+      "guide_title": "5. Workflow task polling: Matching -> sdk-core -> bridge -> Python",
+      "hack_script": "hacks/003_task_queue_polling.py",
+      "hack_summary": "Trace Matching -> sdk-core -> bridge -> Python workflow-task polling."
     },
     {
       "id": "activate",
@@ -32,7 +40,11 @@
         "core-worker",
         "workflow-activation",
         "python-worker"
-      ]
+      ],
+      "guide_anchor": "workflow-task-polling-matching---sdk-core---bridge---python",
+      "guide_title": "5. Workflow task polling: Matching -> sdk-core -> bridge -> Python",
+      "hack_script": "hacks/003_task_queue_polling.py",
+      "hack_summary": "Trace Matching -> sdk-core -> bridge -> Python workflow-task polling."
     },
     {
       "id": "schedule-activity",
@@ -42,7 +54,11 @@
         "workflow-activation",
         "history-service",
         "matching-service"
-      ]
+      ],
+      "guide_anchor": "activity-execution-and-heartbeats",
+      "guide_title": "6. Activity execution and heartbeats",
+      "hack_script": "hacks/002_lifecycle_manifest.py",
+      "hack_summary": "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
     },
     {
       "id": "execute-activity",
@@ -52,7 +68,11 @@
         "activity-task",
         "core-worker",
         "history-service"
-      ]
+      ],
+      "guide_anchor": "activity-execution-and-heartbeats",
+      "guide_title": "6. Activity execution and heartbeats",
+      "hack_script": "hacks/002_lifecycle_manifest.py",
+      "hack_summary": "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
     },
     {
       "id": "complete",
@@ -62,7 +82,11 @@
         "workflow-activation",
         "history-service",
         "matching-service"
-      ]
+      ],
+      "guide_anchor": "history-as-source-of-truth-and-replay",
+      "guide_title": "7. History as source of truth and replay",
+      "hack_script": "hacks/004_history_replay.py",
+      "hack_summary": "Show how History, sdk-core, and Python activation refs explain replay."
     }
   ],
   "nodes": [

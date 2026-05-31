@@ -1,7 +1,7 @@
 {
   "slug": "heartbeat-cancellation",
   "label": "Heartbeat cancellation",
-  "summary": "Activity heartbeats let cancellation and progress flow through core.",
+  "summary": "Activity heartbeats carry progress and provide cancellation checkpoints across Python, sdk-core, and server state.",
   "highlight_node_ids": [
     "activity-task",
     "core-worker",
@@ -10,5 +10,14 @@
   "highlight_edge_ids": [
     "heartbeat",
     "activity-complete"
-  ]
+  ],
+  "details": [
+    "The Python activity heartbeats while performing side effects.",
+    "sdk-core forwards heartbeat state and observes cancellation delivery.",
+    "The server tracks cancellation/progress state for the activity attempt."
+  ],
+  "guide_anchor": "activity-execution-and-heartbeats",
+  "guide_title": "6. Activity execution and heartbeats",
+  "hack_script": "hacks/005_control_paths.py",
+  "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
 }

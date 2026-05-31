@@ -1,7 +1,7 @@
 {
   "slug": "pause-resume",
   "label": "Pause / resume",
-  "summary": "Signals change workflow state; replay preserves deterministic history.",
+  "summary": "Signals or updates change durable workflow state; replay rebuilds the same pause decision before the workflow continues.",
   "highlight_node_ids": [
     "workflow-activation",
     "history-service"
@@ -9,5 +9,14 @@
   "highlight_edge_ids": [
     "workflow-complete",
     "schedule-wft"
-  ]
+  ],
+  "details": [
+    "Python workflow code records pause state through deterministic workflow state.",
+    "History stores signal or update events so the decision survives worker restarts.",
+    "sdk-core replays the event history before delivering a new activation."
+  ],
+  "guide_anchor": "pause-resume-as-signalupdate-driven-coordination",
+  "guide_title": "9. Pause/resume as signal/update-driven coordination",
+  "hack_script": "hacks/005_control_paths.py",
+  "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
 }

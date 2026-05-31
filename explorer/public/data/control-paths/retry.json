@@ -1,7 +1,7 @@
 {
   "slug": "retry",
   "label": "Retry",
-  "summary": "Activity failure appends history and server/core coordinate retry dispatch.",
+  "summary": "Activity failure is recorded durably, then server retry policy and worker polling produce the next attempt.",
   "highlight_node_ids": [
     "activity-task",
     "history-service",
@@ -10,5 +10,14 @@
   "highlight_edge_ids": [
     "activity-complete",
     "activity-dispatch"
-  ]
+  ],
+  "details": [
+    "The Python activity reports failure, timeout, or cancellation through sdk-core.",
+    "History records the outcome and computes retry scheduling from policy.",
+    "Matching dispatches the next activity task when the retry is due."
+  ],
+  "guide_anchor": "retry-and-failure-handling",
+  "guide_title": "8. Retry and failure handling",
+  "hack_script": "hacks/005_control_paths.py",
+  "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
 }

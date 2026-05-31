@@ -126,3 +126,40 @@ def test_control_path_overlays_reference_existing_nodes_and_edges() -> None:
         scenario = load_json(OUT / entry["manifest"])
         assert set(scenario["highlight_node_ids"]) <= node_ids
         assert set(scenario["highlight_edge_ids"]) <= edge_ids
+
+
+def test_guide_index_contains_required_anchors() -> None:
+    run_generator()
+    guide = json.loads((OUT / "guide" / "index.json").read_text(encoding="utf-8"))
+    anchors = {entry["anchor"] for entry in guide["sections"]}
+    assert {
+        "happy-path-start-workflow-to-first-activation",
+        "workflow-task-polling-matching---sdk-core---bridge---python",
+        "history-as-source-of-truth-and-replay",
+        "retry-and-failure-handling",
+        "pause-resume-as-signalupdate-driven-coordination",
+        "sticky-workflow-cache-and-eviction",
+    } <= anchors
+
+
+def test_lifecycle_phases_have_guide_and_hack_links() -> None:
+    run_generator()
+    manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    for phase in manifest["phases"]:
+        assert phase["guide_anchor"]
+        assert phase["guide_title"]
+        assert phase["hack_script"].startswith("hacks/")
+        assert phase["hack_script"].endswith(".py")
+        assert phase["hack_summary"]
+
+
+def test_control_scenarios_have_guide_hack_links_and_details() -> None:
+    run_generator()
+    index = json.loads((OUT / "control-paths" / "index.json").read_text(encoding="utf-8"))
+    for entry in index:
+        scenario = load_json(OUT / entry["manifest"])
+        assert scenario["guide_anchor"]
+        assert scenario["guide_title"]
+        assert scenario["hack_script"].startswith("hacks/")
+        assert scenario["hack_summary"]
+        assert len(scenario["details"]) >= 3

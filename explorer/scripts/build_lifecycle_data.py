@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -58,8 +60,72 @@ def lock_generated_at(repo_root: Path) -> str:
     return raw["generated_at"]
 
 
+def slugify_heading(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r"^\d+\.\s*", "", text)
+    text = text.replace("pause/resume", "pause-resume")
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"\s+", "-", text.strip())
+    return text
+
+
+def guide_sections(repo_root: Path) -> dict[str, str]:
+    path = repo_root / "HACKERS_GUIDE.md"
+    sections: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("## "):
+            continue
+        title = line.removeprefix("## ").strip()
+        anchor = slugify_heading(title)
+        sections[anchor] = title
+    return sections
+
+
+def read_hack_metadata(repo_root: Path) -> dict[str, dict[str, str]]:
+    metadata: dict[str, dict[str, str]] = {}
+    for path in sorted((repo_root / "hacks").glob("[0-9][0-9][0-9]_*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        values: dict[str, str] = {}
+        for node in tree.body:
+            if not isinstance(node, ast.Assign):
+                continue
+            if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+                continue
+            if node.targets[0].id not in {"GUIDE_ANCHOR", "SUMMARY"}:
+                continue
+            if not isinstance(node.value, ast.Constant) or not isinstance(node.value.value, str):
+                continue
+            values[node.targets[0].id] = node.value.value
+        if "GUIDE_ANCHOR" in values and "SUMMARY" in values:
+            metadata[f"hacks/{path.name}"] = {
+                "guide_anchor": values["GUIDE_ANCHOR"],
+                "hack_summary": values["SUMMARY"],
+            }
+    return metadata
+
+
+def guide_link(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str, str]], anchor: str, script: str) -> dict[str, str]:
+    if anchor not in guide:
+        raise ValueError(f"guide anchor {anchor!r} missing from HACKERS_GUIDE.md")
+    if script not in hacks:
+        raise ValueError(f"hack script {script!r} missing metadata")
+    script_anchor = hacks[script]["guide_anchor"]
+    if script_anchor not in guide:
+        raise ValueError(f"{script} points to missing guide anchor {script_anchor!r}")
+    if not (repo_root / script).exists():
+        raise ValueError(f"hack script {script!r} does not exist")
+    return {
+        "guide_anchor": anchor,
+        "guide_title": guide[anchor],
+        "hack_script": script,
+        "hack_summary": hacks[script]["hack_summary"],
+    }
+
+
 def build(repo_root: Path) -> dict[str, Any]:
     repos = load_repos(repo_root)
+    guide = guide_sections(repo_root)
+    hacks = read_hack_metadata(repo_root)
     nodes = [
         {
             "id": "kilvin-client",
@@ -231,12 +297,48 @@ def build(repo_root: Path) -> dict[str, Any]:
         edge("workflow-complete", "workflow-activation", "history-service", "completion", "RespondWorkflowTaskCompleted"),
     ]
     phases = [
-        {"id": "start", "label": "Start workflow", "summary": "Kilvin submits a staged training run.", "node_ids": ["kilvin-client", "frontend-service", "history-service"]},
-        {"id": "poll", "label": "Poll task queue", "summary": "Worker polling crosses Python, bridge, core, and Matching.", "node_ids": ["python-worker", "bridge-worker", "core-worker", "matching-service"]},
-        {"id": "activate", "label": "Activate workflow", "summary": "Core delivers a workflow activation to Python asyncio code.", "node_ids": ["core-worker", "workflow-activation", "python-worker"]},
-        {"id": "schedule-activity", "label": "Schedule activity", "summary": "Workflow commands become durable history events and activity tasks.", "node_ids": ["workflow-activation", "history-service", "matching-service"]},
-        {"id": "execute-activity", "label": "Execute activity", "summary": "Python runs side-effecting activity code and heartbeats progress.", "node_ids": ["activity-task", "core-worker", "history-service"]},
-        {"id": "complete", "label": "Complete turn", "summary": "Completions update history and may schedule the next workflow task.", "node_ids": ["workflow-activation", "history-service", "matching-service"]},
+        {
+            "id": "start",
+            "label": "Start workflow",
+            "summary": "Kilvin submits a staged training run.",
+            "node_ids": ["kilvin-client", "frontend-service", "history-service"],
+            **guide_link(repo_root, guide, hacks, "happy-path-start-workflow-to-first-activation", "hacks/002_lifecycle_manifest.py"),
+        },
+        {
+            "id": "poll",
+            "label": "Poll task queue",
+            "summary": "Worker polling crosses Python, bridge, core, and Matching.",
+            "node_ids": ["python-worker", "bridge-worker", "core-worker", "matching-service"],
+            **guide_link(repo_root, guide, hacks, "workflow-task-polling-matching---sdk-core---bridge---python", "hacks/003_task_queue_polling.py"),
+        },
+        {
+            "id": "activate",
+            "label": "Activate workflow",
+            "summary": "Core delivers a workflow activation to Python asyncio code.",
+            "node_ids": ["core-worker", "workflow-activation", "python-worker"],
+            **guide_link(repo_root, guide, hacks, "workflow-task-polling-matching---sdk-core---bridge---python", "hacks/003_task_queue_polling.py"),
+        },
+        {
+            "id": "schedule-activity",
+            "label": "Schedule activity",
+            "summary": "Workflow commands become durable history events and activity tasks.",
+            "node_ids": ["workflow-activation", "history-service", "matching-service"],
+            **guide_link(repo_root, guide, hacks, "activity-execution-and-heartbeats", "hacks/002_lifecycle_manifest.py"),
+        },
+        {
+            "id": "execute-activity",
+            "label": "Execute activity",
+            "summary": "Python runs side-effecting activity code and heartbeats progress.",
+            "node_ids": ["activity-task", "core-worker", "history-service"],
+            **guide_link(repo_root, guide, hacks, "activity-execution-and-heartbeats", "hacks/002_lifecycle_manifest.py"),
+        },
+        {
+            "id": "complete",
+            "label": "Complete turn",
+            "summary": "Completions update history and may schedule the next workflow task.",
+            "node_ids": ["workflow-activation", "history-service", "matching-service"],
+            **guide_link(repo_root, guide, hacks, "history-as-source-of-truth-and-replay", "hacks/004_history_replay.py"),
+        },
     ]
     return {
         "generated_at": lock_generated_at(repo_root),
@@ -248,13 +350,73 @@ def build(repo_root: Path) -> dict[str, Any]:
     }
 
 
-def control_scenarios() -> list[dict[str, Any]]:
+def control_scenarios(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str, str]]) -> list[dict[str, Any]]:
     return [
-        {"slug": "pause-resume", "label": "Pause / resume", "summary": "Signals change workflow state; replay preserves deterministic history.", "highlight_node_ids": ["workflow-activation", "history-service"], "highlight_edge_ids": ["workflow-complete", "schedule-wft"]},
-        {"slug": "retry", "label": "Retry", "summary": "Activity failure appends history and server/core coordinate retry dispatch.", "highlight_node_ids": ["activity-task", "history-service", "matching-service"], "highlight_edge_ids": ["activity-complete", "activity-dispatch"]},
-        {"slug": "replay", "label": "Replay", "summary": "History events rebuild workflow state before new commands are accepted.", "highlight_node_ids": ["history-service", "core-worker", "workflow-activation"], "highlight_edge_ids": ["activation-up", "workflow-complete"]},
-        {"slug": "heartbeat-cancellation", "label": "Heartbeat cancellation", "summary": "Activity heartbeats let cancellation and progress flow through core.", "highlight_node_ids": ["activity-task", "core-worker", "history-service"], "highlight_edge_ids": ["heartbeat", "activity-complete"]},
-        {"slug": "sticky-cache-eviction", "label": "Sticky cache eviction", "summary": "Core cache eviction moves execution back to replay from history.", "highlight_node_ids": ["core-worker", "history-service", "matching-service"], "highlight_edge_ids": ["core-matching", "activation-up"]},
+        {
+            "slug": "pause-resume",
+            "label": "Pause / resume",
+            "summary": "Signals or updates change durable workflow state; replay rebuilds the same pause decision before the workflow continues.",
+            "highlight_node_ids": ["workflow-activation", "history-service"],
+            "highlight_edge_ids": ["workflow-complete", "schedule-wft"],
+            "details": [
+                "Python workflow code records pause state through deterministic workflow state.",
+                "History stores signal or update events so the decision survives worker restarts.",
+                "sdk-core replays the event history before delivering a new activation.",
+            ],
+            **guide_link(repo_root, guide, hacks, "pause-resume-as-signalupdate-driven-coordination", "hacks/005_control_paths.py"),
+        },
+        {
+            "slug": "retry",
+            "label": "Retry",
+            "summary": "Activity failure is recorded durably, then server retry policy and worker polling produce the next attempt.",
+            "highlight_node_ids": ["activity-task", "history-service", "matching-service"],
+            "highlight_edge_ids": ["activity-complete", "activity-dispatch"],
+            "details": [
+                "The Python activity reports failure, timeout, or cancellation through sdk-core.",
+                "History records the outcome and computes retry scheduling from policy.",
+                "Matching dispatches the next activity task when the retry is due.",
+            ],
+            **guide_link(repo_root, guide, hacks, "retry-and-failure-handling", "hacks/005_control_paths.py"),
+        },
+        {
+            "slug": "replay",
+            "label": "Replay",
+            "summary": "History events rebuild workflow state before new commands are accepted.",
+            "highlight_node_ids": ["history-service", "core-worker", "workflow-activation"],
+            "highlight_edge_ids": ["activation-up", "workflow-complete"],
+            "details": [
+                "History is the authoritative log of prior workflow decisions.",
+                "sdk-core rebuilds workflow state machines from that log.",
+                "sdk-python re-executes deterministic workflow code without re-running activity side effects.",
+            ],
+            **guide_link(repo_root, guide, hacks, "history-as-source-of-truth-and-replay", "hacks/004_history_replay.py"),
+        },
+        {
+            "slug": "heartbeat-cancellation",
+            "label": "Heartbeat cancellation",
+            "summary": "Activity heartbeats carry progress and provide cancellation checkpoints across Python, sdk-core, and server state.",
+            "highlight_node_ids": ["activity-task", "core-worker", "history-service"],
+            "highlight_edge_ids": ["heartbeat", "activity-complete"],
+            "details": [
+                "The Python activity heartbeats while performing side effects.",
+                "sdk-core forwards heartbeat state and observes cancellation delivery.",
+                "The server tracks cancellation/progress state for the activity attempt.",
+            ],
+            **guide_link(repo_root, guide, hacks, "activity-execution-and-heartbeats", "hacks/005_control_paths.py"),
+        },
+        {
+            "slug": "sticky-cache-eviction",
+            "label": "Sticky cache eviction",
+            "summary": "Core cache eviction falls back to replay because History, not worker memory, is authoritative.",
+            "highlight_node_ids": ["core-worker", "history-service", "matching-service"],
+            "highlight_edge_ids": ["core-matching", "activation-up"],
+            "details": [
+                "sdk-core may keep workflow state warm in a sticky cache.",
+                "Eviction or sticky miss sends execution back through history replay.",
+                "Python receives a rebuilt activation after core catches up to the latest history.",
+            ],
+            **guide_link(repo_root, guide, hacks, "sticky-workflow-cache-and-eviction", "hacks/005_control_paths.py"),
+        },
     ]
 
 
@@ -269,6 +431,8 @@ def main() -> None:
     args = parser.parse_args()
     repo_root = Path(args.repo_root).resolve()
     out = repo_root / "explorer" / "public" / "data"
+    guide = guide_sections(repo_root)
+    hacks = read_hack_metadata(repo_root)
 
     lifecycle = build(repo_root)
     write_json(out / "lifecycle" / "kilvin-asyncio-happy-path.json", lifecycle)
@@ -277,13 +441,22 @@ def main() -> None:
         [{"slug": lifecycle["slug"], "label": lifecycle["label"], "manifest": "lifecycle/kilvin-asyncio-happy-path.json"}],
     )
 
-    scenarios = control_scenarios()
+    scenarios = control_scenarios(repo_root, guide, hacks)
     write_json(
         out / "control-paths" / "index.json",
         [{"slug": s["slug"], "label": s["label"], "manifest": f"control-paths/{s['slug']}.json"} for s in scenarios],
     )
     for scenario in scenarios:
         write_json(out / "control-paths" / f"{scenario['slug']}.json", scenario)
+
+    write_json(
+        out / "guide" / "index.json",
+        {
+            "guide": "HACKERS_GUIDE.md",
+            "sections": [{"anchor": anchor, "title": title} for anchor, title in sorted(guide.items())],
+            "hacks": [{"script": script, **meta} for script, meta in sorted(hacks.items())],
+        },
+    )
 
     repos = load_repos(repo_root)
     write_json(
