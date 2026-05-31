@@ -148,6 +148,13 @@ def test_guide_index_contains_required_anchors() -> None:
     } <= anchors
 
 
+def test_public_guide_copy_matches_root_guide() -> None:
+    run_generator()
+    assert (ROOT / "explorer" / "public" / "HACKERS_GUIDE.md").read_text(encoding="utf-8") == (
+        ROOT / "HACKERS_GUIDE.md"
+    ).read_text(encoding="utf-8")
+
+
 def test_generated_guide_anchors_are_linkable_from_guide() -> None:
     run_generator()
     linkable_anchors = explicit_guide_anchors()

@@ -427,6 +427,12 @@ def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
 
 
+def write_public_guide(repo_root: Path) -> None:
+    source = repo_root / "HACKERS_GUIDE.md"
+    target = repo_root / "explorer" / "public" / "HACKERS_GUIDE.md"
+    target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-root", default=".")
@@ -435,6 +441,7 @@ def main() -> None:
     out = repo_root / "explorer" / "public" / "data"
     guide = guide_sections(repo_root)
     hacks = read_hack_metadata(repo_root)
+    write_public_guide(repo_root)
 
     lifecycle = build(repo_root)
     write_json(out / "lifecycle" / "kilvin-asyncio-happy-path.json", lifecycle)
