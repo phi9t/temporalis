@@ -125,4 +125,25 @@ describe('LifecycleDiagram edge labels', () => {
       }),
     ).toEqual({ x: 8, y: 84 })
   })
+
+  it('places horizontal server-layer labels away from blocked node rectangles', () => {
+    const labelWidth = Math.round('WorkflowExecutionStarted'.length * 6.5 + 16)
+    const labelHeight = 24
+    const blockedRect = { x: 250, y: 458, width: 132, height: 50 }
+    const placement = edgeLabelPlacement({
+      x1: 136,
+      y1: 483,
+      x2: 316,
+      y2: 483,
+      labelWidth,
+      labelHeight,
+      viewBoxWidth: 820,
+      viewBoxHeight: 560,
+      blockedRects: [blockedRect],
+    })
+
+    expect(rectsOverlap({ x: placement.x, y: placement.y, width: labelWidth, height: labelHeight }, blockedRect)).toBe(
+      false,
+    )
+  })
 })

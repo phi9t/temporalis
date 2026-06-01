@@ -95,6 +95,10 @@ function overlapArea(a: Rect, b: Rect): number {
   return xOverlap * yOverlap
 }
 
+function rectOverlapsAny(rect: Rect, blockedRects: Rect[]): boolean {
+  return blockedRects.some((blockedRect) => overlapArea(rect, blockedRect) > 0)
+}
+
 export function edgeLabelPlacement({
   x1,
   y1,
@@ -119,28 +123,46 @@ export function edgeLabelPlacement({
   const midX = (x1 + x2) / 2
   const midY = (y1 + y2) / 2
   const mostlyVertical = Math.abs(y2 - y1) > Math.abs(x2 - x1) * 1.25
-  const rawY = mostlyVertical ? midY - labelHeight / 2 : midY - labelHeight - 12
-  const placeAt = (rawX: number) => ({
+  const verticalY = midY - labelHeight / 2
+  const horizontalX = midX - labelWidth / 2
+  const horizontalAboveY = midY - labelHeight - 12
+  const placeAt = (rawX: number, rawY: number) => ({
     x: Math.round(clamp(rawX, 8, viewBoxWidth - labelWidth - 8)),
     y: Math.round(clamp(rawY, 8, viewBoxHeight - labelHeight - 8)),
   })
 
-  if (mostlyVertical && blockedRects.length > 0) {
-    const candidates = [placeAt(midX + 18), placeAt(midX - labelWidth - 18)]
+  if (blockedRects.length > 0) {
+    const candidates = mostlyVertical
+      ? [placeAt(midX + 18, verticalY), placeAt(midX - labelWidth - 18, verticalY)]
+      : [
+          placeAt(horizontalX, horizontalAboveY),
+          placeAt(horizontalX, midY + 12),
+          placeAt(horizontalX, horizontalAboveY - 30),
+          placeAt(horizontalX, midY + 42),
+          placeAt(midX + 18, verticalY),
+          placeAt(midX - labelWidth - 18, verticalY),
+        ]
+    const openCandidate = candidates.find((candidate) => {
+      return !rectOverlapsAny({ ...candidate, width: labelWidth, height: labelHeight }, blockedRects)
+    })
+
+    if (openCandidate) return openCandidate
+
     const [best] = candidates
-      .map((candidate) => ({
+      .map((candidate, index) => ({
         ...candidate,
+        index,
         blockedArea: blockedRects.reduce(
           (total, rect) => total + overlapArea({ ...candidate, width: labelWidth, height: labelHeight }, rect),
           0,
         ),
       }))
-      .sort((a, b) => a.blockedArea - b.blockedArea)
+      .sort((a, b) => a.blockedArea - b.blockedArea || a.index - b.index)
 
     return { x: best.x, y: best.y }
   }
 
-  return placeAt(mostlyVertical ? midX + 18 : midX - labelWidth / 2)
+  return mostlyVertical ? placeAt(midX + 18, verticalY) : placeAt(horizontalX, horizontalAboveY)
 }
 
 export function displayEdgeLabel({
