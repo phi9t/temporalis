@@ -63,8 +63,8 @@
       "seq": 3,
       "kind": "command",
       "from": "workflow-activation",
-      "to": "history-service",
-      "edge_id": null,
+      "to": "core-worker",
+      "edge_id": "workflow-complete",
       "message": "RespondWorkflowTaskCompleted",
       "summary": "Python emits commands that either wait while paused or continue after resume.",
       "details": [
@@ -73,11 +73,10 @@
       ],
       "affected_node_ids": [
         "workflow-activation",
-        "history-service"
+        "core-worker"
       ],
       "affected_edge_ids": [
-        "workflow-complete",
-        "schedule-wft"
+        "workflow-complete"
       ]
     }
   ],

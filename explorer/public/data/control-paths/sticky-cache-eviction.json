@@ -42,9 +42,9 @@
       "id": "sticky-cache-eviction-replay",
       "seq": 2,
       "kind": "history-event",
-      "from": "history-service",
-      "to": "core-worker",
-      "edge_id": null,
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
       "message": "Replay from History",
       "summary": "Core falls back to history replay because History is authoritative.",
       "details": [
@@ -52,8 +52,8 @@
         "This keeps correctness independent of worker cache residency."
       ],
       "affected_node_ids": [
-        "history-service",
-        "core-worker"
+        "core-worker",
+        "workflow-activation"
       ],
       "affected_edge_ids": [
         "activation-up"

@@ -21,9 +21,9 @@
       "id": "replay-history-read",
       "seq": 1,
       "kind": "history-event",
-      "from": "history-service",
-      "to": "core-worker",
-      "edge_id": null,
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
       "message": "GetWorkflowExecutionHistory",
       "summary": "sdk-core reads durable history before accepting new workflow commands.",
       "details": [
@@ -31,8 +31,8 @@
         "Worker memory is an optimization, not the source of truth."
       ],
       "affected_node_ids": [
-        "history-service",
-        "core-worker"
+        "core-worker",
+        "workflow-activation"
       ],
       "affected_edge_ids": [
         "activation-up"
@@ -64,8 +64,8 @@
       "seq": 3,
       "kind": "completion",
       "from": "workflow-activation",
-      "to": "history-service",
-      "edge_id": null,
+      "to": "core-worker",
+      "edge_id": "workflow-complete",
       "message": "RespondWorkflowTaskCompleted",
       "summary": "New commands are accepted only after replay catches up to history.",
       "details": [
@@ -74,7 +74,7 @@
       ],
       "affected_node_ids": [
         "workflow-activation",
-        "history-service"
+        "core-worker"
       ],
       "affected_edge_ids": [
         "workflow-complete"

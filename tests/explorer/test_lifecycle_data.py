@@ -299,14 +299,14 @@ def test_control_path_steps_reference_existing_nodes_and_edges() -> None:
                 assert step["from"] in node_ids
             if step.get("to") is not None:
                 assert step["to"] in node_ids
-            if step.get("edge_id") is not None:
-                assert step["edge_id"] in edge_ids
-                if step.get("from") is not None and step.get("to") is not None:
-                    edge = edges[step["edge_id"]]
-                    assert (edge["from"], edge["to"]) == (step["from"], step["to"]) or (edge["from"], edge["to"]) == (
-                        step["to"],
-                        step["from"],
-                    )
+            assert step.get("edge_id") in edge_ids
+            assert step["edge_id"] in step.get("affected_edge_ids", [])
+            edge = edges[step["edge_id"]]
+            assert (edge["from"], edge["to"]) == (step["from"], step["to"]) or (edge["from"], edge["to"]) == (
+                step["to"],
+                step["from"],
+            )
+            assert set(step.get("affected_edge_ids", [])) == {step["edge_id"]}
         assert sorted(seqs) == list(range(1, len(scenario["steps"]) + 1))
 
 

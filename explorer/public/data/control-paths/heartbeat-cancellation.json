@@ -43,8 +43,8 @@
       "seq": 2,
       "kind": "heartbeat",
       "from": "core-worker",
-      "to": "history-service",
-      "edge_id": null,
+      "to": "activity-task",
+      "edge_id": "heartbeat",
       "message": "RecordActivityTaskHeartbeatRequest",
       "summary": "sdk-core forwards heartbeat details and receives cancellation state.",
       "details": [
@@ -53,7 +53,7 @@
       ],
       "affected_node_ids": [
         "core-worker",
-        "history-service"
+        "activity-task"
       ],
       "affected_edge_ids": [
         "heartbeat"
@@ -64,8 +64,8 @@
       "seq": 3,
       "kind": "completion",
       "from": "activity-task",
-      "to": "history-service",
-      "edge_id": null,
+      "to": "core-worker",
+      "edge_id": "activity-complete",
       "message": "RespondActivityTaskCanceled",
       "summary": "The activity reports cancellation after observing it at a heartbeat checkpoint.",
       "details": [
@@ -74,7 +74,7 @@
       ],
       "affected_node_ids": [
         "activity-task",
-        "history-service"
+        "core-worker"
       ],
       "affected_edge_ids": [
         "activity-complete"

@@ -22,8 +22,8 @@
       "seq": 1,
       "kind": "failure",
       "from": "activity-task",
-      "to": "history-service",
-      "edge_id": null,
+      "to": "core-worker",
+      "edge_id": "activity-complete",
       "message": "RespondActivityTaskFailed",
       "summary": "The Python activity reports failure, timeout, or cancellation through sdk-core.",
       "details": [
@@ -32,7 +32,7 @@
       ],
       "affected_node_ids": [
         "activity-task",
-        "history-service"
+        "core-worker"
       ],
       "affected_edge_ids": [
         "activity-complete"
@@ -63,9 +63,9 @@
       "id": "retry-dispatch",
       "seq": 3,
       "kind": "task-dispatch",
-      "from": "matching-service",
-      "to": "activity-task",
-      "edge_id": null,
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "activity-dispatch",
       "message": "PollActivityTaskQueueResponse",
       "summary": "Matching dispatches the next activity task attempt when the retry is due.",
       "details": [
@@ -73,8 +73,8 @@
         "The retry re-enters Python through the same activity execution path."
       ],
       "affected_node_ids": [
-        "matching-service",
-        "activity-task"
+        "history-service",
+        "matching-service"
       ],
       "affected_edge_ids": [
         "activity-dispatch"
