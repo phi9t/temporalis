@@ -1,5 +1,16 @@
 export type LayerId = 'kilvin' | 'sdk-python' | 'bridge' | 'sdk-core' | 'server'
 
+export type LifecycleCallKind =
+  | 'rpc'
+  | 'poll'
+  | 'response'
+  | 'activation'
+  | 'command'
+  | 'completion'
+  | 'heartbeat'
+  | 'history-event'
+  | 'task-dispatch'
+
 export interface SourceRef {
   repo: string
   ref?: string
@@ -28,6 +39,25 @@ export interface LifecycleEdge {
   label: string
 }
 
+export interface LifecycleCall {
+  id: string
+  phase_id: string
+  seq: number
+  from: string
+  to: string
+  edge_id: string
+  kind: LifecycleCallKind
+  message: string
+  summary: string
+  details: string[]
+  payload?: string[]
+  refs: SourceRef[]
+}
+
+export type LifecycleSelection =
+  | { type: 'call'; call: LifecycleCall }
+  | { type: 'node'; node: LifecycleNode }
+
 export interface GuideHackLink {
   guide_anchor: string
   guide_title: string
@@ -49,6 +79,7 @@ export interface LifecycleManifest {
   phases: LifecyclePhase[]
   nodes: LifecycleNode[]
   edges: LifecycleEdge[]
+  calls: LifecycleCall[]
 }
 
 export interface ControlScenario extends GuideHackLink {
