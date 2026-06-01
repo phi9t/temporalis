@@ -169,6 +169,8 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
                 activeEdgeIds={activeEdgeIds}
                 selectedId={selectedNode?.id ?? null}
                 selectedEdgeId={selectedCall?.edge_id ?? null}
+                selectedCallFrom={selectedCall?.from ?? null}
+                selectedCallTo={selectedCall?.to ?? null}
                 selectedEndpointNodeIds={selectedEndpointNodeIds}
                 onSelect={(node) => setSelected({ type: 'node', node })}
                 onSelectEdge={handleEdgeSelect}

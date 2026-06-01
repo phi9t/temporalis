@@ -41,6 +41,12 @@ function nodeBox(node: LifecycleNode) {
   }
 }
 
+function edgeMatchesCallDirection(edge: LifecycleEdge, from: string | null, to: string | null): from is string {
+  if (!from || !to) return false
+
+  return (edge.from === from && edge.to === to) || (edge.from === to && edge.to === from)
+}
+
 export default function LifecycleDiagram({
   nodes,
   edges,
@@ -48,6 +54,8 @@ export default function LifecycleDiagram({
   activeEdgeIds,
   selectedId,
   selectedEdgeId = null,
+  selectedCallFrom = null,
+  selectedCallTo = null,
   selectedEndpointNodeIds = new Set<string>(),
   onSelect,
   onSelectEdge,
@@ -58,6 +66,8 @@ export default function LifecycleDiagram({
   activeEdgeIds: Set<string>
   selectedId: string | null
   selectedEdgeId?: string | null
+  selectedCallFrom?: string | null
+  selectedCallTo?: string | null
   selectedEndpointNodeIds?: Set<string>
   onSelect: (node: LifecycleNode) => void
   onSelectEdge?: (edgeId: string) => void
@@ -109,10 +119,21 @@ export default function LifecycleDiagram({
 
         if (!from || !to) return null
 
-        const a = nodeBox(from)
-        const b = nodeBox(to)
         const active = activeEdgeIds.has(edge.id)
         const selected = selectedEdgeId === edge.id
+        const directedFrom =
+          selected && edgeMatchesCallDirection(edge, selectedCallFrom, selectedCallTo)
+            ? byId.get(selectedCallFrom)
+            : from
+        const directedTo =
+          selected && edgeMatchesCallDirection(edge, selectedCallFrom, selectedCallTo)
+            ? byId.get(selectedCallTo ?? '')
+            : to
+
+        if (!directedFrom || !directedTo) return null
+
+        const a = nodeBox(directedFrom)
+        const b = nodeBox(directedTo)
         const labelX = (a.cx + b.cx) / 2
         const labelY = (a.cy + b.cy) / 2 - 8
         const marker = selected ? 'url(#lifecycle-arrow-selected)' : active ? 'url(#lifecycle-arrow-active)' : 'url(#lifecycle-arrow)'

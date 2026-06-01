@@ -96,6 +96,20 @@ const manifest: LifecycleManifest = {
       payload: ['run_id'],
       refs: [],
     },
+    {
+      id: 'call-start-workflow-response',
+      phase_id: 'start',
+      seq: 3,
+      from: 'frontend-service',
+      to: 'kilvin-client',
+      edge_id: 'start-rpc',
+      kind: 'response',
+      message: 'StartWorkflowExecutionResponse',
+      summary: 'Frontend returns the workflow start result to Kilvin.',
+      details: ['The response travels back over the reused client-to-frontend edge.'],
+      payload: ['run_id'],
+      refs: [],
+    },
   ],
 }
 
@@ -127,6 +141,21 @@ describe('LifecycleExplorer', () => {
     expect(screen.getByRole('heading', { name: 'DescribeWorkflowExecution' })).toBeTruthy()
     expect(screen.getAllByText('Kilvin reads the workflow execution description after start.').length).toBeGreaterThan(0)
     expect(screen.getByText('run_id')).toBeTruthy()
+  })
+
+  it('renders selected response calls in call direction on reused edges', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const responseCall = await screen.findByRole('button', {
+      name: /03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
+    })
+
+    fireEvent.click(responseCall)
+
+    const selectedLine = document.querySelector('.lifecycle-edge.selected .lifecycle-edge-line')
+
+    expect(selectedLine?.getAttribute('y1')).toBe('483')
+    expect(selectedLine?.getAttribute('y2')).toBe('83')
   })
 
   it('renders phase guide and hack links', async () => {
