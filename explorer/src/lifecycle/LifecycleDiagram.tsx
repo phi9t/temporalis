@@ -1,5 +1,29 @@
+/* eslint-disable react-refresh/only-export-components */
 import { cn } from '@/lib/utils'
-import type { LifecycleEdge, LifecycleNode } from './types'
+import type { LifecycleCall, LifecycleEdge, LifecycleNode } from './types'
+
+const EDGE_LABEL_MAX = 29
+const EDGE_LABEL_CHAR_WIDTH = 6.5
+const EDGE_LABEL_HEIGHT = 24
+const EDGE_LABEL_PADDING_X = 16
+const EDGE_LABEL_RADIUS = 6
+const SVG_WIDTH = 820
+const SVG_HEIGHT = 560
+
+export interface EdgeLabelCall {
+  id: string
+  seq: number
+  phase_id: string
+  edge_id: string
+  message: string
+}
+
+export interface DisplayEdgeLabel {
+  text: string
+  fullText: string
+  visible: boolean
+  selected: boolean
+}
 
 const LAYERS = [
   { id: 'kilvin', label: 'Kilvin app', y: 34 },
@@ -47,6 +71,94 @@ function edgeMatchesCallDirection(edge: LifecycleEdge, from: string | null, to: 
   return (edge.from === from && edge.to === to) || (edge.from === to && edge.to === from)
 }
 
+export function truncateEdgeLabel(label: string): string {
+  if (label.length <= EDGE_LABEL_MAX) return label
+
+  return `${label.slice(0, EDGE_LABEL_MAX - 3)}...`
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+export function edgeLabelPlacement({
+  x1,
+  y1,
+  x2,
+  y2,
+  labelWidth,
+  labelHeight,
+  viewBoxWidth,
+  viewBoxHeight,
+}: {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  labelWidth: number
+  labelHeight: number
+  viewBoxWidth: number
+  viewBoxHeight: number
+}) {
+  const midX = (x1 + x2) / 2
+  const midY = (y1 + y2) / 2
+  const mostlyVertical = Math.abs(y2 - y1) > Math.abs(x2 - x1) * 1.25
+  const rawX = mostlyVertical ? midX + 18 : midX - labelWidth / 2
+  const rawY = mostlyVertical ? midY - labelHeight / 2 : midY - labelHeight - 12
+
+  return {
+    x: Math.round(clamp(rawX, 8, viewBoxWidth - labelWidth - 8)),
+    y: Math.round(clamp(rawY, 8, viewBoxHeight - labelHeight - 8)),
+  }
+}
+
+export function displayEdgeLabel({
+  edgeId,
+  edgeLabel,
+  activeCallLabels,
+  selectedCall,
+  activePhaseId,
+}: {
+  edgeId: string
+  edgeLabel: string
+  activeCallLabels: EdgeLabelCall[]
+  selectedCall: EdgeLabelCall | null
+  activePhaseId: string
+}): DisplayEdgeLabel | null {
+  if (selectedCall?.edge_id === edgeId) {
+    return {
+      text: truncateEdgeLabel(selectedCall.message),
+      fullText: selectedCall.message,
+      visible: true,
+      selected: true,
+    }
+  }
+
+  const activeCalls = activeCallLabels
+    .filter((call) => call.phase_id === activePhaseId && call.edge_id === edgeId)
+    .sort((a, b) => {
+      if (!selectedCall) return a.seq - b.seq
+
+      return Math.abs(a.seq - selectedCall.seq) - Math.abs(b.seq - selectedCall.seq)
+    })
+
+  const activeCall = activeCalls[0]
+  if (!activeCall) return null
+
+  const fullText = activeCall.message || edgeLabel
+
+  return {
+    text: truncateEdgeLabel(fullText),
+    fullText,
+    visible: fullText.length <= 48,
+    selected: false,
+  }
+}
+
+function edgeLabelWidth(text: string): number {
+  return Math.round(text.length * EDGE_LABEL_CHAR_WIDTH + EDGE_LABEL_PADDING_X)
+}
+
 export default function LifecycleDiagram({
   nodes,
   edges,
@@ -56,6 +168,9 @@ export default function LifecycleDiagram({
   selectedEdgeId = null,
   selectedCallFrom = null,
   selectedCallTo = null,
+  selectedCall = null,
+  activeCallLabels = [],
+  activePhaseId = '',
   selectedEndpointNodeIds = new Set<string>(),
   onSelect,
   onSelectEdge,
@@ -68,6 +183,9 @@ export default function LifecycleDiagram({
   selectedEdgeId?: string | null
   selectedCallFrom?: string | null
   selectedCallTo?: string | null
+  selectedCall?: LifecycleCall | null
+  activeCallLabels?: LifecycleCall[]
+  activePhaseId?: string
   selectedEndpointNodeIds?: Set<string>
   onSelect: (node: LifecycleNode) => void
   onSelectEdge?: (edgeId: string) => void
@@ -134,10 +252,29 @@ export default function LifecycleDiagram({
 
         const a = nodeBox(directedFrom)
         const b = nodeBox(directedTo)
-        const labelX = (a.cx + b.cx) / 2
-        const labelY = (a.cy + b.cy) / 2 - 8
         const marker = selected ? 'url(#lifecycle-arrow-selected)' : active ? 'url(#lifecycle-arrow-active)' : 'url(#lifecycle-arrow)'
         const selectable = Boolean(onSelectEdge)
+        const label = displayEdgeLabel({
+          edgeId: edge.id,
+          edgeLabel: edge.label,
+          activeCallLabels,
+          selectedCall,
+          activePhaseId,
+        })
+        const labelWidth = label ? edgeLabelWidth(label.text) : 0
+        const labelPosition =
+          label && label.visible
+            ? edgeLabelPlacement({
+                x1: a.cx,
+                y1: a.cy,
+                x2: b.cx,
+                y2: b.cy,
+                labelWidth,
+                labelHeight: EDGE_LABEL_HEIGHT,
+                viewBoxWidth: SVG_WIDTH,
+                viewBoxHeight: SVG_HEIGHT,
+              })
+            : null
 
         function selectEdge() {
           onSelectEdge?.(edge.id)
@@ -149,7 +286,7 @@ export default function LifecycleDiagram({
             className={cn('lifecycle-edge', active && 'active', selected && 'selected', selectable && 'selectable')}
             role={selectable ? 'button' : undefined}
             tabIndex={selectable ? 0 : undefined}
-            aria-label={selectable ? `Diagram edge ${edge.label}` : undefined}
+            aria-label={selectable ? `Diagram edge ${label?.fullText ?? edge.label}` : undefined}
             aria-pressed={selectable ? selected : undefined}
             onClick={selectEdge}
             onKeyDown={(event) => {
@@ -161,10 +298,20 @@ export default function LifecycleDiagram({
           >
             <line className="lifecycle-edge-hit" x1={a.cx} y1={a.cy} x2={b.cx} y2={b.cy} />
             <line className="lifecycle-edge-line" x1={a.cx} y1={a.cy} x2={b.cx} y2={b.cy} markerEnd={marker} />
-            {(active || selected) && (
-              <text className="lifecycle-edge-label" x={labelX} y={labelY} textAnchor="middle">
-                {edge.label}
-              </text>
+            {label && labelPosition && (
+              <g className={cn('lifecycle-edge-label-badge', label.selected && 'selected')}>
+                <rect
+                  x={labelPosition.x}
+                  y={labelPosition.y}
+                  width={labelWidth}
+                  height={EDGE_LABEL_HEIGHT}
+                  rx={EDGE_LABEL_RADIUS}
+                />
+                <text x={labelPosition.x + labelWidth / 2} y={labelPosition.y + 16} textAnchor="middle">
+                  {label.text}
+                </text>
+                <title>{label.fullText}</title>
+              </g>
             )}
             <title>{edge.label}</title>
           </g>

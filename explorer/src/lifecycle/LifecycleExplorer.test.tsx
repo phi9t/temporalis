@@ -269,6 +269,9 @@ describe('LifecycleExplorer', () => {
 
     expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
     expect(screen.getByText('workflow_id')).toBeTruthy()
+    expect(document.querySelector('.lifecycle-edge-label-badge.selected text')?.textContent).toBe(
+      'StartWorkflowExecution',
+    )
   })
 
   it('selects a diagram edge with the keyboard', async () => {
@@ -301,6 +304,10 @@ describe('LifecycleExplorer', () => {
 
     expect(selectedLine?.getAttribute('y1')).toBe('483')
     expect(selectedLine?.getAttribute('y2')).toBe('83')
+    expect(document.querySelector('.lifecycle-edge-label-badge.selected text')?.textContent).toBe(
+      'StartWorkflowExecutionResp...',
+    )
+    expect(screen.getByRole('button', { name: /Diagram edge StartWorkflowExecutionResponse/ })).toBeTruthy()
   })
 
   it('renders phase guide and hack links', async () => {

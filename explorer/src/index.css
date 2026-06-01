@@ -574,15 +574,30 @@ body {
   filter: drop-shadow(0 0 10px rgba(248, 250, 252, 0.36));
 }
 
-.lifecycle-edge-label {
-  fill: var(--color-ink);
-  paint-order: stroke;
-  stroke: rgba(11, 15, 25, 0.9);
-  stroke-width: 5px;
-  stroke-linejoin: round;
+.lifecycle-edge-label-badge {
+  pointer-events: none;
+}
+
+.lifecycle-edge-label-badge rect {
+  fill: rgba(7, 10, 19, 0.86);
+  stroke: rgba(148, 163, 184, 0.22);
+  stroke-width: 1;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.28));
+}
+
+.lifecycle-edge-label-badge text {
+  fill: var(--color-ink-soft);
   font-size: 10px;
   font-weight: 700;
-  pointer-events: none;
+}
+
+.lifecycle-edge-label-badge.selected rect {
+  fill: rgba(15, 23, 42, 0.96);
+  stroke: rgba(56, 189, 248, 0.72);
+}
+
+.lifecycle-edge-label-badge.selected text {
+  fill: var(--color-ink);
 }
 
 .lifecycle-node {
