@@ -162,26 +162,30 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
           </CardHeader>
           <CardContent>
             <div className="lifecycle-main">
-              <LifecycleDiagram
-                nodes={manifest.nodes}
-                edges={manifest.edges}
-                activeNodeIds={activeNodeIds}
-                activeEdgeIds={activeEdgeIds}
-                selectedId={selectedNode?.id ?? null}
-                selectedEdgeId={selectedCall?.edge_id ?? null}
-                selectedCallFrom={selectedCall?.from ?? null}
-                selectedCallTo={selectedCall?.to ?? null}
-                selectedEndpointNodeIds={selectedEndpointNodeIds}
-                onSelect={(node) => setSelected({ type: 'node', node })}
-                onSelectEdge={handleEdgeSelect}
-              />
-              <CallSequence
-                calls={calls}
-                nodeLabels={nodeLabels}
-                activePhaseId={phase?.id ?? ''}
-                selectedCallId={selectedCall?.id ?? null}
-                onSelect={(call) => setSelected({ type: 'call', call })}
-              />
+              <div className="lifecycle-sequence">
+                <CallSequence
+                  calls={calls}
+                  nodeLabels={nodeLabels}
+                  activePhaseId={phase?.id ?? ''}
+                  selectedCallId={selectedCall?.id ?? null}
+                  onSelect={(call) => setSelected({ type: 'call', call })}
+                />
+              </div>
+              <div className="lifecycle-diagram">
+                <LifecycleDiagram
+                  nodes={manifest.nodes}
+                  edges={manifest.edges}
+                  activeNodeIds={activeNodeIds}
+                  activeEdgeIds={activeEdgeIds}
+                  selectedId={selectedNode?.id ?? null}
+                  selectedEdgeId={selectedCall?.edge_id ?? null}
+                  selectedCallFrom={selectedCall?.from ?? null}
+                  selectedCallTo={selectedCall?.to ?? null}
+                  selectedEndpointNodeIds={selectedEndpointNodeIds}
+                  onSelect={(node) => setSelected({ type: 'node', node })}
+                  onSelectEdge={handleEdgeSelect}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

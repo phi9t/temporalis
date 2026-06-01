@@ -129,6 +129,15 @@ describe('LifecycleExplorer', () => {
     expect(screen.getByText('workflow_id')).toBeTruthy()
   })
 
+  it('places the call sequence before the diagram in narrow layout order', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const sequence = await screen.findByLabelText('Lifecycle call sequence')
+    const diagram = screen.getByLabelText('Temporal lifecycle diagram')
+
+    expect(sequence.compareDocumentPosition(diagram) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('updates call details when a call row is selected', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
@@ -141,6 +150,25 @@ describe('LifecycleExplorer', () => {
     expect(screen.getByRole('heading', { name: 'DescribeWorkflowExecution' })).toBeTruthy()
     expect(screen.getAllByText('Kilvin reads the workflow execution description after start.').length).toBeGreaterThan(0)
     expect(screen.getByText('run_id')).toBeTruthy()
+  })
+
+  it('selects the first active-phase call when a diagram edge is clicked', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const responseCall = await screen.findByRole('button', {
+      name: /03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
+    })
+
+    fireEvent.click(responseCall)
+    expect(screen.getByRole('heading', { name: 'StartWorkflowExecutionResponse' })).toBeTruthy()
+
+    const edgeHit = document.querySelector('.lifecycle-edge .lifecycle-edge-hit')
+    if (!edgeHit) throw new Error('expected lifecycle edge hit target')
+
+    fireEvent.click(edgeHit)
+
+    expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
+    expect(screen.getByText('workflow_id')).toBeTruthy()
   })
 
   it('renders selected response calls in call direction on reused edges', async () => {

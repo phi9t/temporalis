@@ -483,6 +483,11 @@ body {
   gap: 18px;
 }
 
+.lifecycle-diagram,
+.lifecycle-sequence {
+  min-width: 0;
+}
+
 .lifecycle-drawer-shell {
   align-self: start;
 }
@@ -494,6 +499,14 @@ body {
 
   .lifecycle-main {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  }
+
+  .lifecycle-diagram {
+    order: 1;
+  }
+
+  .lifecycle-sequence {
+    order: 2;
   }
 
   .lifecycle-drawer-shell {
