@@ -9,7 +9,8 @@ import { errorMessage, fetchExplorerJson } from '@/lib/fetch'
 import LifecycleDiagram from '@/lifecycle/LifecycleDiagram'
 import LifecycleDrawer from '@/lifecycle/LifecycleDrawer'
 import ControlSequence from './ControlSequence'
-import type { ControlScenario, ControlSelection, ControlStep, LifecycleCall, LifecycleManifest } from '@/lifecycle/types'
+import type { EdgeLabelCall } from '@/lifecycle/LifecycleDiagram'
+import type { ControlScenario, ControlSelection, ControlStep, LifecycleManifest } from '@/lifecycle/types'
 
 interface ControlEntry {
   slug: string
@@ -17,22 +18,15 @@ interface ControlEntry {
   manifest: string
 }
 
-function stepToCall(step: ControlStep): LifecycleCall | null {
+function stepToEdgeLabelCall(step: ControlStep): EdgeLabelCall | null {
   if (!step.from || !step.to || !step.edge_id) return null
 
   return {
     id: step.id,
     phase_id: 'control-path',
     seq: step.seq,
-    from: step.from,
-    to: step.to,
     edge_id: step.edge_id,
-    kind: step.kind as LifecycleCall['kind'],
     message: step.message,
-    summary: step.summary,
-    details: step.details,
-    payload: [],
-    refs: [],
   }
 }
 
@@ -79,7 +73,7 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
   )
   const selectedStep = selected?.type === 'control-step' ? selected.step : null
   const selectedNode = selected?.type === 'node' ? selected.node : null
-  const selectedCall = selectedStep ? stepToCall(selectedStep) : null
+  const selectedCall = selectedStep ? stepToEdgeLabelCall(selectedStep) : null
 
   const registerStepRow = useCallback((stepId: string, element: HTMLButtonElement | null) => {
     if (element) {
@@ -159,7 +153,7 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
     [lifecycle?.nodes],
   )
   const activeCallLabels = useMemo(
-    () => controlSteps.map(stepToCall).filter((call): call is LifecycleCall => call !== null),
+    () => controlSteps.map(stepToEdgeLabelCall).filter((call): call is EdgeLabelCall => call !== null),
     [controlSteps],
   )
   const selectedEndpointNodeIds = useMemo(

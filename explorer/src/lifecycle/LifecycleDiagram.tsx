@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { cn } from '@/lib/utils'
-import type { LifecycleCall, LifecycleEdge, LifecycleNode } from './types'
+import type { LifecycleEdge, LifecycleNode } from './types'
 
 const EDGE_LABEL_MAX = 29
 const EDGE_LABEL_CHAR_WIDTH = 6.5
@@ -342,8 +342,8 @@ export default function LifecycleDiagram({
   selectedEdgeId?: string | null
   selectedCallFrom?: string | null
   selectedCallTo?: string | null
-  selectedCall?: LifecycleCall | null
-  activeCallLabels?: LifecycleCall[]
+  selectedCall?: EdgeLabelCall | null
+  activeCallLabels?: EdgeLabelCall[]
   activePhaseId?: string
   selectedEndpointNodeIds?: Set<string>
   onSelect: (node: LifecycleNode) => void
