@@ -109,5 +109,5 @@ export interface ControlScenario extends GuideHackLink {
   details: string[]
   highlight_node_ids: string[]
   highlight_edge_ids: string[]
-  steps?: ControlStep[]
+  steps: ControlStep[]
 }

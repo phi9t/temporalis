@@ -81,6 +81,21 @@ const scenario: ControlScenario = {
     'History stores signal or update events.',
     'sdk-core replays history before the next activation.',
   ],
+  steps: [
+    {
+      id: 'pause-resume-command',
+      seq: 1,
+      kind: 'completion',
+      from: 'workflow-activation',
+      to: 'history-service',
+      edge_id: 'workflow-complete',
+      message: 'RespondWorkflowTaskCompleted',
+      summary: 'Python workflow code records pause state.',
+      details: ['Python workflow code records pause state.'],
+      affected_node_ids: ['workflow-activation', 'history-service'],
+      affected_edge_ids: ['workflow-complete'],
+    },
+  ],
 }
 
 describe('ControlPathsExplorer', () => {

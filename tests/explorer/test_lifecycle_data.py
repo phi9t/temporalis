@@ -286,11 +286,10 @@ def test_control_path_steps_reference_existing_nodes_and_edges() -> None:
     for entry in index:
         scenario = load_json(OUT / entry["manifest"])
         assert len(scenario["steps"]) >= 3
-        seen_seq = set()
+        seqs = []
         for step in scenario["steps"]:
             assert step["id"].startswith(f"{scenario['slug']}-")
-            assert step["seq"] not in seen_seq
-            seen_seq.add(step["seq"])
+            seqs.append(step["seq"])
             assert step["message"].strip()
             assert step["summary"].strip()
             assert len(step["details"]) >= 1
@@ -308,6 +307,7 @@ def test_control_path_steps_reference_existing_nodes_and_edges() -> None:
                         step["to"],
                         step["from"],
                     )
+        assert sorted(seqs) == list(range(1, len(scenario["steps"]) + 1))
 
 
 def test_guide_index_contains_required_anchors() -> None:
@@ -440,4 +440,4 @@ def test_control_scenarios_have_guide_hack_links_and_details() -> None:
         assert scenario["hack_summary"]
         assert len(scenario["details"]) >= 3
         assert len(scenario["steps"]) >= 3
-        assert scenario["steps"][0]["seq"] == 1
+        assert [step["seq"] for step in scenario["steps"]] == list(range(1, len(scenario["steps"]) + 1))
