@@ -140,15 +140,6 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
   }, [slug])
 
   useEffect(() => {
-    if (!scenario || controlSteps.length === 0) {
-      setSelected(null)
-      return
-    }
-
-    setSelected({ type: 'control-step', step: controlSteps[0] })
-  }, [scenario, controlSteps])
-
-  useEffect(() => {
     if (!selectedStep || !shouldScrollSelectedStepRef.current) return
 
     shouldScrollSelectedStepRef.current = false
