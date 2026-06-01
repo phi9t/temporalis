@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AsyncBoundary } from '@/explorer-kit/AsyncBoundary'
 import { SubjectSwitcher } from '@/explorer-kit/SubjectSwitcher'
 import { ViewTabs } from '@/explorer-kit/ViewTabs'
@@ -27,6 +27,11 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   const [phaseId, setPhaseId] = useState<string>('')
   const [selected, setSelected] = useState<LifecycleSelection | null>(null)
 
+  const selectCall = useCallback((call: LifecycleCall) => {
+    setPhaseId(call.phase_id)
+    setSelected({ type: 'call', call })
+  }, [])
+
   useEffect(() => {
     fetchExplorerJson<LifecycleEntry[]>('lifecycle/index.json')
       .then((entries) => {
@@ -51,8 +56,12 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
 
         setManifest(loaded)
         setCalls(sortedCalls)
-        setPhaseId(loaded.phases[0]?.id ?? '')
-        setSelected(sortedCalls[0] ? { type: 'call', call: sortedCalls[0] } : null)
+        if (sortedCalls[0]) {
+          selectCall(sortedCalls[0])
+        } else {
+          setPhaseId(loaded.phases[0]?.id ?? '')
+          setSelected(null)
+        }
       })
       .catch((error: unknown) => {
         if (!isCurrent) return
@@ -63,7 +72,7 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
     return () => {
       isCurrent = false
     }
-  }, [entry])
+  }, [entry, selectCall])
 
   function handleSlugChange(nextSlug: string) {
     setSlug(nextSlug)
@@ -111,8 +120,20 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
     const call = activePhaseCalls.find((item) => item.edge_id === edgeId) ?? calls.find((item) => item.edge_id === edgeId)
 
     if (call) {
-      setSelected({ type: 'call', call })
+      selectCall(call)
     }
+  }
+
+  function handlePhaseChange(nextPhaseId: string) {
+    const call = calls.find((item) => item.phase_id === nextPhaseId)
+
+    if (call) {
+      selectCall(call)
+      return
+    }
+
+    setPhaseId(nextPhaseId)
+    setSelected(null)
   }
 
   if (!index) {
@@ -150,7 +171,7 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
         <ViewTabs
           ariaLabel="Lifecycle phase"
           value={phase?.id ?? ''}
-          onChange={setPhaseId}
+          onChange={handlePhaseChange}
           options={manifest.phases.map((item) => ({ value: item.id, label: item.label }))}
         />
       </div>
@@ -168,7 +189,7 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
                   nodeLabels={nodeLabels}
                   activePhaseId={phase?.id ?? ''}
                   selectedCallId={selectedCall?.id ?? null}
-                  onSelect={(call) => setSelected({ type: 'call', call })}
+                  onSelect={selectCall}
                 />
               </div>
               <div className="lifecycle-diagram">

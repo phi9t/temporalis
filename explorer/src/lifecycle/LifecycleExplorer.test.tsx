@@ -37,6 +37,16 @@ const manifest: LifecycleManifest = {
       hack_script: 'hacks/002_lifecycle_manifest.py',
       hack_summary: 'Walk the Kilvin asyncio happy-path lifecycle manifest in phase order.',
     },
+    {
+      id: 'poll',
+      label: 'Poll workflow task',
+      summary: 'The worker polls for workflow work.',
+      node_ids: ['kilvin-client', 'frontend-service'],
+      guide_anchor: 'happy-path-poll-workflow-task',
+      guide_title: '5. Happy path: poll workflow task',
+      hack_script: 'hacks/003_lifecycle_poll.py',
+      hack_summary: 'Inspect the worker poll phase of the lifecycle manifest.',
+    },
   ],
   nodes: [
     {
@@ -110,6 +120,20 @@ const manifest: LifecycleManifest = {
       payload: ['run_id'],
       refs: [],
     },
+    {
+      id: 'call-poll-workflow-task',
+      phase_id: 'poll',
+      seq: 4,
+      from: 'kilvin-client',
+      to: 'frontend-service',
+      edge_id: 'start-rpc',
+      kind: 'poll',
+      message: 'PollWorkflowTaskQueue',
+      summary: 'The worker asks matching for workflow task work.',
+      details: ['The worker long-polls for workflow task queue work after the start phase.'],
+      payload: ['task_queue'],
+      refs: [],
+    },
   ],
 }
 
@@ -152,6 +176,23 @@ describe('LifecycleExplorer', () => {
     expect(screen.getByText('run_id')).toBeTruthy()
   })
 
+  it('keeps the active phase and guide aligned when selecting a call from another phase', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const pollCall = await screen.findByRole('button', {
+      name: /04 Kilvin client to Frontend PollWorkflowTaskQueue/,
+    })
+
+    fireEvent.click(pollCall)
+
+    expect(screen.getByRole('button', { name: 'Poll workflow task' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('heading', { name: 'PollWorkflowTaskQueue' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /5\. Happy path: poll workflow task/ }).getAttribute('href')).toBe(
+      '/HACKERS_GUIDE.md#happy-path-poll-workflow-task',
+    )
+    expect(screen.getByText('python hacks/003_lifecycle_poll.py')).toBeTruthy()
+  })
+
   it('selects the first active-phase call when a diagram edge is clicked', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
@@ -169,6 +210,23 @@ describe('LifecycleExplorer', () => {
 
     expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
     expect(screen.getByText('workflow_id')).toBeTruthy()
+  })
+
+  it('selects a diagram edge with the keyboard', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const responseCall = await screen.findByRole('button', {
+      name: /03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
+    })
+    fireEvent.click(responseCall)
+    expect(screen.getByRole('heading', { name: 'StartWorkflowExecutionResponse' })).toBeTruthy()
+
+    const edge = screen.getByRole('button', { name: /Diagram edge StartWorkflowExecution/ })
+
+    fireEvent.keyDown(edge, { key: 'Enter' })
+
+    expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
+    expect(edge.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('renders selected response calls in call direction on reused edges', async () => {

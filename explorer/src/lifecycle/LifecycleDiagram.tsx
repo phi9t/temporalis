@@ -137,12 +137,27 @@ export default function LifecycleDiagram({
         const labelX = (a.cx + b.cx) / 2
         const labelY = (a.cy + b.cy) / 2 - 8
         const marker = selected ? 'url(#lifecycle-arrow-selected)' : active ? 'url(#lifecycle-arrow-active)' : 'url(#lifecycle-arrow)'
+        const selectable = Boolean(onSelectEdge)
+
+        function selectEdge() {
+          onSelectEdge?.(edge.id)
+        }
 
         return (
           <g
             key={edge.id}
-            className={cn('lifecycle-edge', active && 'active', selected && 'selected', onSelectEdge && 'selectable')}
-            onClick={() => onSelectEdge?.(edge.id)}
+            className={cn('lifecycle-edge', active && 'active', selected && 'selected', selectable && 'selectable')}
+            role={selectable ? 'button' : undefined}
+            tabIndex={selectable ? 0 : undefined}
+            aria-label={selectable ? `Diagram edge ${edge.label}` : undefined}
+            aria-pressed={selectable ? selected : undefined}
+            onClick={selectEdge}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                selectEdge()
+              }
+            }}
           >
             <line className="lifecycle-edge-hit" x1={a.cx} y1={a.cy} x2={b.cx} y2={b.cy} />
             <line className="lifecycle-edge-line" x1={a.cx} y1={a.cy} x2={b.cx} y2={b.cy} markerEnd={marker} />
