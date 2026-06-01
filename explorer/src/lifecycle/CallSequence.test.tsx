@@ -75,7 +75,7 @@ describe('CallSequence', () => {
     )
 
     const selected = screen.getByRole('button', {
-      name: /02 Python worker to Matching PollWorkflowTaskQueue/,
+      name: /02 Python worker to Matching PollWorkflowTaskQueue Current phase call/,
     })
 
     expect(selected.getAttribute('data-active-phase')).toBe('true')

@@ -43,11 +43,12 @@ export default function CallSequence({
               key={call.id}
               type="button"
               className={cn('call-sequence-row', active && 'active', selected && 'selected')}
-              aria-label={`${seq} ${from} to ${to} ${call.message}`}
+              aria-label={`${seq} ${from} to ${to} ${call.message}${active ? ' Current phase call' : ''}`}
               aria-pressed={selected}
               data-active-phase={active}
               onClick={() => onSelect(call)}
             >
+              {active && <span className="visually-hidden">Current phase call</span>}
               <span className="call-sequence-seq">{seq}</span>
               <span className="call-sequence-body">
                 <span className="call-sequence-route">
