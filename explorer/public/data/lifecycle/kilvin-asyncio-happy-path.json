@@ -615,9 +615,30 @@
       "refs": []
     },
     {
-      "id": "call-enqueue-activity-task",
+      "id": "call-workflow-task-complete",
       "phase_id": "schedule-activity",
       "seq": 10,
+      "from": "workflow-activation",
+      "to": "history-service",
+      "edge_id": "workflow-complete",
+      "kind": "completion",
+      "message": "RespondWorkflowTaskCompleted",
+      "summary": "The workflow activation completes its turn with the ScheduleActivityTask command batch.",
+      "details": [
+        "Python returns the workflow task completion after the activation reaches a deterministic blocking point.",
+        "History applies the ScheduleActivityTask command from the completion before it can create activity scheduling state."
+      ],
+      "payload": [
+        "workflow_task_token",
+        "commands=[ScheduleActivityTask]",
+        "query_results"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-enqueue-activity-task",
+      "phase_id": "schedule-activity",
+      "seq": 11,
       "from": "history-service",
       "to": "matching-service",
       "edge_id": "activity-dispatch",
@@ -625,7 +646,7 @@
       "message": "activity task",
       "summary": "History dispatches the scheduled activity task through Matching.",
       "details": [
-        "History records the activity scheduling event and places the task on the target activity queue.",
+        "After accepting the completed workflow task, History records the activity scheduling event and places the task on the target activity queue.",
         "Matching will deliver the task when a compatible worker poll is available."
       ],
       "payload": [
@@ -638,7 +659,7 @@
     {
       "id": "call-core-activity-task",
       "phase_id": "execute-activity",
-      "seq": 11,
+      "seq": 12,
       "from": "core-worker",
       "to": "activity-task",
       "edge_id": "activity-poll",
@@ -660,7 +681,7 @@
     {
       "id": "call-activity-heartbeat",
       "phase_id": "execute-activity",
-      "seq": 12,
+      "seq": 13,
       "from": "activity-task",
       "to": "core-worker",
       "edge_id": "heartbeat",
@@ -681,7 +702,7 @@
     {
       "id": "call-activity-complete",
       "phase_id": "execute-activity",
-      "seq": 13,
+      "seq": 14,
       "from": "activity-task",
       "to": "history-service",
       "edge_id": "activity-complete",
@@ -696,27 +717,6 @@
         "task_token",
         "activity_result",
         "completed_event_id"
-      ],
-      "refs": []
-    },
-    {
-      "id": "call-workflow-task-complete",
-      "phase_id": "complete",
-      "seq": 14,
-      "from": "workflow-activation",
-      "to": "history-service",
-      "edge_id": "workflow-complete",
-      "kind": "completion",
-      "message": "RespondWorkflowTaskCompleted",
-      "summary": "The workflow activation completes its turn by sending commands back to History.",
-      "details": [
-        "Python returns the workflow task completion after the activation reaches a deterministic blocking point.",
-        "History accepts the completion and applies any commands emitted by the workflow turn."
-      ],
-      "payload": [
-        "workflow_task_token",
-        "commands",
-        "query_results"
       ],
       "refs": []
     },
@@ -738,6 +738,48 @@
         "task_queue",
         "workflow_task",
         "new_history_events"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-followup-workflow-task",
+      "phase_id": "complete",
+      "seq": 16,
+      "from": "matching-service",
+      "to": "core-worker",
+      "edge_id": "core-matching",
+      "kind": "response",
+      "message": "follow-up workflow task response",
+      "summary": "Matching returns the follow-up workflow task to sdk-core on the next poll.",
+      "details": [
+        "The completed activity produced new history, so the next workflow task carries those events back to the worker.",
+        "This response uses the same Core-to-Matching poll edge in reverse to show the server response."
+      ],
+      "payload": [
+        "workflow_task_token",
+        "activity_completed_event",
+        "history"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-followup-activation",
+      "phase_id": "complete",
+      "seq": 17,
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "kind": "activation",
+      "message": "WorkflowActivation",
+      "summary": "sdk-core delivers the follow-up activation so Python can observe the activity result.",
+      "details": [
+        "Core converts the follow-up workflow task into another deterministic Python activation.",
+        "The workflow can now continue from the completed activity result or emit final completion commands."
+      ],
+      "payload": [
+        "activation_jobs",
+        "activity_result",
+        "history_events"
       ],
       "refs": []
     }
