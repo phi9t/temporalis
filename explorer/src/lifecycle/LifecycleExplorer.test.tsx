@@ -31,7 +31,7 @@ const manifest: LifecycleManifest = {
       id: 'start',
       label: 'Start workflow',
       summary: 'Kilvin submits a staged training run.',
-      node_ids: ['kilvin-client'],
+      node_ids: ['kilvin-client', 'frontend-service'],
       guide_anchor: 'happy-path-start-workflow-to-first-activation',
       guide_title: '4. Happy path: start workflow to first activation',
       hack_script: 'hacks/002_lifecycle_manifest.py',
@@ -48,8 +48,41 @@ const manifest: LifecycleManifest = {
       notes: 'Client start crosses Frontend.',
       refs: [],
     },
+    {
+      id: 'frontend-service',
+      label: 'Frontend',
+      layer: 'server',
+      kind: 'service',
+      summary: 'Accepts workflow starts.',
+      notes: 'Frontend accepts public workflow RPCs.',
+      refs: [],
+    },
   ],
-  edges: [],
+  edges: [
+    {
+      id: 'start-rpc',
+      from: 'kilvin-client',
+      to: 'frontend-service',
+      kind: 'rpc',
+      label: 'StartWorkflowExecution',
+    },
+  ],
+  calls: [
+    {
+      id: 'call-start-workflow',
+      phase_id: 'start',
+      seq: 1,
+      from: 'kilvin-client',
+      to: 'frontend-service',
+      edge_id: 'start-rpc',
+      kind: 'rpc',
+      message: 'StartWorkflowExecution',
+      summary: 'Kilvin asks Temporal to start the command workflow.',
+      details: ['The app submits workflow id, task queue, workflow type, and staged training input.'],
+      payload: ['workflow_id', 'task_queue', 'workflow_type', 'input'],
+      refs: [],
+    },
+  ],
 }
 
 describe('LifecycleExplorer', () => {
