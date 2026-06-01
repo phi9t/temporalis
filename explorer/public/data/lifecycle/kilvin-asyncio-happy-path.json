@@ -657,9 +657,51 @@
       "refs": []
     },
     {
-      "id": "call-core-activity-task",
+      "id": "call-core-poll-activity-task",
       "phase_id": "execute-activity",
       "seq": 12,
+      "from": "core-worker",
+      "to": "matching-service",
+      "edge_id": "core-matching",
+      "kind": "poll",
+      "message": "PollActivityTaskQueue",
+      "summary": "sdk-core polls Matching for an available activity task.",
+      "details": [
+        "Core issues an activity task poll after History has enqueued the scheduled activity task.",
+        "The direction is worker to Matching: the worker asks the activity task queue for work."
+      ],
+      "payload": [
+        "namespace",
+        "activity_task_queue",
+        "identity"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-matching-activity-task",
+      "phase_id": "execute-activity",
+      "seq": 13,
+      "from": "matching-service",
+      "to": "core-worker",
+      "edge_id": "core-matching",
+      "kind": "response",
+      "message": "activity task response",
+      "summary": "Matching responds to the activity poll with the queued activity task.",
+      "details": [
+        "The activity task response travels back over the same Core-to-Matching poll edge.",
+        "Core must receive this response before it can deliver the activity task to Python."
+      ],
+      "payload": [
+        "activity_task_token",
+        "activity_type",
+        "input"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-core-activity-task",
+      "phase_id": "execute-activity",
+      "seq": 14,
       "from": "core-worker",
       "to": "activity-task",
       "edge_id": "activity-poll",
@@ -681,7 +723,7 @@
     {
       "id": "call-activity-heartbeat",
       "phase_id": "execute-activity",
-      "seq": 13,
+      "seq": 15,
       "from": "activity-task",
       "to": "core-worker",
       "edge_id": "heartbeat",
@@ -702,7 +744,7 @@
     {
       "id": "call-activity-complete",
       "phase_id": "execute-activity",
-      "seq": 14,
+      "seq": 16,
       "from": "activity-task",
       "to": "history-service",
       "edge_id": "activity-complete",
@@ -723,7 +765,7 @@
     {
       "id": "call-enqueue-followup-workflow-task",
       "phase_id": "complete",
-      "seq": 15,
+      "seq": 17,
       "from": "history-service",
       "to": "matching-service",
       "edge_id": "schedule-wft",
@@ -744,7 +786,7 @@
     {
       "id": "call-followup-workflow-task",
       "phase_id": "complete",
-      "seq": 16,
+      "seq": 18,
       "from": "matching-service",
       "to": "core-worker",
       "edge_id": "core-matching",
@@ -765,7 +807,7 @@
     {
       "id": "call-followup-activation",
       "phase_id": "complete",
-      "seq": 17,
+      "seq": 19,
       "from": "core-worker",
       "to": "workflow-activation",
       "edge_id": "activation-up",

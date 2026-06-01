@@ -88,6 +88,20 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
     calls = manifest["calls"]
     assert calls
     assert {call["phase_id"] for call in calls} == phase_ids
+    calls_by_id = {call["id"]: call for call in calls}
+    required_call_ids = {
+        "call-core-poll-matching",
+        "call-matching-workflow-task",
+        "call-core-poll-activity-task",
+        "call-matching-activity-task",
+        "call-core-activity-task",
+    }
+    assert required_call_ids <= calls_by_id.keys()
+    assert calls_by_id["call-core-poll-matching"]["kind"] == "poll"
+    assert calls_by_id["call-matching-workflow-task"]["kind"] == "response"
+    assert calls_by_id["call-core-poll-activity-task"]["kind"] == "poll"
+    assert calls_by_id["call-matching-activity-task"]["kind"] == "response"
+    assert calls_by_id["call-matching-activity-task"]["seq"] < calls_by_id["call-core-activity-task"]["seq"]
 
     seqs = [call["seq"] for call in calls]
     assert len(seqs) == len(set(seqs))
