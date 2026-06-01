@@ -38,6 +38,9 @@ def ref_line(ref: dict) -> str:
         base = ROOT
     else:
         base = ROOT / ref["repo"]
+        if not base.exists():
+            main_checkout = ROOT.parents[1] if ROOT.parent.name == ".worktrees" else ROOT
+            base = main_checkout / ref["repo"]
     return (base / ref["path"]).read_text(encoding="utf-8").splitlines()[ref["line"] - 1]
 
 
@@ -73,6 +76,42 @@ def test_lifecycle_manifest_is_schema_consistent() -> None:
     for phase in manifest["phases"]:
         assert phase["node_ids"]
         assert set(phase["node_ids"]) <= node_ids
+
+
+def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
+    run_generator()
+    manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    phase_ids = {phase["id"] for phase in manifest["phases"]}
+    node_ids = {node["id"] for node in manifest["nodes"]}
+    edges = {edge["id"]: edge for edge in manifest["edges"]}
+
+    calls = manifest["calls"]
+    assert calls
+    assert {call["phase_id"] for call in calls} == phase_ids
+
+    seqs = [call["seq"] for call in calls]
+    assert len(seqs) == len(set(seqs))
+    assert sorted(seqs) == list(range(1, len(calls) + 1))
+
+    for call in calls:
+        assert call["phase_id"] in phase_ids
+        assert call["from"] in node_ids
+        assert call["to"] in node_ids
+        assert call["edge_id"] in edges
+        assert isinstance(call["refs"], list)
+        for ref in call["refs"]:
+            assert ref["repo"]
+            assert ref["path"]
+            assert isinstance(ref["line"], int) and ref["line"] > 0
+
+        edge = edges[call["edge_id"]]
+        if call["kind"] == "response":
+            assert (edge["from"], edge["to"]) == (call["from"], call["to"]) or (edge["from"], edge["to"]) == (
+                call["to"],
+                call["from"],
+            )
+        else:
+            assert (edge["from"], edge["to"]) == (call["from"], call["to"])
 
 
 def test_source_refs_resolve_to_real_lines() -> None:

@@ -8,7 +8,44 @@ import re
 from pathlib import Path
 from typing import Any
 
-from _refs import github_url, load_repos, repo_abs_path, resolve_line
+from _refs import RepoInfo, github_url, load_repos, repo_abs_path, resolve_line
+
+
+def _worktree_main_root(repo_root: Path) -> Path | None:
+    git_file = repo_root / ".git"
+    if not git_file.is_file():
+        return None
+    content = git_file.read_text(encoding="utf-8").strip()
+    if not content.startswith("gitdir: "):
+        return None
+    git_dir = Path(content.removeprefix("gitdir: "))
+    if not git_dir.is_absolute():
+        git_dir = (repo_root / git_dir).resolve()
+    try:
+        common_git = git_dir.parents[1]
+    except IndexError:
+        return None
+    return common_git.parent if common_git.name == ".git" else None
+
+
+def source_repo_abs_path(repo_root: Path, repo: RepoInfo) -> Path:
+    main_root = _worktree_main_root(repo_root)
+    candidates = [
+        repo_abs_path(repo_root, repo),
+        repo_root / Path(repo.path).name,
+    ]
+    if main_root is not None:
+        candidates.extend(
+            [
+                main_root / repo.path,
+                main_root / Path(repo.path).name,
+                main_root / ".monorepo" / repo.path,
+            ]
+        )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate.resolve()
+    return candidates[0].resolve()
 
 
 def ref(
@@ -26,7 +63,7 @@ def ref(
         "repo": repo_id,
         "label": label,
         "path": path,
-        "line": resolve_line(repo_abs_path(repo_root, repo), path, symbol, pattern=pattern),
+        "line": resolve_line(source_repo_abs_path(repo_root, repo), path, symbol, pattern=pattern),
         "symbol": symbol,
         "url": f"{github_url(repo.remote)}/blob/{repo.head}/{path}",
     }
@@ -53,6 +90,35 @@ def local_ref(
 
 def edge(edge_id: str, source: str, target: str, kind: str, label: str) -> dict[str, str]:
     return {"id": edge_id, "from": source, "to": target, "kind": kind, "label": label}
+
+
+def call(
+    call_id: str,
+    phase_id: str,
+    seq: int,
+    source: str,
+    target: str,
+    edge_id: str,
+    kind: str,
+    message: str,
+    summary: str,
+    details: list[str],
+    payload: list[str],
+) -> dict[str, Any]:
+    return {
+        "id": call_id,
+        "phase_id": phase_id,
+        "seq": seq,
+        "from": source,
+        "to": target,
+        "edge_id": edge_id,
+        "kind": kind,
+        "message": message,
+        "summary": summary,
+        "details": details,
+        "payload": payload,
+        "refs": [],
+    }
 
 
 def lock_generated_at(repo_root: Path) -> str:
@@ -391,6 +457,280 @@ def build(repo_root: Path) -> dict[str, Any]:
             **guide_link(repo_root, guide, hacks, "history-as-source-of-truth-and-replay", "hacks/004_history_replay.py"),
         },
     ]
+    calls = [
+        call(
+            "call-start-workflow",
+            "start",
+            1,
+            "kilvin-client",
+            "frontend-service",
+            "start-rpc",
+            "rpc",
+            "StartWorkflowExecution",
+            "Kilvin asks Temporal Frontend to create the command workflow run.",
+            [
+                "The client sends the workflow type, workflow id, task queue, and staged training input to the public Temporal API.",
+                "Frontend is the first server boundary for the workflow start request.",
+            ],
+            ["workflow_id", "task_queue", "workflow_type", "staged_training_config"],
+        ),
+        call(
+            "call-record-start",
+            "start",
+            2,
+            "frontend-service",
+            "history-service",
+            "history-start",
+            "history-event",
+            "WorkflowExecutionStarted",
+            "Frontend routes the accepted start request into History for durable recording.",
+            [
+                "History appends the initial WorkflowExecutionStarted event so replay can reconstruct the run from event history.",
+                "This event stores the workflow input and task queue metadata used by later workflow tasks.",
+            ],
+            ["event_type=WorkflowExecutionStarted", "workflow_task_queue", "input"],
+        ),
+        call(
+            "call-enqueue-first-workflow-task",
+            "start",
+            3,
+            "history-service",
+            "matching-service",
+            "schedule-wft",
+            "task-dispatch",
+            "workflow task",
+            "History schedules the first workflow task for Matching to hand to a worker poller.",
+            [
+                "The durable start event creates work for the configured workflow task queue.",
+                "Matching owns the queueing boundary where a polling worker will later receive the task.",
+            ],
+            ["task_queue", "workflow_task", "scheduled_event_id"],
+        ),
+        call(
+            "call-python-poll-activation",
+            "poll",
+            4,
+            "python-worker",
+            "bridge-worker",
+            "worker-poll",
+            "poll",
+            "poll_workflow_activation",
+            "The Python worker awaits the next workflow activation through the bridge.",
+            [
+                "Python initiates the poll because Temporal workers pull tasks rather than receiving direct server callbacks.",
+                "The bridge converts the Python await into a core worker poll operation.",
+            ],
+            ["worker_identity", "workflow_task_queue"],
+        ),
+        call(
+            "call-bridge-core-poll",
+            "poll",
+            5,
+            "bridge-worker",
+            "core-worker",
+            "bridge-core",
+            "poll",
+            "core poller request",
+            "The bridge asks sdk-core for the next workflow activation.",
+            [
+                "The bridge preserves Python's async boundary while delegating polling, cache, and state-machine work to core.",
+                "Core can satisfy the request only after it obtains or reconstructs a workflow task.",
+            ],
+            ["poller_kind=workflow", "task_queue"],
+        ),
+        call(
+            "call-core-poll-matching",
+            "poll",
+            6,
+            "core-worker",
+            "matching-service",
+            "core-matching",
+            "poll",
+            "PollWorkflowTaskQueue",
+            "sdk-core polls Matching for an available workflow task.",
+            [
+                "Core issues the server poll request on behalf of the Python worker.",
+                "The direction is worker to Matching: the worker is asking the server for work.",
+            ],
+            ["namespace", "task_queue", "identity"],
+        ),
+        call(
+            "call-matching-workflow-task",
+            "poll",
+            7,
+            "matching-service",
+            "core-worker",
+            "core-matching",
+            "response",
+            "workflow task response",
+            "Matching responds to the long poll with the workflow task from the queue.",
+            [
+                "The response travels back over the same Core-to-Matching poll edge.",
+                "The reversed call direction makes the server response explicit without introducing a separate diagram edge.",
+            ],
+            ["workflow_task_token", "history", "started_event_id"],
+        ),
+        call(
+            "call-core-activation",
+            "activate",
+            8,
+            "core-worker",
+            "workflow-activation",
+            "activation-up",
+            "activation",
+            "WorkflowActivation",
+            "sdk-core converts the workflow task into a Python workflow activation.",
+            [
+                "Core applies workflow state-machine rules and prepares jobs for the Python workflow instance.",
+                "Python receives an activation rather than raw server history.",
+            ],
+            ["run_id", "activation_jobs", "history_events"],
+        ),
+        call(
+            "call-schedule-activity-command",
+            "schedule-activity",
+            9,
+            "workflow-activation",
+            "history-service",
+            "activity-command",
+            "command",
+            "ScheduleActivityTask command",
+            "Workflow code emits a command to schedule side-effecting activity work.",
+            [
+                "The deterministic workflow turn records the intent to run an activity instead of performing the side effect inline.",
+                "History will turn the command into durable activity scheduling state.",
+            ],
+            ["activity_type", "activity_id", "task_queue", "timeouts"],
+        ),
+        call(
+            "call-workflow-task-complete",
+            "schedule-activity",
+            10,
+            "workflow-activation",
+            "history-service",
+            "workflow-complete",
+            "completion",
+            "RespondWorkflowTaskCompleted",
+            "The workflow activation completes its turn with the ScheduleActivityTask command batch.",
+            [
+                "Python returns the workflow task completion after the activation reaches a deterministic blocking point.",
+                "History applies the ScheduleActivityTask command from the completion before it can create activity scheduling state.",
+            ],
+            ["workflow_task_token", "commands=[ScheduleActivityTask]", "query_results"],
+        ),
+        call(
+            "call-enqueue-activity-task",
+            "schedule-activity",
+            11,
+            "history-service",
+            "matching-service",
+            "activity-dispatch",
+            "task-dispatch",
+            "activity task",
+            "History dispatches the scheduled activity task through Matching.",
+            [
+                "After accepting the completed workflow task, History records the activity scheduling event and places the task on the target activity queue.",
+                "Matching will deliver the task when a compatible worker poll is available.",
+            ],
+            ["activity_task_queue", "activity_task", "scheduled_event_id"],
+        ),
+        call(
+            "call-core-activity-task",
+            "execute-activity",
+            12,
+            "core-worker",
+            "activity-task",
+            "activity-poll",
+            "activation",
+            "ActivityTask",
+            "sdk-core hands an activity task to Python for execution.",
+            [
+                "Core receives activity work through its pollers and presents it to Python as an executable activity task.",
+                "The activity task can perform the external side effects that workflow code must avoid.",
+            ],
+            ["activity_type", "task_token", "input", "heartbeat_details"],
+        ),
+        call(
+            "call-activity-heartbeat",
+            "execute-activity",
+            13,
+            "activity-task",
+            "core-worker",
+            "heartbeat",
+            "heartbeat",
+            "RecordHeartbeat",
+            "The running activity reports progress back through sdk-core.",
+            [
+                "Heartbeats let Temporal observe liveness and persist progress details for retry or cancellation handling.",
+                "Core batches and forwards heartbeat state while Python continues the async activity.",
+            ],
+            ["task_token", "progress", "heartbeat_details"],
+        ),
+        call(
+            "call-activity-complete",
+            "execute-activity",
+            14,
+            "activity-task",
+            "history-service",
+            "activity-complete",
+            "completion",
+            "ActivityTaskCompleted",
+            "The activity result is recorded by History as a completed activity event.",
+            [
+                "The activity returns its output after the side effect finishes.",
+                "History appends ActivityTaskCompleted so a later workflow task can consume the result deterministically.",
+            ],
+            ["task_token", "activity_result", "completed_event_id"],
+        ),
+        call(
+            "call-enqueue-followup-workflow-task",
+            "complete",
+            15,
+            "history-service",
+            "matching-service",
+            "schedule-wft",
+            "task-dispatch",
+            "follow-up workflow task",
+            "History enqueues another workflow task when new events require workflow code to run again.",
+            [
+                "Activity completion or command application can make the workflow ready for another deterministic turn.",
+                "Matching holds that follow-up workflow task until a worker polls the task queue.",
+            ],
+            ["task_queue", "workflow_task", "new_history_events"],
+        ),
+        call(
+            "call-followup-workflow-task",
+            "complete",
+            16,
+            "matching-service",
+            "core-worker",
+            "core-matching",
+            "response",
+            "follow-up workflow task response",
+            "Matching returns the follow-up workflow task to sdk-core on the next poll.",
+            [
+                "The completed activity produced new history, so the next workflow task carries those events back to the worker.",
+                "This response uses the same Core-to-Matching poll edge in reverse to show the server response.",
+            ],
+            ["workflow_task_token", "activity_completed_event", "history"],
+        ),
+        call(
+            "call-followup-activation",
+            "complete",
+            17,
+            "core-worker",
+            "workflow-activation",
+            "activation-up",
+            "activation",
+            "WorkflowActivation",
+            "sdk-core delivers the follow-up activation so Python can observe the activity result.",
+            [
+                "Core converts the follow-up workflow task into another deterministic Python activation.",
+                "The workflow can now continue from the completed activity result or emit final completion commands.",
+            ],
+            ["activation_jobs", "activity_result", "history_events"],
+        ),
+    ]
     return {
         "generated_at": lock_generated_at(repo_root),
         "slug": "kilvin-asyncio-happy-path",
@@ -398,6 +738,7 @@ def build(repo_root: Path) -> dict[str, Any]:
         "phases": phases,
         "nodes": nodes,
         "edges": edges,
+        "calls": calls,
     }
 
 
