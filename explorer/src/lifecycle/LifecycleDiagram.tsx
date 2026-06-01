@@ -32,6 +32,24 @@ interface Rect {
   height: number
 }
 
+interface EdgeLabelPlacementInput {
+  edgeId: string
+  text: string
+  selected: boolean
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  labelWidth: number
+  labelHeight: number
+}
+
+export interface PlannedEdgeLabel extends EdgeLabelPlacementInput {
+  x: number
+  y: number
+  visible: boolean
+}
+
 const LAYERS = [
   { id: 'kilvin', label: 'Kilvin app', y: 34 },
   { id: 'sdk-python', label: 'Python SDK', y: 134 },
@@ -99,6 +117,48 @@ function rectOverlapsAny(rect: Rect, blockedRects: Rect[]): boolean {
   return blockedRects.some((blockedRect) => overlapArea(rect, blockedRect) > 0)
 }
 
+function edgeLabelPlacementCandidates({
+  x1,
+  y1,
+  x2,
+  y2,
+  labelWidth,
+  labelHeight,
+  viewBoxWidth,
+  viewBoxHeight,
+}: {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  labelWidth: number
+  labelHeight: number
+  viewBoxWidth: number
+  viewBoxHeight: number
+}) {
+  const midX = (x1 + x2) / 2
+  const midY = (y1 + y2) / 2
+  const mostlyVertical = Math.abs(y2 - y1) > Math.abs(x2 - x1) * 1.25
+  const verticalY = midY - labelHeight / 2
+  const horizontalX = midX - labelWidth / 2
+  const horizontalAboveY = midY - labelHeight - 12
+  const placeAt = (rawX: number, rawY: number) => ({
+    x: Math.round(clamp(rawX, 8, viewBoxWidth - labelWidth - 8)),
+    y: Math.round(clamp(rawY, 8, viewBoxHeight - labelHeight - 8)),
+  })
+
+  return mostlyVertical
+    ? [placeAt(midX + 18, verticalY), placeAt(midX - labelWidth - 18, verticalY)]
+    : [
+        placeAt(horizontalX, horizontalAboveY),
+        placeAt(horizontalX, midY + 12),
+        placeAt(horizontalX, horizontalAboveY - 30),
+        placeAt(horizontalX, midY + 42),
+        placeAt(midX + 18, verticalY),
+        placeAt(midX - labelWidth - 18, verticalY),
+      ]
+}
+
 export function edgeLabelPlacement({
   x1,
   y1,
@@ -120,28 +180,18 @@ export function edgeLabelPlacement({
   viewBoxHeight: number
   blockedRects?: Rect[]
 }) {
-  const midX = (x1 + x2) / 2
-  const midY = (y1 + y2) / 2
-  const mostlyVertical = Math.abs(y2 - y1) > Math.abs(x2 - x1) * 1.25
-  const verticalY = midY - labelHeight / 2
-  const horizontalX = midX - labelWidth / 2
-  const horizontalAboveY = midY - labelHeight - 12
-  const placeAt = (rawX: number, rawY: number) => ({
-    x: Math.round(clamp(rawX, 8, viewBoxWidth - labelWidth - 8)),
-    y: Math.round(clamp(rawY, 8, viewBoxHeight - labelHeight - 8)),
+  const candidates = edgeLabelPlacementCandidates({
+    x1,
+    y1,
+    x2,
+    y2,
+    labelWidth,
+    labelHeight,
+    viewBoxWidth,
+    viewBoxHeight,
   })
 
   if (blockedRects.length > 0) {
-    const candidates = mostlyVertical
-      ? [placeAt(midX + 18, verticalY), placeAt(midX - labelWidth - 18, verticalY)]
-      : [
-          placeAt(horizontalX, horizontalAboveY),
-          placeAt(horizontalX, midY + 12),
-          placeAt(horizontalX, horizontalAboveY - 30),
-          placeAt(horizontalX, midY + 42),
-          placeAt(midX + 18, verticalY),
-          placeAt(midX - labelWidth - 18, verticalY),
-        ]
     const openCandidate = candidates.find((candidate) => {
       return !rectOverlapsAny({ ...candidate, width: labelWidth, height: labelHeight }, blockedRects)
     })
@@ -162,7 +212,63 @@ export function edgeLabelPlacement({
     return { x: best.x, y: best.y }
   }
 
-  return mostlyVertical ? placeAt(midX + 18, verticalY) : placeAt(horizontalX, horizontalAboveY)
+  return candidates[0]
+}
+
+export function planEdgeLabelPlacements({
+  labels,
+  blockedRects,
+  viewBoxWidth,
+  viewBoxHeight,
+}: {
+  labels: EdgeLabelPlacementInput[]
+  blockedRects: Rect[]
+  viewBoxWidth: number
+  viewBoxHeight: number
+}): Map<string, PlannedEdgeLabel> {
+  const occupiedRects = [...blockedRects]
+  const plannedLabels = new Map<string, PlannedEdgeLabel>()
+  const sortedLabels = labels
+    .map((label, index) => ({ label, index }))
+    .sort((a, b) => Number(b.label.selected) - Number(a.label.selected) || a.index - b.index)
+
+  for (const { label } of sortedLabels) {
+    const candidates = edgeLabelPlacementCandidates({
+      x1: label.x1,
+      y1: label.y1,
+      x2: label.x2,
+      y2: label.y2,
+      labelWidth: label.labelWidth,
+      labelHeight: label.labelHeight,
+      viewBoxWidth,
+      viewBoxHeight,
+    })
+    const openPlacement = candidates.find((candidate) => {
+      return !rectOverlapsAny({ ...candidate, width: label.labelWidth, height: label.labelHeight }, occupiedRects)
+    })
+    const placement =
+      openPlacement ??
+      edgeLabelPlacement({
+        x1: label.x1,
+        y1: label.y1,
+        x2: label.x2,
+        y2: label.y2,
+        labelWidth: label.labelWidth,
+        labelHeight: label.labelHeight,
+        viewBoxWidth,
+        viewBoxHeight,
+        blockedRects: occupiedRects,
+      })
+    const visible = Boolean(openPlacement || label.selected)
+    const plannedLabel = { ...label, ...placement, visible }
+
+    plannedLabels.set(label.edgeId, plannedLabel)
+    if (visible) {
+      occupiedRects.push({ x: placement.x, y: placement.y, width: label.labelWidth, height: label.labelHeight })
+    }
+  }
+
+  return plannedLabels
 }
 
 export function displayEdgeLabel({
@@ -245,6 +351,60 @@ export default function LifecycleDiagram({
 }) {
   const byId = new Map(nodes.map((node) => [node.id, node]))
   const blockedRects = nodes.map(nodeBox)
+  const edgeModels = edges.map((edge) => {
+    const from = byId.get(edge.from)
+    const to = byId.get(edge.to)
+
+    if (!from || !to) return null
+
+    const active = activeEdgeIds.has(edge.id)
+    const selected = selectedEdgeId === edge.id
+    const directedFrom =
+      selected && edgeMatchesCallDirection(edge, selectedCallFrom, selectedCallTo)
+        ? byId.get(selectedCallFrom)
+        : from
+    const directedTo =
+      selected && edgeMatchesCallDirection(edge, selectedCallFrom, selectedCallTo)
+        ? byId.get(selectedCallTo ?? '')
+        : to
+
+    if (!directedFrom || !directedTo) return null
+
+    const a = nodeBox(directedFrom)
+    const b = nodeBox(directedTo)
+    const label = displayEdgeLabel({
+      edgeId: edge.id,
+      edgeLabel: edge.label,
+      activeCallLabels,
+      selectedCall,
+      activePhaseId,
+    })
+    const labelWidth = label ? edgeLabelWidth(label.text) : 0
+
+    return { edge, a, b, active, selected, label, labelWidth }
+  })
+  const plannedLabels = planEdgeLabelPlacements({
+    labels: edgeModels.flatMap((model) => {
+      if (!model?.label?.visible) return []
+
+      return [
+        {
+          edgeId: model.edge.id,
+          text: model.label.text,
+          selected: model.label.selected,
+          x1: model.a.cx,
+          y1: model.a.cy,
+          x2: model.b.cx,
+          y2: model.b.cy,
+          labelWidth: model.labelWidth,
+          labelHeight: EDGE_LABEL_HEIGHT,
+        },
+      ]
+    }),
+    blockedRects,
+    viewBoxWidth: SVG_WIDTH,
+    viewBoxHeight: SVG_HEIGHT,
+  })
 
   return (
     <svg viewBox="0 0 820 560" className="lifecycle-svg" role="group" aria-label="Temporal lifecycle diagram">
@@ -285,51 +445,13 @@ export default function LifecycleDiagram({
         </g>
       ))}
 
-      {edges.map((edge) => {
-        const from = byId.get(edge.from)
-        const to = byId.get(edge.to)
+      {edgeModels.map((model) => {
+        if (!model) return null
 
-        if (!from || !to) return null
-
-        const active = activeEdgeIds.has(edge.id)
-        const selected = selectedEdgeId === edge.id
-        const directedFrom =
-          selected && edgeMatchesCallDirection(edge, selectedCallFrom, selectedCallTo)
-            ? byId.get(selectedCallFrom)
-            : from
-        const directedTo =
-          selected && edgeMatchesCallDirection(edge, selectedCallFrom, selectedCallTo)
-            ? byId.get(selectedCallTo ?? '')
-            : to
-
-        if (!directedFrom || !directedTo) return null
-
-        const a = nodeBox(directedFrom)
-        const b = nodeBox(directedTo)
+        const { edge, a, b, active, selected, label, labelWidth } = model
         const marker = selected ? 'url(#lifecycle-arrow-selected)' : active ? 'url(#lifecycle-arrow-active)' : 'url(#lifecycle-arrow)'
         const selectable = Boolean(onSelectEdge)
-        const label = displayEdgeLabel({
-          edgeId: edge.id,
-          edgeLabel: edge.label,
-          activeCallLabels,
-          selectedCall,
-          activePhaseId,
-        })
-        const labelWidth = label ? edgeLabelWidth(label.text) : 0
-        const labelPosition =
-          label && label.visible
-            ? edgeLabelPlacement({
-                x1: a.cx,
-                y1: a.cy,
-                x2: b.cx,
-                y2: b.cy,
-                labelWidth,
-                labelHeight: EDGE_LABEL_HEIGHT,
-                viewBoxWidth: SVG_WIDTH,
-                viewBoxHeight: SVG_HEIGHT,
-                blockedRects,
-              })
-            : null
+        const labelPosition = label ? plannedLabels.get(edge.id) : null
 
         function selectEdge() {
           onSelectEdge?.(edge.id)
@@ -353,7 +475,7 @@ export default function LifecycleDiagram({
           >
             <line className="lifecycle-edge-hit" x1={a.cx} y1={a.cy} x2={b.cx} y2={b.cy} />
             <line className="lifecycle-edge-line" x1={a.cx} y1={a.cy} x2={b.cx} y2={b.cy} markerEnd={marker} />
-            {label && labelPosition && (
+            {label && labelPosition?.visible && (
               <g className={cn('lifecycle-edge-label-badge', label.selected && 'selected')}>
                 <rect
                   x={labelPosition.x}

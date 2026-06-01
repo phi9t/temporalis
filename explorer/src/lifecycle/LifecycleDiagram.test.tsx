@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   displayEdgeLabel,
   edgeLabelPlacement,
+  planEdgeLabelPlacements,
   truncateEdgeLabel,
   type EdgeLabelCall,
 } from './LifecycleDiagram'
@@ -145,5 +146,88 @@ describe('LifecycleDiagram edge labels', () => {
     expect(rectsOverlap({ x: placement.x, y: placement.y, width: labelWidth, height: labelHeight }, blockedRect)).toBe(
       false,
     )
+  })
+
+  it('plans selected labels before active labels so active badges do not overlap shared endpoints', () => {
+    const labelHeight = 24
+    const labels = planEdgeLabelPlacements({
+      labels: [
+        {
+          edgeId: 'activity-command',
+          text: 'ScheduleActivityTask',
+          selected: false,
+          x1: 316,
+          y1: 383,
+          x2: 676,
+          y2: 383,
+          labelWidth: 140,
+          labelHeight,
+        },
+        {
+          edgeId: 'frontend-history',
+          text: 'ScheduleActivityTask',
+          selected: true,
+          x1: 136,
+          y1: 483,
+          x2: 316,
+          y2: 483,
+          labelWidth: 140,
+          labelHeight,
+        },
+      ],
+      blockedRects: [],
+      viewBoxWidth: 820,
+      viewBoxHeight: 560,
+    })
+
+    expect(labels.get('frontend-history')).toMatchObject({ visible: true, selected: true, x: 156, y: 447 })
+    expect(labels.get('activity-command')?.visible).toBe(true)
+
+    const selected = labels.get('frontend-history')
+    const active = labels.get('activity-command')
+    if (!selected || !active) throw new Error('expected both labels to be planned')
+
+    expect(
+      rectsOverlap(
+        { x: selected.x, y: selected.y, width: selected.labelWidth, height: selected.labelHeight },
+        { x: active.x, y: active.y, width: active.labelWidth, height: active.labelHeight },
+      ),
+    ).toBe(false)
+  })
+
+  it('hides active labels when every placement overlaps existing label or node rectangles', () => {
+    const labelHeight = 24
+    const labels = planEdgeLabelPlacements({
+      labels: [
+        {
+          edgeId: 'activity-poll',
+          text: 'PollActivityTaskQueue',
+          selected: true,
+          x1: 250,
+          y1: 90,
+          x2: 250,
+          y2: 480,
+          labelWidth: 140,
+          labelHeight,
+        },
+        {
+          edgeId: 'heartbeat',
+          text: 'RecordActivityTaskHeartbeat',
+          selected: false,
+          x1: 250,
+          y1: 90,
+          x2: 250,
+          y2: 480,
+          labelWidth: 140,
+          labelHeight,
+        },
+      ],
+      blockedRects: [{ x: 92, y: 273, width: 140, height: labelHeight }],
+      viewBoxWidth: 820,
+      viewBoxHeight: 560,
+    })
+
+    expect(labels.get('activity-poll')?.visible).toBe(true)
+    expect(labels.get('heartbeat')?.visible).toBe(false)
   })
 })
