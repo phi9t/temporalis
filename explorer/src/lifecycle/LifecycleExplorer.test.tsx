@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import LifecycleExplorer from './LifecycleExplorer'
 import type { LifecycleManifest } from './types'
 
@@ -82,10 +82,53 @@ const manifest: LifecycleManifest = {
       payload: ['workflow_id', 'task_queue', 'workflow_type', 'input'],
       refs: [],
     },
+    {
+      id: 'call-describe-workflow',
+      phase_id: 'start',
+      seq: 2,
+      from: 'kilvin-client',
+      to: 'frontend-service',
+      edge_id: 'start-rpc',
+      kind: 'rpc',
+      message: 'DescribeWorkflowExecution',
+      summary: 'Kilvin reads the workflow execution description after start.',
+      details: ['The app checks workflow execution state after submitting the start request.'],
+      payload: ['run_id'],
+      refs: [],
+    },
   ],
 }
 
+afterEach(() => cleanup())
+
 describe('LifecycleExplorer', () => {
+  it('renders the call sequence and defaults to the first sorted call details', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const firstCall = await screen.findByRole('button', {
+      name: /01 Kilvin client to Frontend StartWorkflowExecution/,
+    })
+
+    expect(firstCall).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
+    expect(screen.getAllByText('Kilvin asks Temporal to start the command workflow.').length).toBeGreaterThan(0)
+    expect(screen.getByText('workflow_id')).toBeTruthy()
+  })
+
+  it('updates call details when a call row is selected', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const secondCall = await screen.findByRole('button', {
+      name: /02 Kilvin client to Frontend DescribeWorkflowExecution/,
+    })
+
+    fireEvent.click(secondCall)
+
+    expect(screen.getByRole('heading', { name: 'DescribeWorkflowExecution' })).toBeTruthy()
+    expect(screen.getAllByText('Kilvin reads the workflow execution description after start.').length).toBeGreaterThan(0)
+    expect(screen.getByText('run_id')).toBeTruthy()
+  })
+
   it('renders phase guide and hack links', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 

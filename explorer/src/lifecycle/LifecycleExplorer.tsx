@@ -5,9 +5,11 @@ import { ViewTabs } from '@/explorer-kit/ViewTabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ExplorerModeProps } from '@/explorer-kit/mode'
 import { errorMessage, fetchExplorerJson } from '@/lib/fetch'
+import CallSequence from './CallSequence'
 import LifecycleDiagram from './LifecycleDiagram'
 import LifecycleDrawer from './LifecycleDrawer'
-import type { LifecycleManifest, LifecycleNode } from './types'
+import { getSortedLifecycleCalls } from './manifestValidation'
+import type { LifecycleCall, LifecycleManifest, LifecycleSelection } from './types'
 
 interface LifecycleEntry {
   slug: string
@@ -20,9 +22,10 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   const [indexError, setIndexError] = useState<string | null>(null)
   const [slug, setSlug] = useState<string>('')
   const [manifest, setManifest] = useState<LifecycleManifest | null>(null)
+  const [calls, setCalls] = useState<LifecycleCall[]>([])
   const [manifestError, setManifestError] = useState<string | null>(null)
   const [phaseId, setPhaseId] = useState<string>('')
-  const [selected, setSelected] = useState<LifecycleNode | null>(null)
+  const [selected, setSelected] = useState<LifecycleSelection | null>(null)
 
   useEffect(() => {
     fetchExplorerJson<LifecycleEntry[]>('lifecycle/index.json')
@@ -44,9 +47,12 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
       .then((loaded) => {
         if (!isCurrent) return
 
+        const sortedCalls = getSortedLifecycleCalls(loaded)
+
         setManifest(loaded)
+        setCalls(sortedCalls)
         setPhaseId(loaded.phases[0]?.id ?? '')
-        setSelected(null)
+        setSelected(sortedCalls[0] ? { type: 'call', call: sortedCalls[0] } : null)
       })
       .catch((error: unknown) => {
         if (!isCurrent) return
@@ -62,21 +68,52 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   function handleSlugChange(nextSlug: string) {
     setSlug(nextSlug)
     setManifest(null)
+    setCalls([])
     setManifestError(null)
     setSelected(null)
   }
 
   const phase = manifest?.phases.find((item) => item.id === phaseId) ?? manifest?.phases[0] ?? null
-  const activeNodeIds = useMemo(() => new Set(phase?.node_ids ?? []), [phase])
-  const activeEdgeIds = useMemo(() => {
-    if (!manifest) return new Set<string>()
+  const activePhaseCalls = useMemo(
+    () => calls.filter((call) => call.phase_id === (phase?.id ?? '')),
+    [calls, phase?.id],
+  )
+  const activeNodeIds = useMemo(() => {
+    const ids = new Set<string>()
 
-    return new Set(
-      manifest.edges
-        .filter((edge) => activeNodeIds.has(edge.from) || activeNodeIds.has(edge.to))
-        .map((edge) => edge.id),
-    )
-  }, [activeNodeIds, manifest])
+    for (const call of activePhaseCalls) {
+      ids.add(call.from)
+      ids.add(call.to)
+    }
+
+    return ids
+  }, [activePhaseCalls])
+  const activeEdgeIds = useMemo(() => {
+    return new Set(activePhaseCalls.map((call) => call.edge_id))
+  }, [activePhaseCalls])
+  const nodeLabels = useMemo(
+    () => new Map(manifest?.nodes.map((node) => [node.id, node.label]) ?? []),
+    [manifest?.nodes],
+  )
+  const phaseLabels = useMemo(
+    () => new Map(manifest?.phases.map((item) => [item.id, item.label]) ?? []),
+    [manifest?.phases],
+  )
+  const selectedCall = selected?.type === 'call' ? selected.call : null
+  const selectedNode = selected?.type === 'node' ? selected.node : null
+  const selectedEndpointNodeIds = useMemo(() => {
+    if (!selectedCall) return new Set<string>()
+
+    return new Set([selectedCall.from, selectedCall.to])
+  }, [selectedCall])
+
+  function handleEdgeSelect(edgeId: string) {
+    const call = activePhaseCalls.find((item) => item.edge_id === edgeId) ?? calls.find((item) => item.edge_id === edgeId)
+
+    if (call) {
+      setSelected({ type: 'call', call })
+    }
+  }
 
   if (!index) {
     return (
@@ -117,25 +154,37 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
           options={manifest.phases.map((item) => ({ value: item.id, label: item.label }))}
         />
       </div>
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <div className="lifecycle-workspace">
         <Card>
           <CardHeader>
             <CardTitle>{phase?.label ?? manifest.label}</CardTitle>
             <p className="text-sm text-ink-soft">{phase?.summary}</p>
           </CardHeader>
           <CardContent>
-            <LifecycleDiagram
-              nodes={manifest.nodes}
-              edges={manifest.edges}
-              activeNodeIds={activeNodeIds}
-              activeEdgeIds={activeEdgeIds}
-              selectedId={selected?.id ?? null}
-              onSelect={setSelected}
-            />
+            <div className="lifecycle-main">
+              <LifecycleDiagram
+                nodes={manifest.nodes}
+                edges={manifest.edges}
+                activeNodeIds={activeNodeIds}
+                activeEdgeIds={activeEdgeIds}
+                selectedId={selectedNode?.id ?? null}
+                selectedEdgeId={selectedCall?.edge_id ?? null}
+                selectedEndpointNodeIds={selectedEndpointNodeIds}
+                onSelect={(node) => setSelected({ type: 'node', node })}
+                onSelectEdge={handleEdgeSelect}
+              />
+              <CallSequence
+                calls={calls}
+                nodeLabels={nodeLabels}
+                activePhaseId={phase?.id ?? ''}
+                selectedCallId={selectedCall?.id ?? null}
+                onSelect={(call) => setSelected({ type: 'call', call })}
+              />
+            </div>
           </CardContent>
         </Card>
-        <div className="xl:sticky xl:top-6">
-          <LifecycleDrawer node={selected} phase={phase} />
+        <div className="lifecycle-drawer-shell">
+          <LifecycleDrawer selection={selected} phase={phase} nodeLabels={nodeLabels} phaseLabels={phaseLabels} />
         </div>
       </div>
     </div>

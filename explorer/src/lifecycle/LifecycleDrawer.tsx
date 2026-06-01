@@ -1,7 +1,7 @@
 import { BookOpen, ExternalLink, Terminal } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { guideUrl } from '@/lib/assets'
-import type { LifecycleNode, LifecyclePhase } from './types'
+import type { LifecycleCall, LifecycleNode, LifecyclePhase, LifecycleSelection, SourceRef } from './types'
 
 function GuideHackPanel({ phase }: { phase: LifecyclePhase | null }) {
   if (!phase) return null
@@ -22,14 +22,100 @@ function GuideHackPanel({ phase }: { phase: LifecyclePhase | null }) {
   )
 }
 
+function SourceRefs({ refs }: { refs: SourceRef[] }) {
+  if (refs.length === 0) return null
+
+  return (
+    <div>
+      <h4 className="mb-2 font-mono text-xs uppercase text-ink-muted">Source refs</h4>
+      <div className="space-y-2">
+        {refs.map((ref) => (
+          <a
+            key={`${ref.repo}:${ref.path}:${ref.line}`}
+            className="source-link"
+            href={`${ref.url}#L${ref.line}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span className="source-link-label">{ref.label}</span>
+            <span className="source-link-path font-mono text-[11px] text-ink-muted">
+              {ref.path}:{ref.line}
+            </span>
+            <ExternalLink size={12} aria-hidden="true" />
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CallDetails({
+  call,
+  phase,
+  nodeLabels,
+  phaseLabels,
+}: {
+  call: LifecycleCall
+  phase: LifecyclePhase | null
+  nodeLabels: Map<string, string>
+  phaseLabels: Map<string, string>
+}) {
+  const from = nodeLabels.get(call.from) ?? call.from
+  const to = nodeLabels.get(call.to) ?? call.to
+  const phaseLabel = phaseLabels.get(call.phase_id) ?? call.phase_id
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{call.message}</CardTitle>
+        <p className="font-mono text-xs text-cyan">
+          {from} -&gt; {to}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        <div className="call-detail-meta">
+          <span>{call.kind}</span>
+          <span>{phaseLabel}</span>
+        </div>
+        <p className="text-ink">{call.summary}</p>
+        <ul className="call-detail-list">
+          {call.details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+        {call.payload && call.payload.length > 0 && (
+          <div>
+            <h4 className="mb-2 font-mono text-xs uppercase text-ink-muted">Payload</h4>
+            <div className="call-detail-chips">
+              {call.payload.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        <SourceRefs refs={call.refs} />
+        <GuideHackPanel phase={phase} />
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function LifecycleDrawer({
+  selection,
   node,
   phase,
+  nodeLabels = new Map<string, string>(),
+  phaseLabels = new Map<string, string>(),
 }: {
-  node: LifecycleNode | null
+  selection?: LifecycleSelection | null
+  node?: LifecycleNode | null
   phase: LifecyclePhase | null
+  nodeLabels?: Map<string, string>
+  phaseLabels?: Map<string, string>
 }) {
-  if (!node) {
+  const selected = selection ?? (node ? { type: 'node' as const, node } : null)
+
+  if (!selected) {
     return (
       <Card>
         <CardHeader>
@@ -46,38 +132,25 @@ export default function LifecycleDrawer({
     )
   }
 
+  if (selected.type === 'call') {
+    return <CallDetails call={selected.call} phase={phase} nodeLabels={nodeLabels} phaseLabels={phaseLabels} />
+  }
+
+  const selectedNode = selected.node
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{node.label}</CardTitle>
+        <CardTitle>{selectedNode.label}</CardTitle>
         <p className="font-mono text-xs text-cyan">
-          {node.layer} · {node.kind}
+          {selectedNode.layer} · {selectedNode.kind}
         </p>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
-        <p className="text-ink">{node.summary}</p>
-        <p className="text-ink-soft">{node.notes}</p>
+        <p className="text-ink">{selectedNode.summary}</p>
+        <p className="text-ink-soft">{selectedNode.notes}</p>
         <GuideHackPanel phase={phase} />
-        <div>
-          <h4 className="mb-2 font-mono text-xs uppercase text-ink-muted">Source refs</h4>
-          <div className="space-y-2">
-            {node.refs.map((ref) => (
-              <a
-                key={`${ref.repo}:${ref.path}:${ref.line}`}
-                className="source-link"
-                href={`${ref.url}#L${ref.line}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span className="source-link-label">{ref.label}</span>
-                <span className="source-link-path font-mono text-[11px] text-ink-muted">
-                  {ref.path}:{ref.line}
-                </span>
-                <ExternalLink size={12} aria-hidden="true" />
-              </a>
-            ))}
-          </div>
-        </div>
+        <SourceRefs refs={selectedNode.refs} />
       </CardContent>
     </Card>
   )
