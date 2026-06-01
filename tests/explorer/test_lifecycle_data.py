@@ -92,12 +92,18 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
     required_call_ids = {
         "call-core-poll-matching",
         "call-matching-workflow-task",
+        "call-workflow-commands-to-core",
+        "call-core-respond-workflow-task-completed",
+        "call-history-apply-workflow-task-completed",
         "call-schedule-activity-command",
-        "call-workflow-task-complete",
         "call-enqueue-activity-task",
         "call-core-poll-activity-task",
         "call-matching-activity-task",
         "call-core-activity-task",
+        "call-core-record-activity-heartbeat",
+        "call-history-record-activity-heartbeat",
+        "call-core-respond-activity-task-completed",
+        "call-history-record-activity-task-completed",
         "call-enqueue-followup-workflow-task",
         "call-core-poll-followup-workflow-task",
         "call-followup-workflow-task",
@@ -114,10 +120,19 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
         < calls_by_id["call-core-activity-task"]["seq"]
     )
     assert (
-        calls_by_id["call-schedule-activity-command"]["seq"]
-        < calls_by_id["call-workflow-task-complete"]["seq"]
+        calls_by_id["call-workflow-commands-to-core"]["seq"]
+        < calls_by_id["call-core-respond-workflow-task-completed"]["seq"]
+        < calls_by_id["call-history-apply-workflow-task-completed"]["seq"]
+        < calls_by_id["call-schedule-activity-command"]["seq"]
         < calls_by_id["call-enqueue-activity-task"]["seq"]
         < calls_by_id["call-core-poll-activity-task"]["seq"]
+    )
+    assert (
+        calls_by_id["call-activity-heartbeat"]["seq"]
+        < calls_by_id["call-core-record-activity-heartbeat"]["seq"]
+        < calls_by_id["call-history-record-activity-heartbeat"]["seq"]
+        < calls_by_id["call-core-respond-activity-task-completed"]["seq"]
+        < calls_by_id["call-history-record-activity-task-completed"]["seq"]
     )
     assert (
         calls_by_id["call-enqueue-followup-workflow-task"]["seq"]
@@ -125,10 +140,27 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
         < calls_by_id["call-followup-workflow-task"]["seq"]
         < calls_by_id["call-followup-activation"]["seq"]
     )
-    workflow_task_complete = calls_by_id["call-workflow-task-complete"]
+    workflow_commands = calls_by_id["call-workflow-commands-to-core"]
+    assert workflow_commands["from"] == "workflow-activation"
+    assert workflow_commands["to"] == "core-worker"
+    assert workflow_commands["message"] == "WorkflowActivationCompletion"
+    workflow_task_complete = calls_by_id["call-core-respond-workflow-task-completed"]
+    assert workflow_task_complete["from"] == "core-worker"
+    assert workflow_task_complete["to"] == "frontend-service"
     assert workflow_task_complete["message"] == "RespondWorkflowTaskCompleted"
-    command_text = " ".join([*workflow_task_complete.get("payload", []), *workflow_task_complete["details"]])
+    workflow_history_apply = calls_by_id["call-history-apply-workflow-task-completed"]
+    assert workflow_history_apply["from"] == "frontend-service"
+    assert workflow_history_apply["to"] == "history-service"
+    command_text = " ".join(
+        [*workflow_commands.get("payload", []), *workflow_task_complete.get("payload", []), *workflow_history_apply["details"]]
+    )
     assert "ScheduleActivityTask" in command_text
+    assert calls_by_id["call-core-record-activity-heartbeat"]["message"] == "RecordActivityTaskHeartbeat"
+    assert calls_by_id["call-core-record-activity-heartbeat"]["from"] == "core-worker"
+    assert calls_by_id["call-core-record-activity-heartbeat"]["to"] == "frontend-service"
+    assert calls_by_id["call-core-respond-activity-task-completed"]["message"] == "RespondActivityTaskCompleted"
+    assert calls_by_id["call-core-respond-activity-task-completed"]["from"] == "core-worker"
+    assert calls_by_id["call-core-respond-activity-task-completed"]["to"] == "frontend-service"
 
     seqs = [call["seq"] for call in calls]
     assert len(seqs) == len(set(seqs))
@@ -153,6 +185,30 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
             )
         else:
             assert (edge["from"], edge["to"]) == (call["from"], call["to"])
+
+
+def test_representative_lifecycle_calls_include_source_refs() -> None:
+    run_generator()
+    manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    calls_by_id = {call["id"]: call for call in manifest["calls"]}
+    required_ref_call_ids = {
+        "call-start-workflow",
+        "call-python-poll-activation",
+        "call-core-poll-matching",
+        "call-core-respond-workflow-task-completed",
+        "call-core-record-activity-heartbeat",
+        "call-core-respond-activity-task-completed",
+    }
+
+    for call_id in required_ref_call_ids:
+        refs = calls_by_id[call_id]["refs"]
+        assert refs, call_id
+        for ref in refs:
+            assert ref["repo"]
+            assert ref["path"]
+            assert ref["label"]
+            assert ref["url"].startswith("https://")
+            assert isinstance(ref["line"], int) and ref["line"] > 0
 
 
 def test_source_refs_resolve_to_real_lines() -> None:
