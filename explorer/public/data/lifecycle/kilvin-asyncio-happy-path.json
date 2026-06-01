@@ -784,9 +784,30 @@
       "refs": []
     },
     {
-      "id": "call-followup-workflow-task",
+      "id": "call-core-poll-followup-workflow-task",
       "phase_id": "complete",
       "seq": 18,
+      "from": "core-worker",
+      "to": "matching-service",
+      "edge_id": "core-matching",
+      "kind": "poll",
+      "message": "PollWorkflowTaskQueue",
+      "summary": "sdk-core long-polls Matching for the follow-up workflow task.",
+      "details": [
+        "After History enqueues the follow-up task, Core must poll Matching again before the task can be returned.",
+        "This preserves the worker-pull model for follow-up workflow turns as well as the first workflow task."
+      ],
+      "payload": [
+        "namespace",
+        "task_queue",
+        "identity"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-followup-workflow-task",
+      "phase_id": "complete",
+      "seq": 19,
       "from": "matching-service",
       "to": "core-worker",
       "edge_id": "core-matching",
@@ -807,7 +828,7 @@
     {
       "id": "call-followup-activation",
       "phase_id": "complete",
-      "seq": 19,
+      "seq": 20,
       "from": "core-worker",
       "to": "workflow-activation",
       "edge_id": "activation-up",

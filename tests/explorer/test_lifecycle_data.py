@@ -98,6 +98,10 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
         "call-core-poll-activity-task",
         "call-matching-activity-task",
         "call-core-activity-task",
+        "call-enqueue-followup-workflow-task",
+        "call-core-poll-followup-workflow-task",
+        "call-followup-workflow-task",
+        "call-followup-activation",
     }
     assert required_call_ids <= calls_by_id.keys()
     assert calls_by_id["call-core-poll-matching"]["kind"] == "poll"
@@ -114,6 +118,12 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
         < calls_by_id["call-workflow-task-complete"]["seq"]
         < calls_by_id["call-enqueue-activity-task"]["seq"]
         < calls_by_id["call-core-poll-activity-task"]["seq"]
+    )
+    assert (
+        calls_by_id["call-enqueue-followup-workflow-task"]["seq"]
+        < calls_by_id["call-core-poll-followup-workflow-task"]["seq"]
+        < calls_by_id["call-followup-workflow-task"]["seq"]
+        < calls_by_id["call-followup-activation"]["seq"]
     )
     workflow_task_complete = calls_by_id["call-workflow-task-complete"]
     assert workflow_task_complete["message"] == "RespondWorkflowTaskCompleted"
