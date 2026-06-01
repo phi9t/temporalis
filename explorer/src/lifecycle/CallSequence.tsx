@@ -16,12 +16,14 @@ export default function CallSequence({
   activePhaseId,
   selectedCallId,
   onSelect,
+  registerCallRow,
 }: {
   calls: LifecycleCall[]
   nodeLabels: Map<string, string>
   activePhaseId: string
   selectedCallId: string | null
   onSelect: (call: LifecycleCall) => void
+  registerCallRow?: (callId: string, element: HTMLButtonElement | null) => void
 }) {
   const orderedCalls = [...calls].sort((a, b) => a.seq - b.seq)
 
@@ -41,7 +43,9 @@ export default function CallSequence({
           return (
             <button
               key={call.id}
+              ref={(element) => registerCallRow?.(call.id, element)}
               type="button"
+              data-call-id={call.id}
               className={cn('call-sequence-row', active && 'active', selected && 'selected')}
               aria-label={`${seq} ${from} to ${to} ${call.message}${active ? ' Current phase call' : ''}`}
               aria-pressed={selected}

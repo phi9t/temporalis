@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LifecycleExplorer from './LifecycleExplorer'
 import type { LifecycleManifest } from './types'
 
@@ -137,6 +137,16 @@ const manifest: LifecycleManifest = {
   ],
 }
 
+const scrollIntoView = vi.fn()
+
+beforeEach(() => {
+  scrollIntoView.mockClear()
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: scrollIntoView,
+  })
+})
+
 afterEach(() => cleanup())
 
 describe('LifecycleExplorer', () => {
@@ -191,6 +201,38 @@ describe('LifecycleExplorer', () => {
       '/HACKERS_GUIDE.md#happy-path-poll-workflow-task',
     )
     expect(screen.getByText('python hacks/003_lifecycle_poll.py')).toBeTruthy()
+  })
+
+  it('scrolls the selected call into view when phase or edge selection changes it', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('button', {
+      name: /01 Kilvin client to Frontend StartWorkflowExecution/,
+    })
+
+    scrollIntoView.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Poll workflow task' }))
+
+    expect(screen.getByRole('heading', { name: 'PollWorkflowTaskQueue' })).toBeTruthy()
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'auto' })
+
+    scrollIntoView.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Start workflow' }))
+    expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
+
+    const edge = screen.getByRole('button', { name: /Diagram edge StartWorkflowExecution/ })
+    fireEvent.keyDown(edge, { key: 'Enter' })
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'auto' })
+  })
+
+  it('does not change selection merely because the call sequence scrolls', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const sequence = await screen.findByLabelText('Lifecycle call sequence')
+    fireEvent.scroll(sequence)
+
+    expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
   })
 
   it('selects the first active-phase call when a diagram edge is clicked', async () => {

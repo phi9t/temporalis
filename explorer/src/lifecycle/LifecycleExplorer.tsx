@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AsyncBoundary } from '@/explorer-kit/AsyncBoundary'
 import { SubjectSwitcher } from '@/explorer-kit/SubjectSwitcher'
 import { ViewTabs } from '@/explorer-kit/ViewTabs'
@@ -26,11 +26,30 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   const [manifestError, setManifestError] = useState<string | null>(null)
   const [phaseId, setPhaseId] = useState<string>('')
   const [selected, setSelected] = useState<LifecycleSelection | null>(null)
+  const callRowsRef = useRef(new Map<string, HTMLButtonElement>())
+  const shouldScrollSelectedCallRef = useRef(false)
 
   const selectCall = useCallback((call: LifecycleCall) => {
     setPhaseId(call.phase_id)
     setSelected({ type: 'call', call })
   }, [])
+
+  const registerCallRow = useCallback((callId: string, element: HTMLButtonElement | null) => {
+    if (element) {
+      callRowsRef.current.set(callId, element)
+      return
+    }
+
+    callRowsRef.current.delete(callId)
+  }, [])
+
+  const selectCallAndReveal = useCallback(
+    (call: LifecycleCall) => {
+      shouldScrollSelectedCallRef.current = true
+      selectCall(call)
+    },
+    [selectCall],
+  )
 
   useEffect(() => {
     fetchExplorerJson<LifecycleEntry[]>('lifecycle/index.json')
@@ -110,6 +129,14 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   )
   const selectedCall = selected?.type === 'call' ? selected.call : null
   const selectedNode = selected?.type === 'node' ? selected.node : null
+
+  useEffect(() => {
+    if (!selectedCall || !shouldScrollSelectedCallRef.current) return
+
+    shouldScrollSelectedCallRef.current = false
+    callRowsRef.current.get(selectedCall.id)?.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+  }, [selectedCall])
+
   const selectedEndpointNodeIds = useMemo(() => {
     if (!selectedCall) return new Set<string>()
 
@@ -120,7 +147,7 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
     const call = activePhaseCalls.find((item) => item.edge_id === edgeId) ?? calls.find((item) => item.edge_id === edgeId)
 
     if (call) {
-      selectCall(call)
+      selectCallAndReveal(call)
     }
   }
 
@@ -128,7 +155,7 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
     const call = calls.find((item) => item.phase_id === nextPhaseId)
 
     if (call) {
-      selectCall(call)
+      selectCallAndReveal(call)
       return
     }
 
@@ -190,6 +217,7 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
                   activePhaseId={phase?.id ?? ''}
                   selectedCallId={selectedCall?.id ?? null}
                   onSelect={selectCall}
+                  registerCallRow={registerCallRow}
                 />
               </div>
               <div className="lifecycle-diagram">

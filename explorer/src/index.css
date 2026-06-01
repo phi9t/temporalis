@@ -498,15 +498,23 @@ body {
   }
 
   .lifecycle-main {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    max-height: min(760px, calc(100vh - 180px));
   }
 
   .lifecycle-diagram {
     order: 1;
+    position: sticky;
+    top: 24px;
+    align-self: start;
   }
 
   .lifecycle-sequence {
     order: 2;
+    max-height: min(760px, calc(100vh - 180px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
   }
 
   .lifecycle-drawer-shell {
