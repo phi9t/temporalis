@@ -92,6 +92,9 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
     required_call_ids = {
         "call-core-poll-matching",
         "call-matching-workflow-task",
+        "call-schedule-activity-command",
+        "call-workflow-task-complete",
+        "call-enqueue-activity-task",
         "call-core-poll-activity-task",
         "call-matching-activity-task",
         "call-core-activity-task",
@@ -101,7 +104,21 @@ def test_lifecycle_calls_are_generated_and_reference_manifest_parts() -> None:
     assert calls_by_id["call-matching-workflow-task"]["kind"] == "response"
     assert calls_by_id["call-core-poll-activity-task"]["kind"] == "poll"
     assert calls_by_id["call-matching-activity-task"]["kind"] == "response"
-    assert calls_by_id["call-matching-activity-task"]["seq"] < calls_by_id["call-core-activity-task"]["seq"]
+    assert (
+        calls_by_id["call-core-poll-activity-task"]["seq"]
+        < calls_by_id["call-matching-activity-task"]["seq"]
+        < calls_by_id["call-core-activity-task"]["seq"]
+    )
+    assert (
+        calls_by_id["call-schedule-activity-command"]["seq"]
+        < calls_by_id["call-workflow-task-complete"]["seq"]
+        < calls_by_id["call-enqueue-activity-task"]["seq"]
+        < calls_by_id["call-core-poll-activity-task"]["seq"]
+    )
+    workflow_task_complete = calls_by_id["call-workflow-task-complete"]
+    assert workflow_task_complete["message"] == "RespondWorkflowTaskCompleted"
+    command_text = " ".join([*workflow_task_complete.get("payload", []), *workflow_task_complete["details"]])
+    assert "ScheduleActivityTask" in command_text
 
     seqs = [call["seq"] for call in calls]
     assert len(seqs) == len(set(seqs))
