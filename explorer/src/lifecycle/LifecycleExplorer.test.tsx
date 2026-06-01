@@ -235,6 +235,23 @@ describe('LifecycleExplorer', () => {
     expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
   })
 
+  it('does not force scroll on direct row selection after revealing the already-selected call', async () => {
+    render(<LifecycleExplorer navigate={vi.fn()} />)
+
+    const secondCall = await screen.findByRole('button', {
+      name: /02 Kilvin client to Frontend DescribeWorkflowExecution/,
+    })
+
+    scrollIntoView.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Start workflow' }))
+    scrollIntoView.mockClear()
+
+    fireEvent.click(secondCall)
+
+    expect(screen.getByRole('heading', { name: 'DescribeWorkflowExecution' })).toBeTruthy()
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
   it('selects the first active-phase call when a diagram edge is clicked', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 

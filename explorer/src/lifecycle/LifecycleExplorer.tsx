@@ -26,10 +26,12 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   const [manifestError, setManifestError] = useState<string | null>(null)
   const [phaseId, setPhaseId] = useState<string>('')
   const [selected, setSelected] = useState<LifecycleSelection | null>(null)
+  const [revealRequestId, setRevealRequestId] = useState(0)
   const callRowsRef = useRef(new Map<string, HTMLButtonElement>())
-  const shouldScrollSelectedCallRef = useRef(false)
+  const pendingRevealCallIdRef = useRef<string | null>(null)
 
   const selectCall = useCallback((call: LifecycleCall) => {
+    pendingRevealCallIdRef.current = null
     setPhaseId(call.phase_id)
     setSelected({ type: 'call', call })
   }, [])
@@ -45,10 +47,12 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
 
   const selectCallAndReveal = useCallback(
     (call: LifecycleCall) => {
-      shouldScrollSelectedCallRef.current = true
-      selectCall(call)
+      pendingRevealCallIdRef.current = call.id
+      setRevealRequestId((requestId) => requestId + 1)
+      setPhaseId(call.phase_id)
+      setSelected({ type: 'call', call })
     },
-    [selectCall],
+    [],
   )
 
   useEffect(() => {
@@ -131,11 +135,12 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   const selectedNode = selected?.type === 'node' ? selected.node : null
 
   useEffect(() => {
-    if (!selectedCall || !shouldScrollSelectedCallRef.current) return
+    const pendingRevealCallId = pendingRevealCallIdRef.current
+    if (!pendingRevealCallId || selectedCall?.id !== pendingRevealCallId) return
 
-    shouldScrollSelectedCallRef.current = false
-    callRowsRef.current.get(selectedCall.id)?.scrollIntoView({ block: 'nearest', behavior: 'auto' })
-  }, [selectedCall])
+    pendingRevealCallIdRef.current = null
+    callRowsRef.current.get(pendingRevealCallId)?.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+  }, [revealRequestId, selectedCall?.id])
 
   const selectedEndpointNodeIds = useMemo(() => {
     if (!selectedCall) return new Set<string>()
@@ -160,6 +165,7 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
     }
 
     setPhaseId(nextPhaseId)
+    pendingRevealCallIdRef.current = null
     setSelected(null)
   }
 
