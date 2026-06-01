@@ -23,7 +23,7 @@
       "kind": "history-event",
       "from": "history-service",
       "to": "core-worker",
-      "edge_id": "activation-up",
+      "edge_id": null,
       "message": "GetWorkflowExecutionHistory",
       "summary": "sdk-core reads durable history before accepting new workflow commands.",
       "details": [
@@ -65,7 +65,7 @@
       "kind": "completion",
       "from": "workflow-activation",
       "to": "history-service",
-      "edge_id": "workflow-complete",
+      "edge_id": null,
       "message": "RespondWorkflowTaskCompleted",
       "summary": "New commands are accepted only after replay catches up to history.",
       "details": [

@@ -280,6 +280,7 @@ def test_control_path_steps_reference_existing_nodes_and_edges() -> None:
     lifecycle = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
     node_ids = {node["id"] for node in lifecycle["nodes"]}
     edge_ids = {edge["id"] for edge in lifecycle["edges"]}
+    edges = {edge["id"]: edge for edge in lifecycle["edges"]}
     index = json.loads((OUT / "control-paths" / "index.json").read_text(encoding="utf-8"))
 
     for entry in index:
@@ -301,6 +302,12 @@ def test_control_path_steps_reference_existing_nodes_and_edges() -> None:
                 assert step["to"] in node_ids
             if step.get("edge_id") is not None:
                 assert step["edge_id"] in edge_ids
+                if step.get("from") is not None and step.get("to") is not None:
+                    edge = edges[step["edge_id"]]
+                    assert (edge["from"], edge["to"]) == (step["from"], step["to"]) or (edge["from"], edge["to"]) == (
+                        step["to"],
+                        step["from"],
+                    )
 
 
 def test_guide_index_contains_required_anchors() -> None:

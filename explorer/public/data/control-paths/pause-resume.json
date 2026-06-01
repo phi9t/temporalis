@@ -64,7 +64,7 @@
       "kind": "command",
       "from": "workflow-activation",
       "to": "history-service",
-      "edge_id": "workflow-complete",
+      "edge_id": null,
       "message": "RespondWorkflowTaskCompleted",
       "summary": "Python emits commands that either wait while paused or continue after resume.",
       "details": [

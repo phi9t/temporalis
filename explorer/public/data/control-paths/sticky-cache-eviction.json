@@ -44,7 +44,7 @@
       "kind": "history-event",
       "from": "history-service",
       "to": "core-worker",
-      "edge_id": "activation-up",
+      "edge_id": null,
       "message": "Replay from History",
       "summary": "Core falls back to history replay because History is authoritative.",
       "details": [
