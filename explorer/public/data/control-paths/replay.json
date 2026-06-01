@@ -16,6 +16,71 @@
     "sdk-core rebuilds workflow state machines from that log.",
     "sdk-python re-executes deterministic workflow code without re-running activity side effects."
   ],
+  "steps": [
+    {
+      "id": "replay-history-read",
+      "seq": 1,
+      "kind": "history-event",
+      "from": "history-service",
+      "to": "core-worker",
+      "edge_id": "activation-up",
+      "message": "GetWorkflowExecutionHistory",
+      "summary": "sdk-core reads durable history before accepting new workflow commands.",
+      "details": [
+        "History is the authoritative log of prior workflow decisions.",
+        "Worker memory is an optimization, not the source of truth."
+      ],
+      "affected_node_ids": [
+        "history-service",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ]
+    },
+    {
+      "id": "replay-activation",
+      "seq": 2,
+      "kind": "activation",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "message": "WorkflowActivation(replay)",
+      "summary": "sdk-core replays history into Python workflow code deterministically.",
+      "details": [
+        "Python re-executes workflow code to rebuild local state.",
+        "Activity side effects are not re-run during workflow replay."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "workflow-activation"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ]
+    },
+    {
+      "id": "replay-command-check",
+      "seq": 3,
+      "kind": "completion",
+      "from": "workflow-activation",
+      "to": "history-service",
+      "edge_id": "workflow-complete",
+      "message": "RespondWorkflowTaskCompleted",
+      "summary": "New commands are accepted only after replay catches up to history.",
+      "details": [
+        "Determinism requires replayed commands to match recorded history.",
+        "After catch-up, newly emitted commands can advance the execution."
+      ],
+      "affected_node_ids": [
+        "workflow-activation",
+        "history-service"
+      ],
+      "affected_edge_ids": [
+        "workflow-complete"
+      ]
+    }
+  ],
   "guide_anchor": "history-as-source-of-truth-and-replay",
   "guide_title": "7. History as source of truth and replay",
   "hack_script": "hacks/004_history_replay.py",

@@ -16,6 +16,71 @@
     "Eviction or sticky miss sends execution back through history replay.",
     "Python receives a rebuilt activation after core catches up to the latest history."
   ],
+  "steps": [
+    {
+      "id": "sticky-cache-eviction-miss",
+      "seq": 1,
+      "kind": "cache",
+      "from": "matching-service",
+      "to": "core-worker",
+      "edge_id": "core-matching",
+      "message": "Sticky cache miss",
+      "summary": "sdk-core discovers that warm workflow state is unavailable.",
+      "details": [
+        "Sticky cache state is an optimization for faster activations.",
+        "Eviction or worker movement requires rebuilding from history."
+      ],
+      "affected_node_ids": [
+        "matching-service",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "core-matching"
+      ]
+    },
+    {
+      "id": "sticky-cache-eviction-replay",
+      "seq": 2,
+      "kind": "history-event",
+      "from": "history-service",
+      "to": "core-worker",
+      "edge_id": "activation-up",
+      "message": "Replay from History",
+      "summary": "Core falls back to history replay because History is authoritative.",
+      "details": [
+        "The replay path reconstructs workflow state without relying on sticky memory.",
+        "This keeps correctness independent of worker cache residency."
+      ],
+      "affected_node_ids": [
+        "history-service",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ]
+    },
+    {
+      "id": "sticky-cache-eviction-rebuilt-activation",
+      "seq": 3,
+      "kind": "activation",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "message": "WorkflowActivation(rebuilt)",
+      "summary": "Python receives a rebuilt activation after core catches up to history.",
+      "details": [
+        "The workflow continues with deterministic state restored.",
+        "Future tasks may become sticky again after the rebuilt activation."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "workflow-activation"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ]
+    }
+  ],
   "guide_anchor": "sticky-workflow-cache-and-eviction",
   "guide_title": "10. Sticky workflow cache and eviction",
   "hack_script": "hacks/005_control_paths.py",

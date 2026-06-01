@@ -275,6 +275,34 @@ def test_control_path_overlays_reference_existing_nodes_and_edges() -> None:
         assert set(scenario["highlight_edge_ids"]) <= edge_ids
 
 
+def test_control_path_steps_reference_existing_nodes_and_edges() -> None:
+    run_generator()
+    lifecycle = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    node_ids = {node["id"] for node in lifecycle["nodes"]}
+    edge_ids = {edge["id"] for edge in lifecycle["edges"]}
+    index = json.loads((OUT / "control-paths" / "index.json").read_text(encoding="utf-8"))
+
+    for entry in index:
+        scenario = load_json(OUT / entry["manifest"])
+        assert len(scenario["steps"]) >= 3
+        seen_seq = set()
+        for step in scenario["steps"]:
+            assert step["id"].startswith(f"{scenario['slug']}-")
+            assert step["seq"] not in seen_seq
+            seen_seq.add(step["seq"])
+            assert step["message"].strip()
+            assert step["summary"].strip()
+            assert len(step["details"]) >= 1
+            assert set(step.get("affected_node_ids", [])) <= node_ids
+            assert set(step.get("affected_edge_ids", [])) <= edge_ids
+            if step.get("from") is not None:
+                assert step["from"] in node_ids
+            if step.get("to") is not None:
+                assert step["to"] in node_ids
+            if step.get("edge_id") is not None:
+                assert step["edge_id"] in edge_ids
+
+
 def test_guide_index_contains_required_anchors() -> None:
     run_generator()
     guide = json.loads((OUT / "guide" / "index.json").read_text(encoding="utf-8"))
@@ -404,3 +432,5 @@ def test_control_scenarios_have_guide_hack_links_and_details() -> None:
         assert scenario["hack_script"].startswith("hacks/")
         assert scenario["hack_summary"]
         assert len(scenario["details"]) >= 3
+        assert len(scenario["steps"]) >= 3
+        assert scenario["steps"][0]["seq"] == 1

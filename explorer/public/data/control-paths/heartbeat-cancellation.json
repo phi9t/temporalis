@@ -16,6 +16,71 @@
     "sdk-core forwards heartbeat state and observes cancellation delivery.",
     "The server tracks cancellation/progress state for the activity attempt."
   ],
+  "steps": [
+    {
+      "id": "heartbeat-cancellation-progress",
+      "seq": 1,
+      "kind": "heartbeat",
+      "from": "activity-task",
+      "to": "core-worker",
+      "edge_id": "heartbeat",
+      "message": "RecordActivityTaskHeartbeat",
+      "summary": "The Python activity heartbeats progress while performing side effects.",
+      "details": [
+        "Heartbeat details let retry resume with known progress.",
+        "Heartbeat cadence defines where cancellation can be observed."
+      ],
+      "affected_node_ids": [
+        "activity-task",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "heartbeat"
+      ]
+    },
+    {
+      "id": "heartbeat-cancellation-server-state",
+      "seq": 2,
+      "kind": "heartbeat",
+      "from": "core-worker",
+      "to": "history-service",
+      "edge_id": "heartbeat",
+      "message": "RecordActivityTaskHeartbeatRequest",
+      "summary": "sdk-core forwards heartbeat details and receives cancellation state.",
+      "details": [
+        "The server tracks the latest heartbeat details for the activity attempt.",
+        "Cancellation requested state can be delivered in the heartbeat response."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "history-service"
+      ],
+      "affected_edge_ids": [
+        "heartbeat"
+      ]
+    },
+    {
+      "id": "heartbeat-cancellation-cancel-complete",
+      "seq": 3,
+      "kind": "completion",
+      "from": "activity-task",
+      "to": "history-service",
+      "edge_id": "activity-complete",
+      "message": "RespondActivityTaskCanceled",
+      "summary": "The activity reports cancellation after observing it at a heartbeat checkpoint.",
+      "details": [
+        "Python cleanup runs at the activity boundary.",
+        "History records the canceled activity outcome durably."
+      ],
+      "affected_node_ids": [
+        "activity-task",
+        "history-service"
+      ],
+      "affected_edge_ids": [
+        "activity-complete"
+      ]
+    }
+  ],
   "guide_anchor": "activity-execution-and-heartbeats",
   "guide_title": "6. Activity execution and heartbeats",
   "hack_script": "hacks/005_control_paths.py",

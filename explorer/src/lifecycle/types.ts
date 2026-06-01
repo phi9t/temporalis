@@ -11,6 +11,8 @@ export type LifecycleCallKind =
   | 'history-event'
   | 'task-dispatch'
 
+export type ControlStepKind = LifecycleCallKind | 'signal' | 'failure' | 'timer' | 'cache'
+
 export interface SourceRef {
   repo: string
   ref?: string
@@ -58,6 +60,24 @@ export type LifecycleSelection =
   | { type: 'call'; call: LifecycleCall }
   | { type: 'node'; node: LifecycleNode }
 
+export interface ControlStep {
+  id: string
+  seq: number
+  kind: ControlStepKind
+  from: string | null
+  to: string | null
+  edge_id: string | null
+  message: string
+  summary: string
+  details: string[]
+  affected_node_ids: string[]
+  affected_edge_ids: string[]
+}
+
+export type ControlSelection =
+  | { type: 'control-step'; step: ControlStep }
+  | { type: 'node'; node: LifecycleNode }
+
 export interface GuideHackLink {
   guide_anchor: string
   guide_title: string
@@ -89,4 +109,5 @@ export interface ControlScenario extends GuideHackLink {
   details: string[]
   highlight_node_ids: string[]
   highlight_edge_ids: string[]
+  steps?: ControlStep[]
 }

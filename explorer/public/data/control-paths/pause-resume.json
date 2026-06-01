@@ -15,6 +15,72 @@
     "History stores signal or update events so the decision survives worker restarts.",
     "sdk-core replays the event history before delivering a new activation."
   ],
+  "steps": [
+    {
+      "id": "pause-resume-signal-recorded",
+      "seq": 1,
+      "kind": "signal",
+      "from": "frontend-service",
+      "to": "history-service",
+      "edge_id": "frontend-history",
+      "message": "SignalWorkflowExecution",
+      "summary": "A pause or resume request enters workflow history through the server.",
+      "details": [
+        "External control arrives as a signal or update instead of mutating worker memory directly.",
+        "History records the event so the control state survives worker restarts."
+      ],
+      "affected_node_ids": [
+        "frontend-service",
+        "history-service"
+      ],
+      "affected_edge_ids": [
+        "frontend-history"
+      ]
+    },
+    {
+      "id": "pause-resume-activation",
+      "seq": 2,
+      "kind": "activation",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "message": "WorkflowActivation(signal/update)",
+      "summary": "The next activation delivers the durable control event to Python workflow code.",
+      "details": [
+        "sdk-core includes the signal or update job in the activation.",
+        "Python workflow code updates deterministic pause state from that activation."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "workflow-activation"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ]
+    },
+    {
+      "id": "pause-resume-command",
+      "seq": 3,
+      "kind": "command",
+      "from": "workflow-activation",
+      "to": "history-service",
+      "edge_id": "workflow-complete",
+      "message": "RespondWorkflowTaskCompleted",
+      "summary": "Python emits commands that either wait while paused or continue after resume.",
+      "details": [
+        "The pause decision is encoded in deterministic workflow state.",
+        "Completion commands return through sdk-core and History like the happy path."
+      ],
+      "affected_node_ids": [
+        "workflow-activation",
+        "history-service"
+      ],
+      "affected_edge_ids": [
+        "workflow-complete",
+        "schedule-wft"
+      ]
+    }
+  ],
   "guide_anchor": "pause-resume-as-signalupdate-driven-coordination",
   "guide_title": "9. Pause/resume as signal/update-driven coordination",
   "hack_script": "hacks/005_control_paths.py",
