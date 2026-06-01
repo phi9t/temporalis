@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ControlPathsExplorer from './ControlPathsExplorer'
 import type { ControlScenario, LifecycleManifest } from '@/lifecycle/types'
 
@@ -83,22 +83,49 @@ const scenario: ControlScenario = {
   ],
   steps: [
     {
-      id: 'pause-resume-command',
+      id: 'pause-resume-signal-recorded',
       seq: 1,
-      kind: 'completion',
+      kind: 'signal',
       from: 'workflow-activation',
       to: 'history-service',
       edge_id: 'workflow-complete',
-      message: 'RespondWorkflowTaskCompleted',
-      summary: 'Python workflow code records pause state.',
-      details: ['Python workflow code records pause state.'],
+      message: 'SignalWorkflowExecution',
+      summary: 'A pause request is recorded durably.',
+      details: ['History stores the signal event.'],
+      affected_node_ids: ['workflow-activation', 'history-service'],
+      affected_edge_ids: ['workflow-complete'],
+    },
+    {
+      id: 'pause-resume-activation',
+      seq: 2,
+      kind: 'activation',
+      from: 'history-service',
+      to: 'workflow-activation',
+      edge_id: 'workflow-complete',
+      message: 'WorkflowActivation(signal)',
+      summary: 'The signal is delivered to workflow code.',
+      details: ['Python updates deterministic pause state.'],
       affected_node_ids: ['workflow-activation', 'history-service'],
       affected_edge_ids: ['workflow-complete'],
     },
   ],
 }
 
+const scrollIntoView = vi.fn()
+
 describe('ControlPathsExplorer', () => {
+  beforeEach(() => {
+    scrollIntoView.mockClear()
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
   it('loads control scenarios as lifecycle diagram overlays', async () => {
     render(<ControlPathsExplorer navigate={vi.fn()} />)
 
@@ -113,8 +140,70 @@ describe('ControlPathsExplorer', () => {
       '/HACKERS_GUIDE.md#pause-resume-as-signalupdate-driven-coordination',
     )
     expect(screen.getByText('python hacks/005_control_paths.py')).toBeTruthy()
-    expect(screen.getByText('sdk-core replays history before the next activation.')).toBeTruthy()
+    expect(screen.getByText('Print control-path overlays.')).toBeTruthy()
     expect(screen.getByRole('group', { name: 'Temporal lifecycle diagram' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Activation' })).toBeTruthy()
+  })
+
+  it('renders an ordered control sequence and defaults to the first step details', async () => {
+    render(<ControlPathsExplorer navigate={vi.fn()} />)
+
+    const firstStep = await screen.findByRole('button', {
+      name: /01 Activation to History SignalWorkflowExecution/,
+    })
+
+    expect(firstStep.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByLabelText('Control path sequence')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'SignalWorkflowExecution' })).toBeTruthy()
+    expect(screen.getAllByText('A pause request is recorded durably.').length).toBeGreaterThan(0)
+    expect(screen.getByText('History stores the signal event.')).toBeTruthy()
+  })
+
+  it('updates control step details when a sequence row is selected', async () => {
+    render(<ControlPathsExplorer navigate={vi.fn()} />)
+
+    const secondStep = await screen.findByRole('button', {
+      name: /02 History to Activation WorkflowActivation\(signal\)/,
+    })
+    fireEvent.click(secondStep)
+
+    expect(screen.getByRole('heading', { name: 'WorkflowActivation(signal)' })).toBeTruthy()
+    expect(screen.getAllByText('The signal is delivered to workflow code.').length).toBeGreaterThan(0)
+    expect(screen.getByText('Python updates deterministic pause state.')).toBeTruthy()
+  })
+
+  it('selects the nearest matching control step when a diagram edge is selected', async () => {
+    render(<ControlPathsExplorer navigate={vi.fn()} />)
+
+    const secondStep = await screen.findByRole('button', {
+      name: /02 History to Activation WorkflowActivation\(signal\)/,
+    })
+    fireEvent.click(secondStep)
+
+    scrollIntoView.mockClear()
+    const edge = screen.getByRole('button', { name: /Diagram edge WorkflowActivation\(signal\)/ })
+    fireEvent.keyDown(edge, { key: 'Enter' })
+
+    expect(screen.getByRole('heading', { name: 'WorkflowActivation(signal)' })).toBeTruthy()
+    expect(secondStep.getAttribute('aria-pressed')).toBe('true')
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'auto' })
+  })
+
+  it('does not change selection merely because the control sequence scrolls', async () => {
+    render(<ControlPathsExplorer navigate={vi.fn()} />)
+
+    const sequence = await screen.findByLabelText('Control path sequence')
+    fireEvent.scroll(sequence)
+
+    expect(screen.getByRole('heading', { name: 'SignalWorkflowExecution' })).toBeTruthy()
+  })
+
+  it('uses the selected control step message as the diagram edge label', async () => {
+    render(<ControlPathsExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('heading', { name: 'SignalWorkflowExecution' })
+
+    expect(screen.getByRole('button', { name: /Diagram edge SignalWorkflowExecution/ })).toBeTruthy()
+    expect(screen.getAllByText('SignalWorkflowExecution').length).toBeGreaterThan(0)
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Terminal } from 'lucide-react'
 import { AsyncBoundary } from '@/explorer-kit/AsyncBoundary'
 import { SubjectSwitcher } from '@/explorer-kit/SubjectSwitcher'
@@ -8,12 +8,32 @@ import { guideUrl } from '@/lib/assets'
 import { errorMessage, fetchExplorerJson } from '@/lib/fetch'
 import LifecycleDiagram from '@/lifecycle/LifecycleDiagram'
 import LifecycleDrawer from '@/lifecycle/LifecycleDrawer'
-import type { ControlScenario, LifecycleManifest, LifecycleNode } from '@/lifecycle/types'
+import ControlSequence from './ControlSequence'
+import type { ControlScenario, ControlSelection, ControlStep, LifecycleCall, LifecycleManifest } from '@/lifecycle/types'
 
 interface ControlEntry {
   slug: string
   label: string
   manifest: string
+}
+
+function stepToCall(step: ControlStep): LifecycleCall | null {
+  if (!step.from || !step.to || !step.edge_id) return null
+
+  return {
+    id: step.id,
+    phase_id: 'control-path',
+    seq: step.seq,
+    from: step.from,
+    to: step.to,
+    edge_id: step.edge_id,
+    kind: step.kind as LifecycleCall['kind'],
+    message: step.message,
+    summary: step.summary,
+    details: step.details,
+    payload: [],
+    refs: [],
+  }
 }
 
 export default function ControlPathsExplorer(_props: ExplorerModeProps) {
@@ -22,7 +42,10 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
   const [slug, setSlug] = useState<string>('')
   const [scenario, setScenario] = useState<ControlScenario | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [selected, setSelected] = useState<LifecycleNode | null>(null)
+  const [selected, setSelected] = useState<ControlSelection | null>(null)
+  const [revealRequestId, setRevealRequestId] = useState(0)
+  const stepRowsRef = useRef(new Map<string, HTMLButtonElement>())
+  const shouldScrollSelectedStepRef = useRef(false)
 
   useEffect(() => {
     let isCurrent = true
@@ -50,6 +73,35 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
   }, [])
 
   const entry = index?.find((item) => item.slug === slug) ?? null
+  const controlSteps = useMemo(
+    () => (scenario ? [...scenario.steps].sort((a, b) => a.seq - b.seq) : []),
+    [scenario],
+  )
+  const selectedStep = selected?.type === 'control-step' ? selected.step : null
+  const selectedNode = selected?.type === 'node' ? selected.node : null
+  const selectedCall = selectedStep ? stepToCall(selectedStep) : null
+
+  const registerStepRow = useCallback((stepId: string, element: HTMLButtonElement | null) => {
+    if (element) {
+      stepRowsRef.current.set(stepId, element)
+      return
+    }
+
+    stepRowsRef.current.delete(stepId)
+  }, [])
+
+  const selectStep = useCallback((step: ControlStep) => {
+    setSelected({ type: 'control-step', step })
+  }, [])
+
+  const selectStepAndReveal = useCallback(
+    (step: ControlStep) => {
+      shouldScrollSelectedStepRef.current = true
+      setRevealRequestId((requestId) => requestId + 1)
+      selectStep(step)
+    },
+    [selectStep],
+  )
 
   useEffect(() => {
     if (!entry) return
@@ -60,7 +112,10 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
       .then((loaded) => {
         if (!isCurrent) return
 
+        const sortedSteps = [...loaded.steps].sort((a, b) => a.seq - b.seq)
+
         setScenario(loaded)
+        setSelected(sortedSteps[0] ? { type: 'control-step', step: sortedSteps[0] } : null)
       })
       .catch((err: unknown) => {
         if (!isCurrent) return
@@ -80,8 +135,57 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
     setSelected(null)
   }
 
-  const activeNodeIds = useMemo(() => new Set(scenario?.highlight_node_ids ?? []), [scenario])
-  const activeEdgeIds = useMemo(() => new Set(scenario?.highlight_edge_ids ?? []), [scenario])
+  useEffect(() => {
+    stepRowsRef.current.clear()
+  }, [slug])
+
+  useEffect(() => {
+    if (!scenario || controlSteps.length === 0) {
+      setSelected(null)
+      return
+    }
+
+    setSelected({ type: 'control-step', step: controlSteps[0] })
+  }, [scenario, controlSteps])
+
+  useEffect(() => {
+    if (!selectedStep || !shouldScrollSelectedStepRef.current) return
+
+    shouldScrollSelectedStepRef.current = false
+    stepRowsRef.current.get(selectedStep.id)?.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+  }, [revealRequestId, selectedStep])
+
+  const activeNodeIds = useMemo(
+    () => new Set([...(scenario?.highlight_node_ids ?? []), ...(selectedStep?.affected_node_ids ?? [])]),
+    [scenario, selectedStep],
+  )
+  const activeEdgeIds = useMemo(
+    () => new Set([...(scenario?.highlight_edge_ids ?? []), ...(selectedStep?.affected_edge_ids ?? [])]),
+    [scenario, selectedStep],
+  )
+  const nodeLabels = useMemo(
+    () => new Map(lifecycle?.nodes.map((node) => [node.id, node.label]) ?? []),
+    [lifecycle?.nodes],
+  )
+  const activeCallLabels = useMemo(
+    () => controlSteps.map(stepToCall).filter((call): call is LifecycleCall => call !== null),
+    [controlSteps],
+  )
+  const selectedEndpointNodeIds = useMemo(
+    () => new Set([selectedStep?.from, selectedStep?.to].filter((id): id is string => Boolean(id))),
+    [selectedStep],
+  )
+
+  function handleEdgeSelect(edgeId: string) {
+    const matchingSteps = controlSteps.filter((item) => item.edge_id === edgeId || item.affected_edge_ids.includes(edgeId))
+    const step = selectedStep
+      ? matchingSteps.sort((a, b) => Math.abs(a.seq - selectedStep.seq) - Math.abs(b.seq - selectedStep.seq))[0]
+      : matchingSteps[0]
+
+    if (step) {
+      selectStepAndReveal(step)
+    }
+  }
 
   if (!lifecycle || !index || !scenario) {
     return (
@@ -103,7 +207,7 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
         options={index.map((item) => ({ value: item.slug, label: item.label }))}
         onChange={handleSlugChange}
       />
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <div className="lifecycle-workspace">
         <Card>
           <CardHeader>
             <CardTitle>{scenario.label}</CardTitle>
@@ -126,23 +230,39 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <ul className="control-details">
-              {scenario.details.map((detail) => (
-                <li key={detail}>{detail}</li>
-              ))}
-            </ul>
-            <LifecycleDiagram
-              nodes={lifecycle.nodes}
-              edges={lifecycle.edges}
-              activeNodeIds={activeNodeIds}
-              activeEdgeIds={activeEdgeIds}
-              selectedId={selected?.id ?? null}
-              onSelect={setSelected}
-            />
+            <div className="control-main lifecycle-main">
+              <div className="control-sequence-shell lifecycle-sequence">
+                <ControlSequence
+                  steps={controlSteps}
+                  nodeLabels={nodeLabels}
+                  selectedStepId={selectedStep?.id ?? null}
+                  onSelect={selectStep}
+                  registerStepRow={registerStepRow}
+                />
+              </div>
+              <div className="control-diagram-shell lifecycle-diagram">
+                <LifecycleDiagram
+                  nodes={lifecycle.nodes}
+                  edges={lifecycle.edges}
+                  activeNodeIds={activeNodeIds}
+                  activeEdgeIds={activeEdgeIds}
+                  selectedId={selectedNode?.id ?? null}
+                  selectedEdgeId={selectedStep?.edge_id ?? null}
+                  selectedCallFrom={selectedStep?.from ?? null}
+                  selectedCallTo={selectedStep?.to ?? null}
+                  selectedCall={selectedCall}
+                  activeCallLabels={activeCallLabels}
+                  activePhaseId="control-path"
+                  selectedEndpointNodeIds={selectedEndpointNodeIds}
+                  onSelect={(node) => setSelected({ type: 'node', node })}
+                  onSelectEdge={handleEdgeSelect}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
-        <div className="xl:sticky xl:top-6">
-          <LifecycleDrawer node={selected} phase={null} />
+        <div className="lifecycle-drawer-shell">
+          <LifecycleDrawer selection={selected} phase={null} nodeLabels={nodeLabels} />
         </div>
       </div>
     </div>

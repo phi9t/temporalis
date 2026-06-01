@@ -647,6 +647,10 @@ body {
   width: 100%;
 }
 
+.control-sequence .call-sequence-header span {
+  color: var(--color-ink);
+}
+
 .call-sequence-header {
   display: flex;
   align-items: center;
@@ -757,6 +761,16 @@ body {
   line-height: 1.4;
   text-transform: uppercase;
   overflow-wrap: anywhere;
+}
+
+@media (min-width: 1280px) {
+  .control-sequence-shell {
+    order: 1;
+  }
+
+  .control-diagram-shell {
+    order: 2;
+  }
 }
 
 .call-detail-meta,

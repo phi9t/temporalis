@@ -1,7 +1,15 @@
 import { BookOpen, ExternalLink, Terminal } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { guideUrl } from '@/lib/assets'
-import type { LifecycleCall, LifecycleNode, LifecyclePhase, LifecycleSelection, SourceRef } from './types'
+import type {
+  ControlSelection,
+  ControlStep,
+  LifecycleCall,
+  LifecycleNode,
+  LifecyclePhase,
+  LifecycleSelection,
+  SourceRef,
+} from './types'
 
 function GuideHackPanel({ phase }: { phase: LifecyclePhase | null }) {
   if (!phase) return null
@@ -100,6 +108,40 @@ function CallDetails({
   )
 }
 
+function ControlStepDetails({
+  step,
+  nodeLabels,
+}: {
+  step: ControlStep
+  nodeLabels: Map<string, string>
+}) {
+  const from = step.from ? (nodeLabels.get(step.from) ?? step.from) : 'Control path'
+  const to = step.to ? (nodeLabels.get(step.to) ?? step.to) : 'Control path'
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{step.message}</CardTitle>
+        <p className="font-mono text-xs text-cyan">
+          {from} -&gt; {to}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm">
+        <div className="call-detail-meta">
+          <span>{step.kind}</span>
+          <span>Control path</span>
+        </div>
+        <p className="text-ink">{step.summary}</p>
+        <ul className="call-detail-list">
+          {step.details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function LifecycleDrawer({
   selection,
   node,
@@ -107,7 +149,7 @@ export default function LifecycleDrawer({
   nodeLabels = new Map<string, string>(),
   phaseLabels = new Map<string, string>(),
 }: {
-  selection?: LifecycleSelection | null
+  selection?: LifecycleSelection | ControlSelection | null
   node?: LifecycleNode | null
   phase: LifecyclePhase | null
   nodeLabels?: Map<string, string>
@@ -130,6 +172,10 @@ export default function LifecycleDrawer({
         </CardContent>
       </Card>
     )
+  }
+
+  if (selected.type === 'control-step') {
+    return <ControlStepDetails step={selected.step} nodeLabels={nodeLabels} />
   }
 
   if (selected.type === 'call') {
