@@ -29,6 +29,10 @@ export function validateLifecycleManifest(manifest: LifecycleManifest): void {
       throw new Error(`Call ${call.id} must include details`)
     }
 
+    for (const detail of call.details) {
+      requireText(detail, `Call ${call.id} detail must not be empty`)
+    }
+
     if (!phases.has(call.phase_id)) {
       throw new Error(`Call ${call.id} references missing phase ${call.phase_id}`)
     }

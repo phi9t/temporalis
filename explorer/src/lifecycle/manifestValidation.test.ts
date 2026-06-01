@@ -114,6 +114,22 @@ describe('lifecycle manifest validation', () => {
     )
   })
 
+  it('rejects blank call detail text', () => {
+    const manifest: LifecycleManifest = {
+      ...baseManifest,
+      calls: [
+        {
+          ...baseManifest.calls[0],
+          details: ['   '],
+        },
+      ],
+    }
+
+    expect(() => validateLifecycleManifest(manifest)).toThrow(
+      'Call start-rpc detail must not be empty',
+    )
+  })
+
   it('rejects calls whose edge does not connect the caller and callee', () => {
     const manifest: LifecycleManifest = {
       ...baseManifest,
