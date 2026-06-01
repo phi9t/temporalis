@@ -30,6 +30,13 @@ const calls: EdgeLabelCall[] = [
   },
 ]
 
+function rectsOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+) {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
+}
+
 describe('LifecycleDiagram edge labels', () => {
   it('uses the selected call message for selected edges', () => {
     expect(
@@ -79,6 +86,29 @@ describe('LifecycleDiagram edge labels', () => {
         viewBoxHeight: 560,
       }),
     ).toEqual({ x: 268, y: 273 })
+  })
+
+  it('places mostly vertical labels away from blocked node rectangles', () => {
+    const labelWidth = Math.round('StartWorkflowExecution'.length * 6.5 + 16)
+    const labelHeight = 24
+    const placement = edgeLabelPlacement({
+      x1: 142,
+      y1: 83,
+      x2: 136,
+      y2: 483,
+      labelWidth,
+      labelHeight,
+      viewBoxWidth: 820,
+      viewBoxHeight: 560,
+      blockedRects: [{ x: 250, y: 258, width: 132, height: 50 }],
+    })
+
+    expect(
+      rectsOverlap(
+        { x: placement.x, y: placement.y, width: labelWidth, height: labelHeight },
+        { x: 250, y: 258, width: 132, height: 50 },
+      ),
+    ).toBe(false)
   })
 
   it('places horizontal labels above the midpoint and clamps left overflow', () => {

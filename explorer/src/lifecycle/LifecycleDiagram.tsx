@@ -25,6 +25,13 @@ export interface DisplayEdgeLabel {
   selected: boolean
 }
 
+interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 const LAYERS = [
   { id: 'kilvin', label: 'Kilvin app', y: 34 },
   { id: 'sdk-python', label: 'Python SDK', y: 134 },
@@ -81,6 +88,13 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
+function overlapArea(a: Rect, b: Rect): number {
+  const xOverlap = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x))
+  const yOverlap = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y))
+
+  return xOverlap * yOverlap
+}
+
 export function edgeLabelPlacement({
   x1,
   y1,
@@ -90,6 +104,7 @@ export function edgeLabelPlacement({
   labelHeight,
   viewBoxWidth,
   viewBoxHeight,
+  blockedRects = [],
 }: {
   x1: number
   y1: number
@@ -99,17 +114,33 @@ export function edgeLabelPlacement({
   labelHeight: number
   viewBoxWidth: number
   viewBoxHeight: number
+  blockedRects?: Rect[]
 }) {
   const midX = (x1 + x2) / 2
   const midY = (y1 + y2) / 2
   const mostlyVertical = Math.abs(y2 - y1) > Math.abs(x2 - x1) * 1.25
-  const rawX = mostlyVertical ? midX + 18 : midX - labelWidth / 2
   const rawY = mostlyVertical ? midY - labelHeight / 2 : midY - labelHeight - 12
-
-  return {
+  const placeAt = (rawX: number) => ({
     x: Math.round(clamp(rawX, 8, viewBoxWidth - labelWidth - 8)),
     y: Math.round(clamp(rawY, 8, viewBoxHeight - labelHeight - 8)),
+  })
+
+  if (mostlyVertical && blockedRects.length > 0) {
+    const candidates = [placeAt(midX + 18), placeAt(midX - labelWidth - 18)]
+    const [best] = candidates
+      .map((candidate) => ({
+        ...candidate,
+        blockedArea: blockedRects.reduce(
+          (total, rect) => total + overlapArea({ ...candidate, width: labelWidth, height: labelHeight }, rect),
+          0,
+        ),
+      }))
+      .sort((a, b) => a.blockedArea - b.blockedArea)
+
+    return { x: best.x, y: best.y }
   }
+
+  return placeAt(mostlyVertical ? midX + 18 : midX - labelWidth / 2)
 }
 
 export function displayEdgeLabel({
@@ -191,6 +222,7 @@ export default function LifecycleDiagram({
   onSelectEdge?: (edgeId: string) => void
 }) {
   const byId = new Map(nodes.map((node) => [node.id, node]))
+  const blockedRects = nodes.map(nodeBox)
 
   return (
     <svg viewBox="0 0 820 560" className="lifecycle-svg" role="group" aria-label="Temporal lifecycle diagram">
@@ -273,6 +305,7 @@ export default function LifecycleDiagram({
                 labelHeight: EDGE_LABEL_HEIGHT,
                 viewBoxWidth: SVG_WIDTH,
                 viewBoxHeight: SVG_HEIGHT,
+                blockedRects,
               })
             : null
 
