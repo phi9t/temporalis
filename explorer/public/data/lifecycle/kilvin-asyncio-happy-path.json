@@ -423,5 +423,323 @@
       "kind": "completion",
       "label": "RespondWorkflowTaskCompleted"
     }
+  ],
+  "calls": [
+    {
+      "id": "call-start-workflow",
+      "phase_id": "start",
+      "seq": 1,
+      "from": "kilvin-client",
+      "to": "frontend-service",
+      "edge_id": "start-rpc",
+      "kind": "rpc",
+      "message": "StartWorkflowExecution",
+      "summary": "Kilvin asks Temporal Frontend to create the command workflow run.",
+      "details": [
+        "The client sends the workflow type, workflow id, task queue, and staged training input to the public Temporal API.",
+        "Frontend is the first server boundary for the workflow start request."
+      ],
+      "payload": [
+        "workflow_id",
+        "task_queue",
+        "workflow_type",
+        "staged_training_config"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-record-start",
+      "phase_id": "start",
+      "seq": 2,
+      "from": "frontend-service",
+      "to": "history-service",
+      "edge_id": "history-start",
+      "kind": "history-event",
+      "message": "WorkflowExecutionStarted",
+      "summary": "Frontend routes the accepted start request into History for durable recording.",
+      "details": [
+        "History appends the initial WorkflowExecutionStarted event so replay can reconstruct the run from event history.",
+        "This event stores the workflow input and task queue metadata used by later workflow tasks."
+      ],
+      "payload": [
+        "event_type=WorkflowExecutionStarted",
+        "workflow_task_queue",
+        "input"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-enqueue-first-workflow-task",
+      "phase_id": "start",
+      "seq": 3,
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "schedule-wft",
+      "kind": "task-dispatch",
+      "message": "workflow task",
+      "summary": "History schedules the first workflow task for Matching to hand to a worker poller.",
+      "details": [
+        "The durable start event creates work for the configured workflow task queue.",
+        "Matching owns the queueing boundary where a polling worker will later receive the task."
+      ],
+      "payload": [
+        "task_queue",
+        "workflow_task",
+        "scheduled_event_id"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-python-poll-activation",
+      "phase_id": "poll",
+      "seq": 4,
+      "from": "python-worker",
+      "to": "bridge-worker",
+      "edge_id": "worker-poll",
+      "kind": "poll",
+      "message": "poll_workflow_activation",
+      "summary": "The Python worker awaits the next workflow activation through the bridge.",
+      "details": [
+        "Python initiates the poll because Temporal workers pull tasks rather than receiving direct server callbacks.",
+        "The bridge converts the Python await into a core worker poll operation."
+      ],
+      "payload": [
+        "worker_identity",
+        "workflow_task_queue"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-bridge-core-poll",
+      "phase_id": "poll",
+      "seq": 5,
+      "from": "bridge-worker",
+      "to": "core-worker",
+      "edge_id": "bridge-core",
+      "kind": "poll",
+      "message": "core poller request",
+      "summary": "The bridge asks sdk-core for the next workflow activation.",
+      "details": [
+        "The bridge preserves Python's async boundary while delegating polling, cache, and state-machine work to core.",
+        "Core can satisfy the request only after it obtains or reconstructs a workflow task."
+      ],
+      "payload": [
+        "poller_kind=workflow",
+        "task_queue"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-core-poll-matching",
+      "phase_id": "poll",
+      "seq": 6,
+      "from": "core-worker",
+      "to": "matching-service",
+      "edge_id": "core-matching",
+      "kind": "poll",
+      "message": "PollWorkflowTaskQueue",
+      "summary": "sdk-core polls Matching for an available workflow task.",
+      "details": [
+        "Core issues the server poll request on behalf of the Python worker.",
+        "The direction is worker to Matching: the worker is asking the server for work."
+      ],
+      "payload": [
+        "namespace",
+        "task_queue",
+        "identity"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-matching-workflow-task",
+      "phase_id": "poll",
+      "seq": 7,
+      "from": "matching-service",
+      "to": "core-worker",
+      "edge_id": "core-matching",
+      "kind": "response",
+      "message": "workflow task response",
+      "summary": "Matching responds to the long poll with the workflow task from the queue.",
+      "details": [
+        "The response travels back over the same Core-to-Matching poll edge.",
+        "The reversed call direction makes the server response explicit without introducing a separate diagram edge."
+      ],
+      "payload": [
+        "workflow_task_token",
+        "history",
+        "started_event_id"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-core-activation",
+      "phase_id": "activate",
+      "seq": 8,
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "kind": "activation",
+      "message": "WorkflowActivation",
+      "summary": "sdk-core converts the workflow task into a Python workflow activation.",
+      "details": [
+        "Core applies workflow state-machine rules and prepares jobs for the Python workflow instance.",
+        "Python receives an activation rather than raw server history."
+      ],
+      "payload": [
+        "run_id",
+        "activation_jobs",
+        "history_events"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-schedule-activity-command",
+      "phase_id": "schedule-activity",
+      "seq": 9,
+      "from": "workflow-activation",
+      "to": "history-service",
+      "edge_id": "activity-command",
+      "kind": "command",
+      "message": "ScheduleActivityTask command",
+      "summary": "Workflow code emits a command to schedule side-effecting activity work.",
+      "details": [
+        "The deterministic workflow turn records the intent to run an activity instead of performing the side effect inline.",
+        "History will turn the command into durable activity scheduling state."
+      ],
+      "payload": [
+        "activity_type",
+        "activity_id",
+        "task_queue",
+        "timeouts"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-enqueue-activity-task",
+      "phase_id": "schedule-activity",
+      "seq": 10,
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "activity-dispatch",
+      "kind": "task-dispatch",
+      "message": "activity task",
+      "summary": "History dispatches the scheduled activity task through Matching.",
+      "details": [
+        "History records the activity scheduling event and places the task on the target activity queue.",
+        "Matching will deliver the task when a compatible worker poll is available."
+      ],
+      "payload": [
+        "activity_task_queue",
+        "activity_task",
+        "scheduled_event_id"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-core-activity-task",
+      "phase_id": "execute-activity",
+      "seq": 11,
+      "from": "core-worker",
+      "to": "activity-task",
+      "edge_id": "activity-poll",
+      "kind": "activation",
+      "message": "ActivityTask",
+      "summary": "sdk-core hands an activity task to Python for execution.",
+      "details": [
+        "Core receives activity work through its pollers and presents it to Python as an executable activity task.",
+        "The activity task can perform the external side effects that workflow code must avoid."
+      ],
+      "payload": [
+        "activity_type",
+        "task_token",
+        "input",
+        "heartbeat_details"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-activity-heartbeat",
+      "phase_id": "execute-activity",
+      "seq": 12,
+      "from": "activity-task",
+      "to": "core-worker",
+      "edge_id": "heartbeat",
+      "kind": "heartbeat",
+      "message": "RecordHeartbeat",
+      "summary": "The running activity reports progress back through sdk-core.",
+      "details": [
+        "Heartbeats let Temporal observe liveness and persist progress details for retry or cancellation handling.",
+        "Core batches and forwards heartbeat state while Python continues the async activity."
+      ],
+      "payload": [
+        "task_token",
+        "progress",
+        "heartbeat_details"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-activity-complete",
+      "phase_id": "execute-activity",
+      "seq": 13,
+      "from": "activity-task",
+      "to": "history-service",
+      "edge_id": "activity-complete",
+      "kind": "completion",
+      "message": "ActivityTaskCompleted",
+      "summary": "The activity result is recorded by History as a completed activity event.",
+      "details": [
+        "The activity returns its output after the side effect finishes.",
+        "History appends ActivityTaskCompleted so a later workflow task can consume the result deterministically."
+      ],
+      "payload": [
+        "task_token",
+        "activity_result",
+        "completed_event_id"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-workflow-task-complete",
+      "phase_id": "complete",
+      "seq": 14,
+      "from": "workflow-activation",
+      "to": "history-service",
+      "edge_id": "workflow-complete",
+      "kind": "completion",
+      "message": "RespondWorkflowTaskCompleted",
+      "summary": "The workflow activation completes its turn by sending commands back to History.",
+      "details": [
+        "Python returns the workflow task completion after the activation reaches a deterministic blocking point.",
+        "History accepts the completion and applies any commands emitted by the workflow turn."
+      ],
+      "payload": [
+        "workflow_task_token",
+        "commands",
+        "query_results"
+      ],
+      "refs": []
+    },
+    {
+      "id": "call-enqueue-followup-workflow-task",
+      "phase_id": "complete",
+      "seq": 15,
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "schedule-wft",
+      "kind": "task-dispatch",
+      "message": "follow-up workflow task",
+      "summary": "History enqueues another workflow task when new events require workflow code to run again.",
+      "details": [
+        "Activity completion or command application can make the workflow ready for another deterministic turn.",
+        "Matching holds that follow-up workflow task until a worker polls the task queue."
+      ],
+      "payload": [
+        "task_queue",
+        "workflow_task",
+        "new_history_events"
+      ],
+      "refs": []
+    }
   ]
 }
