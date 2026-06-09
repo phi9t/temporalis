@@ -1,9 +1,9 @@
+.agent/
 .codex
 .worktrees/
 .pytest_cache/
 __pycache__/
 *.pyc
-AGENTS.md
 cli/
 docs/*
 !docs/.monorepo/
