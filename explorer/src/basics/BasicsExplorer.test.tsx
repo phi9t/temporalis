@@ -22,6 +22,7 @@ describe('BasicsExplorer', () => {
 
     const timeline = screen.getByRole('list', { name: 'Model training workflow timeline' })
     const timelineText = timeline.textContent ?? ''
+    const timelineStepText = (label: string) => screen.getByText(label).closest('li')?.textContent ?? ''
     const timelineLabels = [
       'Interpret training intent',
       'Build image and deps',
@@ -36,6 +37,26 @@ describe('BasicsExplorer', () => {
     for (const label of timelineLabels) {
       expect(timelineText).toContain(label)
     }
+    const cueLegend = screen.getByRole('region', { name: 'What to watch for' })
+    const cueLegendText = cueLegend.textContent ?? ''
+    for (const cueLabel of ['Fragile', 'Can take hours', 'Many systems', 'Inspect this', 'Retry/resume', 'Hotfix']) {
+      expect(cueLegendText).toContain(cueLabel)
+      expect(screen.getAllByText(cueLabel).length).toBeGreaterThan(0)
+    }
+    expect(cueLegendText).toContain('slow, brittle, or worth inspecting')
+
+    expect(timelineStepText('Interpret training intent')).not.toContain('Fragile')
+    expect(timelineStepText('Build image and deps')).toContain('Fragile')
+    expect(timelineStepText('Build image and deps')).toContain('Retry/resume')
+    expect(timelineStepText('Gather resource constraints')).toContain('Many systems')
+    expect(timelineStepText('Solve placement plan')).toContain('Many systems')
+    expect(timelineStepText('Reserve and pin resources')).toContain('Can take hours')
+    expect(timelineStepText('Reserve and pin resources')).toContain('Retry/resume')
+    expect(timelineStepText('Materialize job spec')).toContain('Inspect this')
+    expect(timelineStepText('Submit and monitor with k8s')).toContain('Can take hours')
+    expect(timelineStepText('Hotfix without starting over')).toContain('Hotfix')
+    expect(timelineStepText('Hotfix without starting over')).toContain('Retry/resume')
+
     expect(timelineText).toContain('Docker build for CUDA/Torch')
     expect(timelineText).toContain('sync Python deps with uv')
     expect(timelineText).toContain('CUDA/Torch mismatches')

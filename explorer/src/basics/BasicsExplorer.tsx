@@ -3,12 +3,18 @@ import {
   Boxes,
   Cpu,
   Database,
+  FileSearch,
+  Hourglass,
   Network,
   PackageCheck,
   Play,
+  RotateCcw,
   Route,
   ServerCog,
+  TriangleAlert,
+  Wrench,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ExplorerModeProps } from '@/explorer-kit/mode'
 
@@ -22,8 +28,11 @@ interface ConceptCard {
 interface TimelineStep {
   label: string
   summary: string
+  cues?: TimelineCue[]
   substeps?: TimelineSubstep[]
 }
+
+type TimelineCue = 'fragile' | 'long' | 'complex' | 'inspect' | 'retry' | 'hotfix'
 
 interface TimelineSubstep {
   label: string
@@ -34,6 +43,47 @@ interface HoodOpenArtifact {
   label: string
   detail: string
 }
+
+interface CueMeta {
+  label: string
+  description: string
+  icon: LucideIcon
+}
+
+const CUE_META: Record<TimelineCue, CueMeta> = {
+  fragile: {
+    label: 'Fragile',
+    description: 'External work that can break for ordinary infrastructure reasons.',
+    icon: TriangleAlert,
+  },
+  long: {
+    label: 'Can take hours',
+    description: 'Waiting, building, or monitoring may outlive one process.',
+    icon: Hourglass,
+  },
+  complex: {
+    label: 'Many systems',
+    description: 'Several services or constraints must line up.',
+    icon: Network,
+  },
+  inspect: {
+    label: 'Inspect this',
+    description: 'This is where the concrete debugging evidence lives.',
+    icon: FileSearch,
+  },
+  retry: {
+    label: 'Retry/resume',
+    description: 'Temporal can keep progress instead of starting from scratch.',
+    icon: RotateCcw,
+  },
+  hotfix: {
+    label: 'Hotfix',
+    description: 'A live correction can be recorded without rebuilding the run.',
+    icon: Wrench,
+  },
+}
+
+const CUE_LEGEND: TimelineCue[] = ['fragile', 'long', 'complex', 'inspect', 'retry', 'hotfix']
 
 const CONCEPTS: ConceptCard[] = [
   {
@@ -85,6 +135,7 @@ const TIMELINE: TimelineStep[] = [
     label: 'Build image and deps',
     summary:
       'Run the large Docker build for CUDA/Torch and sync Python deps with uv; CUDA/Torch mismatches, cold layer caches, flaky package indexes, and registry push timeouts make this step worth retrying and resuming.',
+    cues: ['fragile', 'retry'],
     substeps: [
       {
         label: 'CUDA/Torch base',
@@ -108,11 +159,13 @@ const TIMELINE: TimelineStep[] = [
     label: 'Gather resource constraints',
     summary:
       'Activities fan out to multiple external systems: quota, inventory, schedulers, rack topology, machine health, storage catalogs, and cluster metadata.',
+    cues: ['complex'],
   },
   {
     label: 'Solve placement plan',
     summary:
       'Workflow logic resolves the placement: cluster us-east-train-7, two healthy racks, a 64-A100 node pool, FineWeb-local storage, and policy-compatible networking.',
+    cues: ['complex'],
     substeps: [
       {
         label: 'Datacenter candidates',
@@ -136,20 +189,24 @@ const TIMELINE: TimelineStep[] = [
     label: 'Reserve and pin resources',
     summary:
       'Activities join the reservation queue and may wait hours for the chosen GPUs; once granted, they pin machines and dataset path so the launch spec has stable pointers.',
+    cues: ['long', 'retry'],
   },
   {
     label: 'Materialize job spec',
     summary:
       'History records how roughly 10 lines of researcher intent expand into a 1000-line launch spec: command line, env vars, quota decision, cluster details, mounts, and k8s spec.',
+    cues: ['inspect'],
   },
   {
     label: 'Submit and monitor with k8s',
     summary: 'Activities submit the job to Kubernetes, monitor status, and heartbeat progress over time.',
+    cues: ['long'],
   },
   {
     label: 'Hotfix without starting over',
     summary:
       'Replay rebuilds run state after restarts; signals can record a focused hotfix like correcting the wrong env var or flag, or updating actor pod replicas without starting over.',
+    cues: ['hotfix', 'retry'],
   },
 ]
 
@@ -205,6 +262,45 @@ function ConceptGrid() {
   )
 }
 
+function CueBadge({ cue, showDescription = false }: { cue: TimelineCue; showDescription?: boolean }) {
+  const meta = CUE_META[cue]
+  const Icon = meta.icon
+
+  return (
+    <span className={`basics-cue basics-cue--${cue}`}>
+      <Icon size={14} aria-hidden="true" />
+      <span>{meta.label}</span>
+      {showDescription ? <span className="basics-cue-description">{meta.description}</span> : null}
+    </span>
+  )
+}
+
+function CueList({ cues, label }: { cues: TimelineCue[]; label: string }) {
+  return (
+    <div className="basics-cue-list" aria-label={label}>
+      {cues.map((cue) => (
+        <CueBadge key={cue} cue={cue} />
+      ))}
+    </div>
+  )
+}
+
+function CueLegend() {
+  return (
+    <div className="basics-cue-legend" role="region" aria-labelledby="basics-cue-legend-title">
+      <div>
+        <h3 id="basics-cue-legend-title">What to watch for</h3>
+        <p>These badges mark the parts of the training run that tend to be slow, brittle, or worth inspecting.</p>
+      </div>
+      <div className="basics-cue-list basics-cue-list--legend">
+        {CUE_LEGEND.map((cue) => (
+          <CueBadge key={cue} cue={cue} showDescription />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function TrainingTimeline() {
   return (
     <section aria-labelledby="basics-timeline-title" className="basics-section">
@@ -212,12 +308,14 @@ function TrainingTimeline() {
         <h2 id="basics-timeline-title">One training run, one durable story</h2>
         <p>Temporal keeps the story moving while infrastructure decisions, retries, and monitoring unfold over time.</p>
       </div>
+      <CueLegend />
       <ol className="basics-timeline" aria-label="Model training workflow timeline">
         {TIMELINE.map((step, index) => (
           <li key={step.label} className="basics-timeline-step">
             <div className="basics-timeline-index">{String(index + 1).padStart(2, '0')}</div>
             <div>
               <div className="basics-timeline-label">{step.label}</div>
+              {step.cues ? <CueList cues={step.cues} label={`${step.label} cues`} /> : null}
               <p>{step.summary}</p>
               {step.substeps ? (
                 <div className="basics-subflow" role="region" aria-label={`${step.label} subprocess`}>
