@@ -83,8 +83,10 @@ describe('BasicsExplorer', () => {
       expect(timelineText.indexOf(timelineLabels[index])).toBeGreaterThan(timelineText.indexOf(timelineLabels[index - 1]))
     }
 
-    const artifacts = screen.getByRole('region', { name: 'Hood-open artifacts' })
+    const artifacts = screen.getByRole('region', { name: 'What to inspect when debugging' })
     const artifactText = artifacts.textContent ?? ''
+    expect(artifactText).toContain('saves researchers from manually assembling')
+    expect(artifactText).toContain('see what was decided')
     expect(artifactText).toContain('Materialized job spec')
     expect(artifactText).toContain('env vars')
     expect(artifactText).toContain('Quota decision')

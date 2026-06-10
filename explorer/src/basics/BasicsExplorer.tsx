@@ -241,10 +241,11 @@ function HoodOpenArtifacts() {
   return (
     <section aria-labelledby="basics-artifacts-title" className="basics-section">
       <div className="basics-section-heading">
-        <h2 id="basics-artifacts-title">Hood-open artifacts</h2>
+        <h2 id="basics-artifacts-title">What to inspect when debugging</h2>
         <p>
-          The pipeline hides cluster/rack/machine details during launch, but it should not become a black box. When a
-          run needs debugging, researchers start with the materialized job spec and then read the logs.
+          During launch, the pipeline saves researchers from manually assembling every cluster, storage, and Kubernetes
+          detail. When something looks wrong, those details should still be inspectable: start with the materialized job
+          spec to see what was decided, then use logs and events to understand what happened at runtime.
         </p>
       </div>
       <div className="basics-artifact-grid">
