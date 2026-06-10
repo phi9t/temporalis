@@ -826,6 +826,10 @@ body {
   font-family: var(--font-mono);
 }
 
+.lifecycle-svg--grouped {
+  max-width: 1120px;
+}
+
 .lifecycle-workspace {
   display: grid;
   align-items: start;
@@ -881,6 +885,29 @@ body {
 .lifecycle-lane {
   fill: rgba(15, 23, 42, 0.46);
   stroke: rgba(255, 255, 255, 0.08);
+}
+
+.lifecycle-group {
+  fill: rgba(7, 10, 19, 0.18);
+  stroke: rgba(56, 189, 248, 0.15);
+  stroke-width: 1.2;
+}
+
+.lifecycle-group--worker {
+  fill: rgba(99, 102, 241, 0.08);
+  stroke: rgba(129, 140, 248, 0.2);
+}
+
+.lifecycle-group--server {
+  fill: rgba(14, 165, 233, 0.08);
+  stroke: rgba(56, 189, 248, 0.2);
+}
+
+.lifecycle-group-label {
+  fill: var(--color-cyan);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .lifecycle-lane-label {
@@ -1119,12 +1146,20 @@ body {
 }
 
 @media (min-width: 1280px) {
+  .control-main.lifecycle-main {
+    grid-template-columns: minmax(340px, 0.95fr) minmax(460px, 0.8fr);
+  }
+
   .control-sequence-shell {
     order: 1;
   }
 
   .control-diagram-shell {
     order: 2;
+  }
+
+  .control-diagram-shell .lifecycle-svg--grouped {
+    min-height: 420px;
   }
 }
 

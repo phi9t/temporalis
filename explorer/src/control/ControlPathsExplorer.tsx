@@ -229,6 +229,7 @@ export default function ControlPathsExplorer(_props: ExplorerModeProps) {
                 <LifecycleDiagram
                   nodes={lifecycle.nodes}
                   edges={lifecycle.edges}
+                  variant="grouped"
                   activeNodeIds={activeNodeIds}
                   activeEdgeIds={activeEdgeIds}
                   selectedId={selectedNode?.id ?? null}

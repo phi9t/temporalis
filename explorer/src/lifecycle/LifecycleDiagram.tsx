@@ -10,6 +10,8 @@ const EDGE_LABEL_RADIUS = 6
 const SVG_WIDTH = 820
 const SVG_HEIGHT = 560
 
+type DiagramVariant = 'full' | 'grouped'
+
 export interface EdgeLabelCall {
   id: string
   seq: number
@@ -56,6 +58,12 @@ const LAYERS = [
   { id: 'bridge', label: 'Bridge', y: 234 },
   { id: 'sdk-core', label: 'sdk-core', y: 334 },
   { id: 'server', label: 'Temporal server', y: 434 },
+] as const
+
+const GROUPS = [
+  { id: 'user-app', label: 'User app', y: 20, height: 112 },
+  { id: 'worker', label: 'Worker', y: 120, height: 312 },
+  { id: 'server', label: 'Temporal server', y: 420, height: 112 },
 ] as const
 
 const X: Record<string, number> = {
@@ -321,6 +329,7 @@ function edgeLabelWidth(text: string): number {
 export default function LifecycleDiagram({
   nodes,
   edges,
+  variant = 'full',
   activeNodeIds,
   activeEdgeIds,
   selectedId,
@@ -336,6 +345,7 @@ export default function LifecycleDiagram({
 }: {
   nodes: LifecycleNode[]
   edges: LifecycleEdge[]
+  variant?: DiagramVariant
   activeNodeIds: Set<string>
   activeEdgeIds: Set<string>
   selectedId: string | null
@@ -407,7 +417,12 @@ export default function LifecycleDiagram({
   })
 
   return (
-    <svg viewBox="0 0 820 560" className="lifecycle-svg" role="group" aria-label="Temporal lifecycle diagram">
+    <svg
+      viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+      className={cn('lifecycle-svg', variant === 'grouped' && 'lifecycle-svg--grouped')}
+      role="group"
+      aria-label="Temporal lifecycle diagram"
+    >
       <defs>
         <marker id="lifecycle-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" />
@@ -435,6 +450,16 @@ export default function LifecycleDiagram({
           <path d="M 0 0 L 10 5 L 0 10 z" />
         </marker>
       </defs>
+
+      {variant === 'grouped' &&
+        GROUPS.map((group) => (
+          <g key={group.id}>
+            <rect className={cn('lifecycle-group', `lifecycle-group--${group.id}`)} x={4} y={group.y} width={812} height={group.height} rx={16} />
+            <text className="lifecycle-group-label" x={18} y={group.y + 16}>
+              {group.label}
+            </text>
+          </g>
+        ))}
 
       {LAYERS.map((layer) => (
         <g key={layer.id}>

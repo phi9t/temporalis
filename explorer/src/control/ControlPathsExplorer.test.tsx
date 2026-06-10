@@ -27,6 +27,60 @@ const lifecycle: LifecycleManifest = {
   phases: [],
   nodes: [
     {
+      id: 'kilvin-client',
+      label: 'Kilvin client',
+      layer: 'kilvin',
+      kind: 'client',
+      summary: 'The user app starts or controls a workflow.',
+      notes: 'User code talks to Temporal through the SDK.',
+      refs: [],
+    },
+    {
+      id: 'python-worker',
+      label: 'Python Worker.run',
+      layer: 'sdk-python',
+      kind: 'worker',
+      summary: 'The Python SDK runs worker code.',
+      notes: 'The worker hosts workflow and activity execution.',
+      refs: [],
+    },
+    {
+      id: 'bridge-worker',
+      label: 'Bridge worker',
+      layer: 'bridge',
+      kind: 'bridge',
+      summary: 'The bridge connects Python to core.',
+      notes: 'Bridge preserves the SDK boundary.',
+      refs: [],
+    },
+    {
+      id: 'core-runtime',
+      label: 'Core runtime',
+      layer: 'sdk-core',
+      kind: 'runtime',
+      summary: 'Core runtime hosts SDK internals.',
+      notes: 'Runtime state lives below the language SDK.',
+      refs: [],
+    },
+    {
+      id: 'core-worker',
+      label: 'Core worker',
+      layer: 'sdk-core',
+      kind: 'worker',
+      summary: 'Core worker polls and completes tasks.',
+      notes: 'Core worker talks to Temporal server APIs.',
+      refs: [],
+    },
+    {
+      id: 'frontend-service',
+      label: 'Frontend',
+      layer: 'server',
+      kind: 'frontend',
+      summary: 'Frontend receives public RPCs.',
+      notes: 'Frontend is the server entrypoint.',
+      refs: [],
+    },
+    {
       id: 'workflow-activation',
       label: 'Activation',
       layer: 'sdk-python',
@@ -51,6 +105,24 @@ const lifecycle: LifecycleManifest = {
       kind: 'history',
       summary: 'History stores workflow events.',
       notes: 'History is the source of truth for replay.',
+      refs: [],
+    },
+    {
+      id: 'matching-service',
+      label: 'Matching',
+      layer: 'server',
+      kind: 'matching',
+      summary: 'Matching dispatches tasks to workers.',
+      notes: 'Matching owns task queue delivery.',
+      refs: [],
+    },
+    {
+      id: 'activity-task',
+      label: 'Activity task',
+      layer: 'sdk-python',
+      kind: 'activity',
+      summary: 'Activity task execution happens in worker code.',
+      notes: 'Activities run outside deterministic workflow code.',
       refs: [],
     },
   ],
@@ -141,8 +213,22 @@ describe('ControlPathsExplorer', () => {
     )
     expect(screen.getByText('python hacks/005_control_paths.py')).toBeTruthy()
     expect(screen.getByText('Print control-path overlays.')).toBeTruthy()
-    expect(screen.getByRole('group', { name: 'Temporal lifecycle diagram' })).toBeTruthy()
+    const diagram = screen.getByRole('group', { name: 'Temporal lifecycle diagram' })
+    expect(diagram).toBeTruthy()
+    expect(diagram.textContent).toContain('User app')
+    expect(diagram.textContent).toContain('Worker')
+    expect(diagram.textContent).toContain('Temporal server')
+    expect(diagram.textContent).toContain('Kilvin client')
+    expect(diagram.textContent).toContain('Python Worker.run')
+    expect(diagram.textContent).toContain('Bridge')
+    expect(diagram.textContent).toContain('sdk-core')
+    expect(diagram.textContent).toContain('Core worker')
+    expect(diagram.textContent).toContain('Activity task')
+    expect(diagram.textContent).toContain('Frontend')
+    expect(diagram.textContent).toContain('History')
+    expect(diagram.textContent).toContain('Matching')
     expect(screen.getByRole('button', { name: 'Activation' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Core worker' })).toBeTruthy()
   })
 
   it('renders an ordered control sequence and defaults to the first step details', async () => {
