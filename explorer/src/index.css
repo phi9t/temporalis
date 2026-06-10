@@ -861,6 +861,11 @@ body {
     max-height: min(760px, calc(100vh - 180px));
   }
 
+  .lifecycle-main--diagram-only {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: none;
+  }
+
   .lifecycle-diagram {
     order: 1;
     position: sticky;
@@ -1022,6 +1027,220 @@ body {
   stroke-width: 3;
 }
 
+.flow-diagram {
+  width: 100%;
+  min-width: 0;
+}
+
+.flow-diagram-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 6px;
+}
+
+.flow-grid {
+  display: grid;
+  gap: 8px;
+  min-width: max-content;
+}
+
+.flow-row {
+  display: contents;
+}
+
+.flow-group-cell,
+.flow-step-cell {
+  min-height: 156px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.44);
+}
+
+.flow-row--user-app .flow-group-cell,
+.flow-row--user-app .flow-step-cell {
+  background: rgba(7, 10, 19, 0.42);
+}
+
+.flow-row--worker .flow-group-cell,
+.flow-row--worker .flow-step-cell {
+  background: rgba(99, 102, 241, 0.07);
+  border-color: rgba(129, 140, 248, 0.16);
+}
+
+.flow-row--server .flow-group-cell,
+.flow-row--server .flow-step-cell {
+  background: rgba(14, 165, 233, 0.07);
+  border-color: rgba(56, 189, 248, 0.16);
+}
+
+.flow-group-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: var(--radius-panel) 4px 4px var(--radius-panel);
+  padding: 12px;
+}
+
+.flow-step-cell {
+  display: flex;
+  align-items: stretch;
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.flow-step-cell:last-child {
+  border-radius: 4px var(--radius-panel) var(--radius-panel) 4px;
+}
+
+.flow-group-title {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.flow-component-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.flow-component-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  border: 1px solid rgba(99, 102, 241, 0.24);
+  border-radius: 7px;
+  padding: 7px 8px;
+  background: rgba(7, 10, 19, 0.42);
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.flow-component-chip.active {
+  border-color: rgba(56, 189, 248, 0.48);
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.flow-component-chip.selected {
+  border-color: var(--color-cyan);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.32), 0 0 18px rgba(56, 189, 248, 0.15);
+}
+
+.flow-component-chip:focus-visible,
+.flow-step-card:focus-visible {
+  outline: 2px solid var(--color-cyan);
+  outline-offset: 2px;
+}
+
+.flow-component-layer {
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.flow-step-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(99, 102, 241, 0.36);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(7, 10, 19, 0.62);
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.flow-step-card.selected {
+  border-color: var(--color-cyan);
+  background: rgba(14, 165, 233, 0.13);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.34), 0 0 20px rgba(56, 189, 248, 0.16);
+}
+
+.flow-step-kicker,
+.flow-step-route {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.flow-step-route {
+  color: var(--color-ink-muted);
+  font-weight: 700;
+}
+
+.flow-step-route span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.flow-kind {
+  border: 1px solid rgba(99, 102, 241, 0.32);
+  border-radius: var(--radius-badge);
+  padding: 2px 6px;
+  background: rgba(15, 23, 42, 0.62);
+  color: var(--color-ink-soft);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.flow-step-message {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
+.flow-step-card p {
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.flow-step-target,
+.flow-empty-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 52px;
+  align-self: center;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.flow-step-target.selected {
+  border-color: rgba(56, 189, 248, 0.62);
+  color: var(--color-ink-soft);
+}
+
 .call-sequence {
   display: flex;
   flex-direction: column;
@@ -1147,7 +1366,7 @@ body {
 
 @media (min-width: 1280px) {
   .control-main.lifecycle-main {
-    grid-template-columns: minmax(340px, 0.95fr) minmax(460px, 0.8fr);
+    grid-template-columns: minmax(340px, 0.72fr) minmax(620px, 1.08fr);
   }
 
   .control-sequence-shell {
@@ -1158,7 +1377,11 @@ body {
     order: 2;
   }
 
-  .control-diagram-shell .lifecycle-svg--grouped {
+  .control-main--diagram-only .control-diagram-shell {
+    order: 1;
+  }
+
+  .control-diagram-shell .flow-diagram {
     min-height: 420px;
   }
 }

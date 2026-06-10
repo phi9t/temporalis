@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import LifecycleExplorer from './LifecycleExplorer'
 import type { LifecycleManifest } from './types'
 
@@ -137,46 +137,38 @@ const manifest: LifecycleManifest = {
   ],
 }
 
-const scrollIntoView = vi.fn()
-
-beforeEach(() => {
-  scrollIntoView.mockClear()
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: scrollIntoView,
-  })
-})
-
 afterEach(() => cleanup())
 
 describe('LifecycleExplorer', () => {
-  it('renders the call sequence and defaults to the first sorted call details', async () => {
+  it('renders the swimlane and defaults to the first sorted call details', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
     const firstCall = await screen.findByRole('button', {
-      name: /01 Kilvin client to Frontend StartWorkflowExecution/,
+      name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/,
     })
 
     expect(firstCall).toBeTruthy()
+    expect(screen.queryByLabelText('Lifecycle call sequence')).toBeNull()
     expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
     expect(screen.getAllByText('Kilvin asks Temporal to start the command workflow.').length).toBeGreaterThan(0)
     expect(screen.getByText('workflow_id')).toBeTruthy()
   })
 
-  it('places the call sequence before the diagram in narrow layout order', async () => {
+  it('renders diagram-only swimlane groups', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
-    const sequence = await screen.findByLabelText('Lifecycle call sequence')
-    const diagram = screen.getByLabelText('Temporal lifecycle diagram')
+    const diagram = await screen.findByLabelText('Temporal swimlane flow diagram')
 
-    expect(sequence.compareDocumentPosition(diagram) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(diagram.textContent).toContain('User app')
+    expect(diagram.textContent).toContain('Worker')
+    expect(diagram.textContent).toContain('Temporal server')
   })
 
-  it('updates call details when a call row is selected', async () => {
+  it('updates call details when a flow card is selected', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
     const secondCall = await screen.findByRole('button', {
-      name: /02 Kilvin client to Frontend DescribeWorkflowExecution/,
+      name: /Flow step 02 Kilvin client to Frontend DescribeWorkflowExecution/,
     })
 
     fireEvent.click(secondCall)
@@ -186,128 +178,85 @@ describe('LifecycleExplorer', () => {
     expect(screen.getByText('run_id')).toBeTruthy()
   })
 
-  it('keeps the active phase and guide aligned when selecting a call from another phase', async () => {
+  it('keeps the active phase and guide aligned when selecting another phase', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
-    const pollCall = await screen.findByRole('button', {
-      name: /04 Kilvin client to Frontend PollWorkflowTaskQueue/,
+    await screen.findByRole('button', {
+      name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/,
     })
-
-    fireEvent.click(pollCall)
+    fireEvent.click(screen.getByRole('button', { name: 'Poll workflow task' }))
 
     expect(screen.getByRole('button', { name: 'Poll workflow task' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('heading', { name: 'PollWorkflowTaskQueue' })).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: /Flow step 04 Kilvin client to Frontend PollWorkflowTaskQueue/ }),
+    ).toBeTruthy()
     expect(screen.getByRole('link', { name: /5\. Happy path: poll workflow task/ }).getAttribute('href')).toBe(
       '/HACKERS_GUIDE.md#happy-path-poll-workflow-task',
     )
     expect(screen.getByText('python hacks/003_lifecycle_poll.py')).toBeTruthy()
   })
 
-  it('scrolls the selected call into view when phase or edge selection changes it', async () => {
-    render(<LifecycleExplorer navigate={vi.fn()} />)
-
-    await screen.findByRole('button', {
-      name: /01 Kilvin client to Frontend StartWorkflowExecution/,
-    })
-
-    scrollIntoView.mockClear()
-    fireEvent.click(screen.getByRole('button', { name: 'Poll workflow task' }))
-
-    expect(screen.getByRole('heading', { name: 'PollWorkflowTaskQueue' })).toBeTruthy()
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'auto' })
-
-    scrollIntoView.mockClear()
-    fireEvent.click(screen.getByRole('button', { name: 'Start workflow' }))
-    expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
-
-    const edge = screen.getByRole('button', { name: /Diagram edge StartWorkflowExecution/ })
-    fireEvent.keyDown(edge, { key: 'Enter' })
-
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'auto' })
-  })
-
-  it('does not change selection merely because the call sequence scrolls', async () => {
-    render(<LifecycleExplorer navigate={vi.fn()} />)
-
-    const sequence = await screen.findByLabelText('Lifecycle call sequence')
-    fireEvent.scroll(sequence)
-
-    expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
-  })
-
-  it('does not force scroll on direct row selection after revealing the already-selected call', async () => {
-    render(<LifecycleExplorer navigate={vi.fn()} />)
-
-    const secondCall = await screen.findByRole('button', {
-      name: /02 Kilvin client to Frontend DescribeWorkflowExecution/,
-    })
-
-    scrollIntoView.mockClear()
-    fireEvent.click(screen.getByRole('button', { name: 'Start workflow' }))
-    scrollIntoView.mockClear()
-
-    fireEvent.click(secondCall)
-
-    expect(screen.getByRole('heading', { name: 'DescribeWorkflowExecution' })).toBeTruthy()
-    expect(scrollIntoView).not.toHaveBeenCalled()
-  })
-
-  it('selects the first active-phase call when a diagram edge is clicked', async () => {
+  it('selects an active-phase call when a flow item is clicked', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
     const responseCall = await screen.findByRole('button', {
-      name: /03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
+      name: /Flow step 03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
     })
 
     fireEvent.click(responseCall)
     expect(screen.getByRole('heading', { name: 'StartWorkflowExecutionResponse' })).toBeTruthy()
 
-    const edgeHit = document.querySelector('.lifecycle-edge .lifecycle-edge-hit')
-    if (!edgeHit) throw new Error('expected lifecycle edge hit target')
-
-    fireEvent.click(edgeHit)
+    const firstFlowStep = screen.getByRole('button', {
+      name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/,
+    })
+    fireEvent.click(firstFlowStep)
 
     expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
     expect(screen.getByText('workflow_id')).toBeTruthy()
-    expect(document.querySelector('.lifecycle-edge-label-badge.selected text')?.textContent).toBe(
-      'StartWorkflowExecution',
-    )
+    expect(firstFlowStep.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('selects a diagram edge with the keyboard', async () => {
+  it('selects a flow item from the diagram', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
     const responseCall = await screen.findByRole('button', {
-      name: /03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
+      name: /Flow step 03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
     })
     fireEvent.click(responseCall)
     expect(screen.getByRole('heading', { name: 'StartWorkflowExecutionResponse' })).toBeTruthy()
 
-    const edge = screen.getByRole('button', { name: /Diagram edge StartWorkflowExecution/ })
+    const flowStep = screen.getByRole('button', {
+      name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/,
+    })
 
-    fireEvent.keyDown(edge, { key: 'Enter' })
+    fireEvent.click(flowStep)
 
     expect(screen.getByRole('heading', { name: 'StartWorkflowExecution' })).toBeTruthy()
-    expect(edge.getAttribute('aria-pressed')).toBe('true')
+    expect(flowStep.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('renders selected response calls in call direction on reused edges', async () => {
+  it('renders selected response calls in call direction', async () => {
     render(<LifecycleExplorer navigate={vi.fn()} />)
 
     const responseCall = await screen.findByRole('button', {
-      name: /03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
+      name: /Flow step 03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
     })
 
     fireEvent.click(responseCall)
 
-    const selectedLine = document.querySelector('.lifecycle-edge.selected .lifecycle-edge-line')
+    const responseFlowStep = screen.getByRole('button', {
+      name: /Flow step 03 Frontend to Kilvin client StartWorkflowExecutionResponse/,
+    })
 
-    expect(selectedLine?.getAttribute('y1')).toBe('483')
-    expect(selectedLine?.getAttribute('y2')).toBe('83')
-    expect(document.querySelector('.lifecycle-edge-label-badge.selected text')?.textContent).toBe(
-      'StartWorkflowExecutionResp...',
+    expect(responseFlowStep.getAttribute('aria-pressed')).toBe('true')
+    expect(
+      screen.getAllByText((_, element) => element?.textContent === 'Frontend→Kilvin client').length,
+    ).toBeGreaterThan(0)
+    expect(
+      screen.getByRole('button', { name: /Flow step 03 Frontend to Kilvin client StartWorkflowExecutionResponse/ }),
     )
-    expect(screen.getByRole('button', { name: /Diagram edge StartWorkflowExecutionResponse/ })).toBeTruthy()
+      .toBeTruthy()
   })
 
   it('renders phase guide and hack links', async () => {

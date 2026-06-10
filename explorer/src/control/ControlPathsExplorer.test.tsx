@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import ControlPathsExplorer from './ControlPathsExplorer'
 import type { ControlScenario, LifecycleManifest } from '@/lifecycle/types'
 
@@ -180,20 +180,23 @@ const scenario: ControlScenario = {
       affected_node_ids: ['workflow-activation', 'history-service'],
       affected_edge_ids: ['workflow-complete'],
     },
+    {
+      id: 'pause-resume-command',
+      seq: 3,
+      kind: 'command',
+      from: 'workflow-activation',
+      to: 'history-service',
+      edge_id: 'workflow-complete',
+      message: 'RespondWorkflowTaskCompleted',
+      summary: 'Python emits commands after resume.',
+      details: ['History receives workflow task completion.'],
+      affected_node_ids: ['workflow-activation', 'history-service'],
+      affected_edge_ids: ['workflow-complete'],
+    },
   ],
 }
 
-const scrollIntoView = vi.fn()
-
 describe('ControlPathsExplorer', () => {
-  beforeEach(() => {
-    scrollIntoView.mockClear()
-    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-      configurable: true,
-      value: scrollIntoView,
-    })
-  })
-
   afterEach(() => {
     cleanup()
   })
@@ -213,7 +216,7 @@ describe('ControlPathsExplorer', () => {
     )
     expect(screen.getByText('python hacks/005_control_paths.py')).toBeTruthy()
     expect(screen.getByText('Print control-path overlays.')).toBeTruthy()
-    const diagram = screen.getByRole('group', { name: 'Temporal lifecycle diagram' })
+    const diagram = screen.getByRole('group', { name: 'Temporal swimlane flow diagram' })
     expect(diagram).toBeTruthy()
     expect(diagram.textContent).toContain('User app')
     expect(diagram.textContent).toContain('Worker')
@@ -227,29 +230,32 @@ describe('ControlPathsExplorer', () => {
     expect(diagram.textContent).toContain('Frontend')
     expect(diagram.textContent).toContain('History')
     expect(diagram.textContent).toContain('Matching')
+    expect(diagram.textContent).toContain('SignalWorkflowExecution')
+    expect(diagram.textContent).toContain('WorkflowActivation(signal)')
+    expect(diagram.textContent).toContain('RespondWorkflowTaskCompleted')
     expect(screen.getByRole('button', { name: 'Activation' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Core worker' })).toBeTruthy()
   })
 
-  it('renders an ordered control sequence and defaults to the first step details', async () => {
+  it('renders ordered control flow cards and defaults to the first step details', async () => {
     render(<ControlPathsExplorer navigate={vi.fn()} />)
 
     const firstStep = await screen.findByRole('button', {
-      name: /01 Activation to History SignalWorkflowExecution/,
+      name: /Flow step 01 Activation to History SignalWorkflowExecution/,
     })
 
     expect(firstStep.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByLabelText('Control path sequence')).toBeTruthy()
+    expect(screen.queryByLabelText('Control path sequence')).toBeNull()
     expect(screen.getByRole('heading', { name: 'SignalWorkflowExecution' })).toBeTruthy()
     expect(screen.getAllByText('A pause request is recorded durably.').length).toBeGreaterThan(0)
     expect(screen.getByText('History stores the signal event.')).toBeTruthy()
   })
 
-  it('updates control step details when a sequence row is selected', async () => {
+  it('updates control step details when a flow card is selected', async () => {
     render(<ControlPathsExplorer navigate={vi.fn()} />)
 
     const secondStep = await screen.findByRole('button', {
-      name: /02 History to Activation WorkflowActivation\(signal\)/,
+      name: /Flow step 02 History to Activation WorkflowActivation\(signal\)/,
     })
     fireEvent.click(secondStep)
 
@@ -258,38 +264,35 @@ describe('ControlPathsExplorer', () => {
     expect(screen.getByText('Python updates deterministic pause state.')).toBeTruthy()
   })
 
-  it('selects the nearest matching control step when a diagram edge is selected', async () => {
+  it('opens node details when a swimlane component is selected', async () => {
+    render(<ControlPathsExplorer navigate={vi.fn()} />)
+
+    const activation = await screen.findByRole('button', { name: 'Activation' })
+    fireEvent.click(activation)
+
+    expect(screen.getByRole('heading', { name: 'Activation' })).toBeTruthy()
+    expect(screen.getByText('Replay feeds deterministic activations back to Python.')).toBeTruthy()
+    expect(activation.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('selects a matching control step when a flow item is selected', async () => {
     render(<ControlPathsExplorer navigate={vi.fn()} />)
 
     const secondStep = await screen.findByRole('button', {
-      name: /02 History to Activation WorkflowActivation\(signal\)/,
+      name: /Flow step 02 History to Activation WorkflowActivation\(signal\)/,
     })
     fireEvent.click(secondStep)
 
-    scrollIntoView.mockClear()
-    const edge = screen.getByRole('button', { name: /Diagram edge WorkflowActivation\(signal\)/ })
-    fireEvent.keyDown(edge, { key: 'Enter' })
-
     expect(screen.getByRole('heading', { name: 'WorkflowActivation(signal)' })).toBeTruthy()
     expect(secondStep.getAttribute('aria-pressed')).toBe('true')
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'auto' })
   })
 
-  it('does not change selection merely because the control sequence scrolls', async () => {
-    render(<ControlPathsExplorer navigate={vi.fn()} />)
-
-    const sequence = await screen.findByLabelText('Control path sequence')
-    fireEvent.scroll(sequence)
-
-    expect(screen.getByRole('heading', { name: 'SignalWorkflowExecution' })).toBeTruthy()
-  })
-
-  it('uses the selected control step message as the diagram edge label', async () => {
+  it('uses the selected control step message as the flow label', async () => {
     render(<ControlPathsExplorer navigate={vi.fn()} />)
 
     await screen.findByRole('heading', { name: 'SignalWorkflowExecution' })
 
-    expect(screen.getByRole('button', { name: /Diagram edge SignalWorkflowExecution/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Flow step 01 Activation to History SignalWorkflowExecution/ })).toBeTruthy()
     expect(screen.getAllByText('SignalWorkflowExecution').length).toBeGreaterThan(0)
   })
 })

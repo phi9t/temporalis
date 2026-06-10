@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AsyncBoundary } from '@/explorer-kit/AsyncBoundary'
 import { SubjectSwitcher } from '@/explorer-kit/SubjectSwitcher'
 import { ViewTabs } from '@/explorer-kit/ViewTabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ExplorerModeProps } from '@/explorer-kit/mode'
 import { errorMessage, fetchExplorerJson } from '@/lib/fetch'
-import CallSequence from './CallSequence'
-import LifecycleDiagram from './LifecycleDiagram'
+import FlowDiagram, { lifecycleCallToFlowItem } from './FlowDiagram'
 import LifecycleDrawer from './LifecycleDrawer'
 import { getSortedLifecycleCalls } from './manifestValidation'
 import type { LifecycleCall, LifecycleManifest, LifecycleSelection } from './types'
@@ -26,34 +25,11 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   const [manifestError, setManifestError] = useState<string | null>(null)
   const [phaseId, setPhaseId] = useState<string>('')
   const [selected, setSelected] = useState<LifecycleSelection | null>(null)
-  const [revealRequestId, setRevealRequestId] = useState(0)
-  const callRowsRef = useRef(new Map<string, HTMLButtonElement>())
-  const pendingRevealCallIdRef = useRef<string | null>(null)
 
   const selectCall = useCallback((call: LifecycleCall) => {
-    pendingRevealCallIdRef.current = null
     setPhaseId(call.phase_id)
     setSelected({ type: 'call', call })
   }, [])
-
-  const registerCallRow = useCallback((callId: string, element: HTMLButtonElement | null) => {
-    if (element) {
-      callRowsRef.current.set(callId, element)
-      return
-    }
-
-    callRowsRef.current.delete(callId)
-  }, [])
-
-  const selectCallAndReveal = useCallback(
-    (call: LifecycleCall) => {
-      pendingRevealCallIdRef.current = call.id
-      setRevealRequestId((requestId) => requestId + 1)
-      setPhaseId(call.phase_id)
-      setSelected({ type: 'call', call })
-    },
-    [],
-  )
 
   useEffect(() => {
     fetchExplorerJson<LifecycleEntry[]>('lifecycle/index.json')
@@ -120,9 +96,6 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
 
     return ids
   }, [activePhaseCalls])
-  const activeEdgeIds = useMemo(() => {
-    return new Set(activePhaseCalls.map((call) => call.edge_id))
-  }, [activePhaseCalls])
   const nodeLabels = useMemo(
     () => new Map(manifest?.nodes.map((node) => [node.id, node.label]) ?? []),
     [manifest?.nodes],
@@ -133,39 +106,17 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
   )
   const selectedCall = selected?.type === 'call' ? selected.call : null
   const selectedNode = selected?.type === 'node' ? selected.node : null
-
-  useEffect(() => {
-    const pendingRevealCallId = pendingRevealCallIdRef.current
-    if (!pendingRevealCallId || selectedCall?.id !== pendingRevealCallId) return
-
-    pendingRevealCallIdRef.current = null
-    callRowsRef.current.get(pendingRevealCallId)?.scrollIntoView({ block: 'nearest', behavior: 'auto' })
-  }, [revealRequestId, selectedCall?.id])
-
-  const selectedEndpointNodeIds = useMemo(() => {
-    if (!selectedCall) return new Set<string>()
-
-    return new Set([selectedCall.from, selectedCall.to])
-  }, [selectedCall])
-
-  function handleEdgeSelect(edgeId: string) {
-    const call = activePhaseCalls.find((item) => item.edge_id === edgeId) ?? calls.find((item) => item.edge_id === edgeId)
-
-    if (call) {
-      selectCallAndReveal(call)
-    }
-  }
+  const flowItems = useMemo(() => activePhaseCalls.map(lifecycleCallToFlowItem), [activePhaseCalls])
 
   function handlePhaseChange(nextPhaseId: string) {
     const call = calls.find((item) => item.phase_id === nextPhaseId)
 
     if (call) {
-      selectCallAndReveal(call)
+      selectCall(call)
       return
     }
 
     setPhaseId(nextPhaseId)
-    pendingRevealCallIdRef.current = null
     setSelected(null)
   }
 
@@ -215,33 +166,16 @@ export default function LifecycleExplorer(_props: ExplorerModeProps) {
             <p className="text-sm text-ink-soft">{phase?.summary}</p>
           </CardHeader>
           <CardContent>
-            <div className="lifecycle-main">
-              <div className="lifecycle-sequence">
-                <CallSequence
-                  calls={calls}
-                  nodeLabels={nodeLabels}
-                  activePhaseId={phase?.id ?? ''}
-                  selectedCallId={selectedCall?.id ?? null}
-                  onSelect={selectCall}
-                  registerCallRow={registerCallRow}
-                />
-              </div>
+            <div className="lifecycle-main lifecycle-main--diagram-only">
               <div className="lifecycle-diagram">
-                <LifecycleDiagram
+                <FlowDiagram
+                  items={flowItems}
                   nodes={manifest.nodes}
-                  edges={manifest.edges}
                   activeNodeIds={activeNodeIds}
-                  activeEdgeIds={activeEdgeIds}
-                  selectedId={selectedNode?.id ?? null}
-                  selectedEdgeId={selectedCall?.edge_id ?? null}
-                  selectedCallFrom={selectedCall?.from ?? null}
-                  selectedCallTo={selectedCall?.to ?? null}
-                  selectedCall={selectedCall}
-                  activeCallLabels={calls}
-                  activePhaseId={phase?.id ?? ''}
-                  selectedEndpointNodeIds={selectedEndpointNodeIds}
-                  onSelect={(node) => setSelected({ type: 'node', node })}
-                  onSelectEdge={handleEdgeSelect}
+                  selectedNodeId={selectedNode?.id ?? null}
+                  selectedItemId={selectedCall?.id ?? null}
+                  onSelectNode={(node) => setSelected({ type: 'node', node })}
+                  onSelectItem={(item) => selectCall(item.source)}
                 />
               </div>
             </div>
