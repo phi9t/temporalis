@@ -22,6 +22,12 @@ interface ConceptCard {
 interface TimelineStep {
   label: string
   summary: string
+  substeps?: TimelineSubstep[]
+}
+
+interface TimelineSubstep {
+  label: string
+  detail: string
 }
 
 interface HoodOpenArtifact {
@@ -40,7 +46,7 @@ const CONCEPTS: ConceptCard[] = [
     title: 'Activity',
     plain: 'A real-world action that can fail, retry, or take time.',
     temporalTerm: 'Activities perform side effects outside deterministic workflow code.',
-    example: 'Image/deps build, quota query, dataset lookup, env/flag fetch, k8s spec assembly, submit, and monitor are activities.',
+    example: 'Docker CUDA/Torch image build, uv Python dependency sync, quota query, dataset lookup, k8s spec assembly, submit, and monitor are activities.',
   },
   {
     title: 'Worker',
@@ -62,9 +68,11 @@ const CONCEPTS: ConceptCard[] = [
   },
   {
     title: 'Replay',
-    plain: 'The way Temporal rebuilds workflow state after a restart.',
-    temporalTerm: 'Replay reruns deterministic workflow code from recorded history.',
-    example: 'After a worker restart, the run resumes from recorded decisions instead of rebuilding or resubmitting blindly.',
+    plain: 'The way Temporal reconstructs a run so long-lived work can pause, resume, and survive restarts.',
+    temporalTerm:
+      'Replay reruns deterministic workflow code from recorded history; retries rerun failed activities, not already-recorded decisions.',
+    example:
+      'If a worker dies while waiting for GPUs, Temporal replays the placement and reservation history, then resumes from the open wait. Signals can record a pause or override without rebuilding the image or resubmitting blindly.',
   },
 ]
 
@@ -75,34 +83,73 @@ const TIMELINE: TimelineStep[] = [
   },
   {
     label: 'Build image and deps',
-    summary: 'The workflow coordinates a fragile build activity, so failures are visible and can be retried or resumed.',
+    summary:
+      'Run the large Docker build for CUDA/Torch and sync Python deps with uv; CUDA/Torch mismatches, cold layer caches, flaky package indexes, and registry push timeouts make this step worth retrying and resuming.',
+    substeps: [
+      {
+        label: 'CUDA/Torch base',
+        detail: 'Pick the image, driver, and Torch build that match the target GPUs.',
+      },
+      {
+        label: 'Docker build',
+        detail: 'Compile layers, native libraries, training code, and runtime tools.',
+      },
+      {
+        label: 'uv sync',
+        detail: 'Resolve and install pinned Python dependencies for the training environment.',
+      },
+      {
+        label: 'Push digest',
+        detail: 'Publish the image and record the immutable digest for the launch spec.',
+      },
+    ],
   },
   {
     label: 'Gather resource constraints',
     summary:
-      'Activities collect quota, cluster inventory, GPU availability, rack topology, machine health, and dataset locality.',
+      'Activities fan out to multiple external systems: quota, inventory, schedulers, rack topology, machine health, storage catalogs, and cluster metadata.',
   },
   {
     label: 'Solve placement plan',
     summary:
-      'Workflow logic turns those facts into a concrete placement: which cluster can host 64 A100s near FineWeb, under the right policy.',
+      'Workflow logic resolves the placement: cluster us-east-train-7, two healthy racks, a 64-A100 node pool, FineWeb-local storage, and policy-compatible networking.',
+    substeps: [
+      {
+        label: 'Datacenter candidates',
+        detail: 'Compare clusters across regions: some have GPUs, but not the needed NVMe, InfiniBand, rack shape, and storage reachability together.',
+      },
+      {
+        label: 'GPU fit',
+        detail: 'Find where 64 A100s can land together with healthy racks and compatible networking.',
+      },
+      {
+        label: 'Data locality',
+        detail: 'Prefer clusters with a regional FineWeb replica, such as s3://fineweb-us-east plus an FSx for Lustre mount, instead of a cross-region copy.',
+      },
+      {
+        label: 'User quota',
+        detail: 'Check whether this researcher or project can actually spend quota in that cluster.',
+      },
+    ],
   },
   {
     label: 'Reserve and pin resources',
     summary:
-      'Activities reserve the chosen machines and pin the dataset path, so the later launch spec has stable resource pointers.',
+      'Activities join the reservation queue and may wait hours for the chosen GPUs; once granted, they pin machines and dataset path so the launch spec has stable pointers.',
   },
   {
     label: 'Materialize job spec',
-    summary: 'History records the final command line, env vars, quota decision, cluster details, mounts, and k8s spec.',
+    summary:
+      'History records how roughly 10 lines of researcher intent expand into a 1000-line launch spec: command line, env vars, quota decision, cluster details, mounts, and k8s spec.',
   },
   {
     label: 'Submit and monitor with k8s',
     summary: 'Activities submit the job to Kubernetes, monitor status, and heartbeat progress over time.',
   },
   {
-    label: 'Resume or override',
-    summary: 'Replay rebuilds run state after restarts; signals can later pause or override without starting over.',
+    label: 'Hotfix without starting over',
+    summary:
+      'Replay rebuilds run state after restarts; signals can record a focused hotfix like correcting the wrong env var or flag, or updating actor pod replicas without starting over.',
   },
 ]
 
@@ -113,7 +160,7 @@ const HOOD_OPEN_ARTIFACTS: HoodOpenArtifact[] = [
   },
   {
     label: 'Quota decision',
-    detail: 'Why this cluster, rack, machine pool, and 64 A100 placement were selected.',
+    detail: 'Why this cluster, racks, node pool, data locality, and 64 A100 placement were selected.',
   },
   {
     label: 'FineWeb dataset path',
@@ -121,7 +168,7 @@ const HOOD_OPEN_ARTIFACTS: HoodOpenArtifact[] = [
   },
   {
     label: 'Image/deps output',
-    detail: 'The build artifact, dependency bundle, or digest produced by the fragile build step.',
+    detail: 'The image digest, build logs, cache hits or misses, registry push result, and uv dependency lock or sync output.',
   },
   {
     label: 'Kubernetes job id',
@@ -172,6 +219,16 @@ function TrainingTimeline() {
             <div>
               <div className="basics-timeline-label">{step.label}</div>
               <p>{step.summary}</p>
+              {step.substeps ? (
+                <div className="basics-subflow" role="region" aria-label={`${step.label} subprocess`}>
+                  {step.substeps.map((substep) => (
+                    <div key={substep.label} className="basics-subflow-card">
+                      <div>{substep.label}</div>
+                      <p>{substep.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </li>
         ))}
@@ -214,9 +271,10 @@ export default function BasicsExplorer({ navigate }: ExplorerModeProps) {
           <h2 id="basics-title">Temporal remembers the process when your code cannot stay awake.</h2>
           <p>
             Imagine an ML researcher asking for one clean thing: train model X on FineWeb with 64 A100 GPUs. The pipeline
-            hides the gory cluster, rack, and machine details during launch, but preserves the pointers needed to open
-            the hood later. Temporal makes that materialization process durable, inspectable, retryable, resumable, and
-            overrideable.
+            has to turn that intent into a concrete launch plan: build the image, find quota, choose machines, locate
+            the dataset, assemble env vars and flags, and submit a Kubernetes job. Temporal keeps that translation
+            durable and inspectable, so it can retry fragile steps, resume after restarts, and expose override points
+            without forcing researchers to hand-assemble every cluster detail.
           </p>
         </div>
         <div className="basics-flow" aria-label="Model training workflow overview">

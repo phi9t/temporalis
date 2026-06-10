@@ -439,6 +439,33 @@ body {
   line-height: 1.55;
 }
 
+.basics-subflow {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.basics-subflow-card {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(125, 92, 255, 0.34);
+  border-radius: var(--radius-btn);
+  background: rgba(7, 10, 19, 0.32);
+}
+
+.basics-subflow-card > div {
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.basics-subflow-card p {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .basics-artifact-grid {
   display: grid;
   gap: 10px;
