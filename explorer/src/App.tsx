@@ -1,12 +1,20 @@
 import { useState } from 'react'
-import { ArrowLeft, BookOpen, Network, Route } from 'lucide-react'
+import { ArrowLeft, BookOpen, Network, Route, Workflow } from 'lucide-react'
 import { REPO_HOME, logoMarkUrl } from './lib/assets'
 import type { ExplorerMode } from './explorer-kit/mode'
+import BasicsExplorer from './basics/BasicsExplorer'
 import LifecycleExplorer from './lifecycle/LifecycleExplorer'
 import ControlPathsExplorer from './control/ControlPathsExplorer'
 import GuideExplorer from './guide/GuideExplorer'
 
 const MODES: ExplorerMode[] = [
+  {
+    id: 'basics',
+    label: 'Basics',
+    icon: Workflow,
+    subtitle: 'Workflows, activities, task queues, history, workers, retry, and replay in plain language',
+    View: BasicsExplorer,
+  },
   {
     id: 'lifecycle',
     label: 'Lifecycle Deep Dive',
