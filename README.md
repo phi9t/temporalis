@@ -12,7 +12,7 @@ For newcomers, start the app and open the Basics tab:
 make explorer-dev
 ```
 
-The Basics path explains workflows, activities, workers, task queues, history, retry, and replay through an MLsys training launch: start from the intent to train model X on FineWeb with 64 A100 GPUs, progressively materialize that intent into cluster and Kubernetes details, and keep hood-open artifacts such as the materialized job spec, env vars, quota decision, dataset path, Kubernetes job id, and logs available for debugging. From there, the Lifecycle Deep Dive and Control Paths views map the same ideas onto real Temporal internals.
+The Basics path explains workflows, activities, workers, task queues, history, retry, and replay through an MLsys training launch: start from the intent to train model X on FineWeb with 64 A100 GPUs, gather resource constraints, solve a concrete placement plan, reserve and pin resources, and keep hood-open artifacts such as the materialized job spec, env vars, quota decision, dataset path, Kubernetes job id, and logs available for debugging. From there, the Lifecycle Deep Dive and Control Paths views map the same ideas onto real Temporal internals.
 
 The explorer is backed by the root [HACKERS_GUIDE.md](HACKERS_GUIDE.md), generated manifests under `explorer/public/data/`, and deterministic teaching probes in `hacks/`.
 It includes a rendered Hacker's Guide family alongside the Lifecycle Deep Dive and Control Paths views.

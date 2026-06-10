@@ -78,16 +78,19 @@ const TIMELINE: TimelineStep[] = [
     summary: 'The workflow coordinates a fragile build activity, so failures are visible and can be retried or resumed.',
   },
   {
-    label: 'Query quota and cluster options',
-    summary: 'Activities ask external systems which clusters, racks, and GPU pools can satisfy the run.',
+    label: 'Gather resource constraints',
+    summary:
+      'Activities collect quota, cluster inventory, GPU availability, rack topology, machine health, and dataset locality.',
   },
   {
-    label: 'Choose target cluster',
-    summary: 'Workflow logic chooses the cluster from returned quota, policy, and constraints.',
+    label: 'Solve placement plan',
+    summary:
+      'Workflow logic turns those facts into a concrete placement: which cluster can host 64 A100s near FineWeb, under the right policy.',
   },
   {
-    label: 'Reserve machines and locate data',
-    summary: 'Activities reserve resources and find the FineWeb storage path accessible from the selected cluster.',
+    label: 'Reserve and pin resources',
+    summary:
+      'Activities reserve the chosen machines and pin the dataset path, so the later launch spec has stable resource pointers.',
   },
   {
     label: 'Materialize job spec',

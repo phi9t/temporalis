@@ -20,9 +20,9 @@ describe('BasicsExplorer', () => {
     const timelineLabels = [
       'Interpret training intent',
       'Build image and deps',
-      'Query quota and cluster options',
-      'Choose target cluster',
-      'Reserve machines and locate data',
+      'Gather resource constraints',
+      'Solve placement plan',
+      'Reserve and pin resources',
       'Materialize job spec',
       'Submit and monitor with k8s',
       'Resume or override',
