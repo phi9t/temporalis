@@ -308,4 +308,78 @@ describe('DeepDiveExplorer', () => {
 
     expect(coreWorker.getAttribute('aria-pressed')).toBe('true')
   })
+
+  it('shows the selected call in the detail drawer with guide and hack links', async () => {
+    const navigate = vi.fn()
+    render(<DeepDiveExplorer navigate={navigate} />)
+
+    await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
+
+    expect(screen.getByText('Read / Run / Inspect')).toBeTruthy()
+    expect(screen.getAllByText('Kilvin asks Temporal to start the command workflow.').length).toBeGreaterThan(1)
+    expect(screen.getByText('python hacks/002_lifecycle_manifest.py')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: '4. Happy path: start workflow to first activation' }))
+    expect(navigate).toHaveBeenCalledWith('guide', {
+      guideAnchor: 'happy-path-start-workflow-to-first-activation',
+    })
+  })
+
+  it('renders a swimlane legend on both tracks', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('note', { name: 'Swimlane legend' })
+    expect(screen.getByRole('note', { name: 'Swimlane legend' }).textContent).toContain('User app lane')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Control Paths' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('note', { name: 'Swimlane legend' }).textContent).toContain(
+        'Overlay = diverges from the happy path',
+      )
+    })
+  })
+
+  it('frames control paths as overlays and marks diverging steps', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Control Paths' }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/overlay on the happy-path swimlane/)).toBeTruthy()
+    })
+
+    const signalStep = screen.getByRole('button', {
+      name: /Flow step 01 Activation to History SignalWorkflowExecution/,
+    })
+    expect(signalStep.className).toContain('flow-step-card--overlay')
+    expect(screen.getAllByText('A pause request is recorded durably.').length).toBeGreaterThan(1)
+    expect(screen.getByText('python hacks/005_control_paths.py')).toBeTruthy()
+  })
+
+  it('opens directly on a control scenario from a navigation context', async () => {
+    render(
+      <DeepDiveExplorer
+        navigate={vi.fn()}
+        context={{ deepDiveTrack: 'control', deepDiveScenarioSlug: 'pause-resume' }}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Control Paths' }).getAttribute('aria-pressed')).toBe('true')
+    })
+    await screen.findByText('Signals change workflow state; replay preserves deterministic history.')
+  })
+
+  it('opens directly on a lifecycle phase from a navigation context', async () => {
+    render(
+      <DeepDiveExplorer navigate={vi.fn()} context={{ deepDiveTrack: 'lifecycle', deepDivePhaseId: 'poll' }} />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Poll workflow task' }).getAttribute('aria-pressed')).toBe('true')
+    })
+    expect(screen.getAllByText('The worker asks matching for workflow task work.').length).toBeGreaterThan(1)
+  })
 })

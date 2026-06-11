@@ -16,6 +16,8 @@ export interface FlowItem<TSource = unknown> {
   kind: string
   message: string
   summary: string
+  /** True when this step exists only in a control-path overlay, not the happy path. */
+  divergent?: boolean
   source: TSource
 }
 
@@ -75,6 +77,8 @@ export function lifecycleCallToFlowItem(call: LifecycleCall): FlowItem<Lifecycle
   }
 }
 
+const OVERLAY_ONLY_KINDS = new Set(['signal', 'failure', 'timer', 'cache'])
+
 export function controlStepToFlowItem(step: ControlStep): FlowItem<ControlStep> | null {
   if (!step.from || !step.to) return null
 
@@ -86,8 +90,26 @@ export function controlStepToFlowItem(step: ControlStep): FlowItem<ControlStep> 
     kind: step.kind,
     message: step.message,
     summary: step.summary,
+    divergent: OVERLAY_ONLY_KINDS.has(step.kind),
     source: step,
   }
+}
+
+export function FlowLegend({ showOverlay = false }: { showOverlay?: boolean }) {
+  return (
+    <div className="flow-legend" role="note" aria-label="Swimlane legend">
+      <span className="flow-legend-title">Legend</span>
+      {FLOW_GROUPS.map((group) => (
+        <span key={group.id} className={`flow-legend-item flow-legend-item--${group.id}`}>
+          {group.label} lane
+        </span>
+      ))}
+      <span className="flow-legend-item flow-legend-item--active">Lit chip = involved in this step</span>
+      {showOverlay ? (
+        <span className="flow-legend-item flow-legend-item--overlay">Overlay = diverges from the happy path</span>
+      ) : null}
+    </div>
+  )
 }
 
 function padSequence(seq: number) {
@@ -175,7 +197,7 @@ export default function FlowDiagram<TSource>({
                       <div className="flow-step-cell" key={`${group.id}-${item.id}`} role="cell">
                         {isSource ? (
                           <button
-                            className={`flow-step-card${isSelected ? ' selected' : ''}`}
+                            className={`flow-step-card${item.divergent ? ' flow-step-card--overlay' : ''}${isSelected ? ' selected' : ''}`}
                             type="button"
                             aria-label={`Flow step ${padSequence(item.seq)} ${fromLabel} to ${toLabel} ${item.message}`}
                             aria-pressed={isSelected}
@@ -184,6 +206,7 @@ export default function FlowDiagram<TSource>({
                             <div className="flow-step-kicker">
                               <span>{padSequence(item.seq)}</span>
                               <span className="flow-kind">{item.kind}</span>
+                              {item.divergent ? <span className="flow-kind flow-kind--overlay">overlay</span> : null}
                             </div>
                             <div className="flow-step-message">{item.message}</div>
                             <div className="flow-step-route">

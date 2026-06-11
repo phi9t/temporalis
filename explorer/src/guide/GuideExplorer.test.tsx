@@ -6,10 +6,12 @@ vi.mock('@/lib/fetch', () => ({
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
   fetchExplorerText: vi.fn(async () => `# Temporal Hacker's Guide
 
+<a id="how-to-read-this-guide"></a>
 ## 1. How to read this guide
 
 Start here.
 
+<a id="thirty-second-architecture"></a>
 ## 2. 30-second architecture
 
 Read [the source](temporal/service/history/handler.go).
@@ -33,5 +35,20 @@ describe('GuideExplorer', () => {
     expect(screen.getByRole('link', { name: 'the source' }).getAttribute('href')).toBe(
       'https://github.com/phi9t/temporalis/blob/phi9t-mainline/temporal/service/history/handler.go',
     )
+  })
+
+  it('scrolls to the section named by the navigation context guide anchor', async () => {
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+
+    render(<GuideExplorer navigate={vi.fn()} context={{ guideAnchor: 'thirty-second-architecture' }} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /30-second architecture/ })).toBeTruthy()
+    })
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalled()
+    })
   })
 })

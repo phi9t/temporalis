@@ -16,7 +16,8 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { ExplorerModeProps } from '@/explorer-kit/mode'
+import type { ExplorerModeProps, NavigateOptions } from '@/explorer-kit/mode'
+import { repoFileUrl } from '@/lib/assets'
 
 interface ConceptCard {
   title: string
@@ -25,11 +26,17 @@ interface ConceptCard {
   example: string
 }
 
+interface TimelineTrace {
+  label: string
+  options: NavigateOptions
+}
+
 interface TimelineStep {
   label: string
   summary: string
   cues?: TimelineCue[]
   substeps?: TimelineSubstep[]
+  trace?: TimelineTrace
 }
 
 type TimelineCue = 'fragile' | 'long' | 'complex' | 'inspect' | 'retry' | 'hotfix'
@@ -130,12 +137,20 @@ const TIMELINE: TimelineStep[] = [
   {
     label: 'Interpret training intent',
     summary: 'Start with a clean request: train model X on FineWeb with 64 A100 GPUs.',
+    trace: {
+      label: 'Start workflow phase',
+      options: { deepDiveTrack: 'lifecycle', deepDivePhaseId: 'start' },
+    },
   },
   {
     label: 'Build image and deps',
     summary:
       'Run the large Docker build for CUDA/Torch and sync Python deps with uv; CUDA/Torch mismatches, cold layer caches, flaky package indexes, and registry push timeouts make this step worth retrying and resuming.',
     cues: ['fragile', 'retry'],
+    trace: {
+      label: 'Execute activity phase',
+      options: { deepDiveTrack: 'lifecycle', deepDivePhaseId: 'execute-activity' },
+    },
     substeps: [
       {
         label: 'CUDA/Torch base',
@@ -160,12 +175,20 @@ const TIMELINE: TimelineStep[] = [
     summary:
       'Activities fan out to multiple external systems: quota, inventory, schedulers, rack topology, machine health, storage catalogs, and cluster metadata.',
     cues: ['complex'],
+    trace: {
+      label: 'Schedule activity phase',
+      options: { deepDiveTrack: 'lifecycle', deepDivePhaseId: 'schedule-activity' },
+    },
   },
   {
     label: 'Solve placement plan',
     summary:
       'Workflow logic resolves the placement: cluster us-east-train-7, two healthy racks, a 64-A100 node pool, FineWeb-local storage, and policy-compatible networking.',
     cues: ['complex'],
+    trace: {
+      label: 'Activate workflow phase',
+      options: { deepDiveTrack: 'lifecycle', deepDivePhaseId: 'activate' },
+    },
     substeps: [
       {
         label: 'Datacenter candidates',
@@ -190,23 +213,39 @@ const TIMELINE: TimelineStep[] = [
     summary:
       'Activities join the reservation queue and may wait hours for the chosen GPUs; once granted, they pin machines and dataset path so the launch spec has stable pointers.',
     cues: ['long', 'retry'],
+    trace: {
+      label: 'Retry control path',
+      options: { deepDiveTrack: 'control', deepDiveScenarioSlug: 'retry' },
+    },
   },
   {
     label: 'Materialize job spec',
     summary:
       'History records how roughly 10 lines of researcher intent expand into a 1000-line launch spec: command line, env vars, quota decision, cluster details, mounts, and k8s spec.',
     cues: ['inspect'],
+    trace: {
+      label: 'Complete turn phase',
+      options: { deepDiveTrack: 'lifecycle', deepDivePhaseId: 'complete' },
+    },
   },
   {
     label: 'Submit and monitor with k8s',
     summary: 'Activities submit the job to Kubernetes, monitor status, and heartbeat progress over time.',
     cues: ['long'],
+    trace: {
+      label: 'Heartbeat control path',
+      options: { deepDiveTrack: 'control', deepDiveScenarioSlug: 'heartbeat-cancellation' },
+    },
   },
   {
     label: 'Hotfix without starting over',
     summary:
       'Replay rebuilds run state after restarts; signals can record a focused hotfix like correcting the wrong env var or flag, or updating actor pod replicas without starting over.',
     cues: ['hotfix', 'retry'],
+    trace: {
+      label: 'Pause/resume control path',
+      options: { deepDiveTrack: 'control', deepDiveScenarioSlug: 'pause-resume' },
+    },
   },
 ]
 
@@ -301,7 +340,7 @@ function CueLegend() {
   )
 }
 
-function TrainingTimeline() {
+function TrainingTimeline({ navigate }: { navigate: ExplorerModeProps['navigate'] }) {
   return (
     <section aria-labelledby="basics-timeline-title" className="basics-section">
       <div className="basics-section-heading">
@@ -327,10 +366,100 @@ function TrainingTimeline() {
                   ))}
                 </div>
               ) : null}
+              {step.trace ? (
+                <button
+                  type="button"
+                  className="basics-trace-link"
+                  onClick={() => navigate('deep-dive', step.trace?.options)}
+                >
+                  <Route size={13} aria-hidden="true" />
+                  <span>Trace in Deep Dive: {step.trace.label}</span>
+                </button>
+              ) : null}
             </div>
           </li>
         ))}
       </ol>
+    </section>
+  )
+}
+
+interface KilvinFactGroup {
+  label: string
+  path: string
+  items: string[]
+}
+
+const KILVIN_FACTS: KilvinFactGroup[] = [
+  {
+    label: 'Workflows',
+    path: 'kilvin-py/kilvin_py/workflows.py',
+    items: ['ParentKilvinCmdWorkflow', 'KilvinTrainingWorkflow (child)'],
+  },
+  {
+    label: 'Task queue',
+    path: 'kilvin-py/worker.py',
+    items: ['kilvin-training-task-queue'],
+  },
+  {
+    label: 'Activities',
+    path: 'kilvin-py/kilvin_py/activities.py',
+    items: [
+      'extract_cmd_config',
+      'dev_prepare',
+      'allocate_resources',
+      'materialize_training_bundle',
+      'submit_k8s_job',
+      'monitor_training',
+      'update_cmd_state',
+      'persist_yaml_artifact',
+    ],
+  },
+  {
+    label: 'Signals',
+    path: 'kilvin-py/kilvin_py/workflows.py',
+    items: ['pause', 'resume', 'pause_at_step', 'replay_step', 'cancel'],
+  },
+  {
+    label: 'Queries',
+    path: 'kilvin-py/kilvin_py/workflows.py',
+    items: ['run_status', 'run_step_trace', 'run_artifacts', 'run_plan'],
+  },
+  {
+    label: 'Hood-open artifacts',
+    path: 'kilvin-py/kilvin_py/artifacts.py',
+    items: ['in.yaml / out.yaml per step', 'quota_decision.yaml', 'env_vars.yaml', 'logs.yaml'],
+  },
+]
+
+function KilvinRunPanel() {
+  return (
+    <section aria-labelledby="basics-kilvin-title" className="basics-section">
+      <div className="basics-section-heading">
+        <h2 id="basics-kilvin-title">The same run as runnable code</h2>
+        <p>
+          Everything above is real Temporal Python code in <code>kilvin-py/</code>:{' '}
+          <code>start_workflow.py</code> submits the model-X-on-FineWeb run, a worker picks it up from the task queue,
+          and every step leaves an inspectable YAML artifact under <code>.kilvin-artifacts/</code>.
+        </p>
+      </div>
+      <div className="basics-kilvin-grid">
+        {KILVIN_FACTS.map((group) => (
+          <div key={group.label} className="basics-kilvin-group">
+            <div className="basics-kilvin-group-head">
+              <span>{group.label}</span>
+              <a href={repoFileUrl(group.path)} target="_blank" rel="noopener noreferrer">
+                {group.path.split('/').pop()}
+              </a>
+            </div>
+            <div className="basics-kilvin-chips">
+              {group.items.map((item) => (
+                <code key={item}>{item}</code>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }
@@ -400,8 +529,9 @@ export default function BasicsExplorer({ navigate }: ExplorerModeProps) {
       </section>
 
       <ConceptGrid />
-      <TrainingTimeline />
+      <TrainingTimeline navigate={navigate} />
       <HoodOpenArtifacts />
+      <KilvinRunPanel />
 
       <section aria-labelledby="basics-next-title" className="basics-next">
         <div>

@@ -183,19 +183,6 @@ body {
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
 }
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
-@media (max-width: 1024px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 .skip-link {
   position: absolute;
   left: 16px;
@@ -246,29 +233,6 @@ body {
 .mono {
   font-family: var(--font-mono);
   font-feature-settings: 'calt' 1, 'liga' 1;
-}
-
-/* Diagram primitives for lifecycle and control-path views. */
-.diagram-node {
-  cursor: pointer;
-  transition: filter 0.2s ease;
-}
-.diagram-node:hover {
-  filter: drop-shadow(0 0 7px rgba(56, 189, 248, 0.4));
-}
-.diagram-node.active {
-  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.55));
-}
-.diagram-edge {
-  stroke: rgba(148, 163, 184, 0.5);
-  stroke-width: 1.5;
-  fill: none;
-}
-.diagram-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  fill: var(--color-ink);
-  pointer-events: none;
 }
 
 /* Detail drawer and source references. */
@@ -820,16 +784,6 @@ body {
   white-space: pre;
 }
 
-.lifecycle-svg {
-  width: 100%;
-  max-width: 1120px;
-  font-family: var(--font-mono);
-}
-
-.lifecycle-svg--grouped {
-  max-width: 1120px;
-}
-
 .lifecycle-workspace {
   display: grid;
   align-items: start;
@@ -849,8 +803,7 @@ body {
   gap: 18px;
 }
 
-.lifecycle-diagram,
-.lifecycle-sequence {
+.lifecycle-diagram {
   min-width: 0;
 }
 
@@ -863,179 +816,15 @@ body {
     grid-template-columns: minmax(0, 1fr) 390px;
   }
 
-  .control-workspace.lifecycle-workspace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .lifecycle-main {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-    max-height: min(760px, calc(100vh - 180px));
-  }
-
   .lifecycle-main--diagram-only {
     grid-template-columns: minmax(0, 1fr);
     max-height: none;
-  }
-
-  .lifecycle-diagram {
-    order: 1;
-    position: sticky;
-    top: 24px;
-    align-self: start;
-  }
-
-  .lifecycle-sequence {
-    order: 2;
-    max-height: min(760px, calc(100vh - 180px));
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-right: 4px;
   }
 
   .lifecycle-drawer-shell {
     position: sticky;
     top: 24px;
   }
-}
-
-.lifecycle-lane {
-  fill: rgba(15, 23, 42, 0.46);
-  stroke: rgba(255, 255, 255, 0.08);
-}
-
-.lifecycle-group {
-  fill: rgba(7, 10, 19, 0.18);
-  stroke: rgba(56, 189, 248, 0.15);
-  stroke-width: 1.2;
-}
-
-.lifecycle-group--worker {
-  fill: rgba(99, 102, 241, 0.08);
-  stroke: rgba(129, 140, 248, 0.2);
-}
-
-.lifecycle-group--server {
-  fill: rgba(14, 165, 233, 0.08);
-  stroke: rgba(56, 189, 248, 0.2);
-}
-
-.lifecycle-group-label {
-  fill: var(--color-cyan);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.lifecycle-lane-label {
-  fill: var(--color-ink-muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-#lifecycle-arrow path {
-  fill: rgba(148, 163, 184, 0.58);
-}
-
-#lifecycle-arrow-active path {
-  fill: var(--color-cyan);
-}
-
-#lifecycle-arrow-selected path {
-  fill: #f8fafc;
-}
-
-.lifecycle-edge-line {
-  stroke: rgba(148, 163, 184, 0.32);
-  stroke-width: 1.4;
-}
-
-.lifecycle-edge-hit {
-  stroke: transparent;
-  stroke-width: 18;
-  pointer-events: stroke;
-}
-
-.lifecycle-edge.selectable {
-  cursor: pointer;
-}
-
-.lifecycle-edge.active .lifecycle-edge-line {
-  stroke: var(--color-cyan);
-  stroke-width: 2.2;
-  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.35));
-}
-
-.lifecycle-edge.selected .lifecycle-edge-line {
-  stroke: #f8fafc;
-  stroke-width: 3;
-  filter: drop-shadow(0 0 10px rgba(248, 250, 252, 0.36));
-}
-
-.lifecycle-edge-label-badge {
-  pointer-events: none;
-}
-
-.lifecycle-edge-label-badge rect {
-  fill: rgba(7, 10, 19, 0.86);
-  stroke: rgba(148, 163, 184, 0.22);
-  stroke-width: 1;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.28));
-}
-
-.lifecycle-edge-label-badge text {
-  fill: var(--color-ink-soft);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.lifecycle-edge-label-badge.selected rect {
-  fill: rgba(15, 23, 42, 0.96);
-  stroke: rgba(56, 189, 248, 0.72);
-}
-
-.lifecycle-edge-label-badge.selected text {
-  fill: var(--color-ink);
-}
-
-.lifecycle-node {
-  cursor: pointer;
-  opacity: 0.55;
-  outline: none;
-}
-
-.lifecycle-node rect {
-  fill: rgba(17, 24, 39, 0.94);
-  stroke: rgba(99, 102, 241, 0.45);
-  stroke-width: 1.4;
-}
-
-.lifecycle-node text {
-  fill: var(--color-ink);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.lifecycle-node.active,
-.lifecycle-node.selected-endpoint,
-.lifecycle-node.selected {
-  opacity: 1;
-}
-
-.lifecycle-node.selected-endpoint rect {
-  stroke: rgba(56, 189, 248, 0.78);
-  stroke-width: 2;
-}
-
-.lifecycle-node.selected rect {
-  stroke: var(--color-cyan);
-  stroke-width: 2.4;
-  filter: drop-shadow(0 0 9px rgba(56, 189, 248, 0.4));
-}
-
-.lifecycle-node:focus-visible rect {
-  stroke: var(--color-cyan);
-  stroke-width: 3;
 }
 
 .flow-diagram {
@@ -1252,194 +1041,195 @@ body {
   color: var(--color-ink-soft);
 }
 
-.call-sequence {
+.flow-step-card--overlay {
+  border-color: rgba(244, 114, 182, 0.4);
+}
+
+.flow-step-card--overlay:hover,
+.flow-step-card--overlay.selected {
+  border-color: rgba(244, 114, 182, 0.75);
+}
+
+.flow-kind--overlay {
+  border: 1px solid rgba(244, 114, 182, 0.5);
+  border-radius: var(--radius-badge);
+  padding: 1px 6px;
+  color: #f9a8d4;
+}
+
+.flow-legend {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-}
-
-.control-sequence .call-sequence-header span {
-  color: var(--color-ink);
-}
-
-.call-sequence-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--color-ink-muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.call-sequence-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.call-sequence-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: start;
-  width: 100%;
-  min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--color-panelborder);
-  border-radius: var(--radius-btn);
-  background: rgba(17, 24, 39, 0.72);
-  color: var(--color-ink-soft);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.call-sequence-row:hover,
-.call-sequence-row.active {
-  border-color: rgba(56, 189, 248, 0.34);
-  background: rgba(15, 23, 42, 0.92);
-  color: var(--color-ink);
-}
-
-.call-sequence-row.selected {
-  border-color: var(--color-cyan);
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.28);
-}
-
-.call-sequence-row:focus-visible {
-  outline: 2px solid var(--color-cyan);
-  outline-offset: 2px;
-}
-
-.call-sequence-seq {
-  color: var(--color-cyan);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.call-sequence-body {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.call-sequence-route {
-  display: flex;
-  min-width: 0;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  color: var(--color-ink);
-  font-size: 13px;
-  font-weight: 650;
-  overflow-wrap: anywhere;
-}
-
-.call-sequence-route svg {
-  flex: 0 0 auto;
+  gap: 8px;
+  margin-top: 12px;
   color: var(--color-ink-muted);
-}
-
-.call-sequence-message {
-  color: var(--color-ink);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-.call-sequence-summary {
-  color: var(--color-ink-soft);
-  font-size: 12px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-.call-sequence-kind {
-  max-width: 120px;
-  border: 1px solid rgba(99, 102, 241, 0.26);
-  border-radius: var(--radius-badge);
-  padding: 2px 6px;
-  color: var(--color-ink-soft);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  line-height: 1.4;
   text-transform: uppercase;
-  overflow-wrap: anywhere;
 }
 
-@media (min-width: 1280px) {
-  .control-main.lifecycle-main {
-    grid-template-columns: minmax(340px, 0.72fr) minmax(620px, 1.08fr);
-  }
+.flow-legend-title {
+  color: var(--color-ink-soft);
+}
 
-  .control-main.lifecycle-main.lifecycle-main--diagram-only {
-    grid-template-columns: minmax(0, 1fr);
-    max-height: none;
-  }
+.flow-legend-item {
+  border: 1px solid var(--color-panelborder);
+  border-radius: var(--radius-badge);
+  padding: 2px 7px;
+  background: rgba(15, 23, 42, 0.44);
+}
 
-  .control-sequence-shell {
-    order: 1;
-  }
+.flow-legend-item--user-app {
+  border-color: rgba(148, 163, 184, 0.4);
+}
 
-  .control-diagram-shell {
-    order: 2;
-  }
+.flow-legend-item--worker {
+  border-color: rgba(99, 102, 241, 0.45);
+}
 
-  .control-main--diagram-only .control-diagram-shell {
-    order: 1;
-    position: static;
-    width: 100%;
-    justify-self: stretch;
-  }
+.flow-legend-item--server {
+  border-color: rgba(56, 189, 248, 0.45);
+}
 
-  .control-diagram-shell .flow-diagram {
-    min-height: 420px;
-    width: 100%;
-  }
+.flow-legend-item--active {
+  border-color: rgba(56, 189, 248, 0.62);
+  color: var(--color-ink-soft);
+}
 
-  .control-diagram-shell .flow-grid {
-    gap: 6px;
-  }
+.flow-legend-item--overlay {
+  border-color: rgba(244, 114, 182, 0.5);
+  color: #f9a8d4;
+}
 
-  .control-diagram-shell .flow-group-cell,
-  .control-diagram-shell .flow-step-cell {
-    min-height: 92px;
-    padding: 8px;
-  }
+.deep-dive-overlay-note {
+  margin-top: 6px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
 
-  .control-diagram-shell .flow-component-list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
-  }
+.learning-path {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  padding: 14px 18px;
+  border: 1px solid var(--color-panelborder);
+  border-radius: var(--radius-panel);
+  background: rgba(17, 24, 39, 0.55);
+}
 
-  .control-diagram-shell .flow-component-chip {
-    min-height: 0;
-    gap: 1px;
-    padding: 4px 5px;
-    font-size: 11px;
-  }
+.learning-path-slot {
+  display: flex;
+}
 
-  .control-diagram-shell .flow-component-layer {
-    font-size: 8px;
-  }
+.learning-path-slot--end {
+  justify-content: flex-end;
+}
 
-  .control-diagram-shell .flow-step-card {
-    gap: 6px;
-    padding: 9px;
-  }
+.learning-path-hint {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  text-align: center;
+}
 
-  .control-diagram-shell .flow-step-card p {
-    font-size: 11px;
-  }
+.learning-path-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-panelborder);
+  border-radius: var(--radius-btn);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--color-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.learning-path-button:hover {
+  border-color: var(--color-panelborder-active);
+  color: var(--color-ink);
+}
+
+.basics-trace-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 5px 10px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: var(--radius-btn);
+  background: rgba(15, 23, 42, 0.5);
+  color: var(--color-ink-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.basics-trace-link:hover {
+  border-color: var(--color-primary);
+  color: var(--color-ink);
+}
+
+.basics-kilvin-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.basics-kilvin-group {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 14px;
+  border: 1px solid var(--color-panelborder);
+  border-radius: var(--radius-panel);
+  background: rgba(17, 24, 39, 0.55);
+}
+
+.basics-kilvin-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.basics-kilvin-group-head a {
+  color: var(--color-cyan);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.basics-kilvin-group-head a:hover {
+  text-decoration: underline;
+}
+
+.basics-kilvin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.basics-kilvin-chips code {
+  border: 1px solid rgba(99, 102, 241, 0.26);
+  border-radius: var(--radius-badge);
+  padding: 3px 8px;
+  background: rgba(15, 23, 42, 0.44);
+  color: var(--color-ink-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .call-detail-meta,
@@ -1540,21 +1330,11 @@ body {
   color: var(--color-ink);
 }
 
-.control-details {
-  margin: 0 0 18px;
-  padding-left: 18px;
-  color: var(--color-ink-soft);
-  font-size: 13px;
-}
-
-.control-details li + li {
-  margin-top: 6px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lifecycle-edge-line,
-  .lifecycle-node,
-  .lifecycle-node rect {
-    transition: none;
-  }
+button.guide-action {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }

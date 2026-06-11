@@ -122,4 +122,56 @@ describe('BasicsExplorer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Deep Dive' }))
     expect(navigate).toHaveBeenCalledWith('deep-dive')
   })
+
+  it('maps the story 1:1 to runnable kilvin-py code', () => {
+    render(<BasicsExplorer navigate={vi.fn()} />)
+
+    const panel = screen.getByRole('region', { name: 'The same run as runnable code' })
+    const panelText = panel.textContent ?? ''
+
+    expect(panelText).toContain('ParentKilvinCmdWorkflow')
+    expect(panelText).toContain('KilvinTrainingWorkflow (child)')
+    expect(panelText).toContain('kilvin-training-task-queue')
+    for (const activity of [
+      'extract_cmd_config',
+      'dev_prepare',
+      'allocate_resources',
+      'materialize_training_bundle',
+      'submit_k8s_job',
+      'monitor_training',
+      'update_cmd_state',
+      'persist_yaml_artifact',
+    ]) {
+      expect(panelText).toContain(activity)
+    }
+    for (const signal of ['pause_at_step', 'replay_step']) {
+      expect(panelText).toContain(signal)
+    }
+    for (const query of ['run_status', 'run_step_trace', 'run_artifacts', 'run_plan']) {
+      expect(panelText).toContain(query)
+    }
+    expect(panelText).toContain('quota_decision.yaml')
+    expect(panelText).toContain('env_vars.yaml')
+    expect(panelText).toContain('logs.yaml')
+
+    const workflowsLink = panel.querySelector('a[href$="kilvin-py/kilvin_py/workflows.py"]')
+    expect(workflowsLink).toBeTruthy()
+  })
+
+  it('traces timeline steps into the matching deep-dive phase or control path', () => {
+    const navigate = vi.fn()
+    render(<BasicsExplorer navigate={navigate} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trace in Deep Dive: Start workflow phase' }))
+    expect(navigate).toHaveBeenCalledWith('deep-dive', {
+      deepDiveTrack: 'lifecycle',
+      deepDivePhaseId: 'start',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Trace in Deep Dive: Pause/resume control path' }))
+    expect(navigate).toHaveBeenCalledWith('deep-dive', {
+      deepDiveTrack: 'control',
+      deepDiveScenarioSlug: 'pause-resume',
+    })
+  })
 })

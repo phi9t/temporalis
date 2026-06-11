@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { ArrowLeft, BookOpen, Route, Workflow } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { ArrowLeft, ArrowRight, BookOpen, Route, Workflow } from 'lucide-react'
 import { REPO_HOME, logoMarkUrl } from './lib/assets'
-import type { ExplorerMode } from './explorer-kit/mode'
+import type { ExplorerMode, NavigateOptions } from './explorer-kit/mode'
 import BasicsExplorer from './basics/BasicsExplorer'
 import DeepDiveExplorer from './deep-dive/DeepDiveExplorer'
 import GuideExplorer from './guide/GuideExplorer'
@@ -30,10 +30,29 @@ const MODES: ExplorerMode[] = [
   },
 ]
 
+const LEARNING_PATH_HINTS: Record<string, string> = {
+  basics: 'Start here: one training run told in plain language.',
+  'deep-dive': 'Follow the same run through the real Temporal internals.',
+  guide: 'Read the code-first narrative and run the paired hacks.',
+}
+
 export default function App() {
   const [activeId, setActiveId] = useState<string>(MODES[0].id)
-  const active = MODES.find((m) => m.id === activeId) ?? MODES[0]
+  const [navContext, setNavContext] = useState<NavigateOptions | null>(null)
+  const navigate = useCallback((id: string, options?: NavigateOptions) => {
+    setNavContext(options ?? null)
+    setActiveId(id)
+    window.scrollTo({ top: 0 })
+  }, [])
+
+  const activeIndex = Math.max(
+    MODES.findIndex((m) => m.id === activeId),
+    0,
+  )
+  const active = MODES[activeIndex]
   const ActiveView = active.View
+  const previousMode = activeIndex > 0 ? MODES[activeIndex - 1] : null
+  const nextMode = activeIndex < MODES.length - 1 ? MODES[activeIndex + 1] : null
 
   return (
     <div className="relative min-h-screen">
@@ -62,7 +81,7 @@ export default function App() {
                 type="button"
                 className={`family-switch-btn ${activeId === id ? 'active' : ''}`}
                 aria-pressed={activeId === id}
-                onClick={() => setActiveId(id)}
+                onClick={() => navigate(id)}
               >
                 <Icon size={14} aria-hidden="true" />
                 {label}
@@ -72,8 +91,28 @@ export default function App() {
         </header>
 
         <main id="main-content">
-          <ActiveView navigate={setActiveId} />
+          <ActiveView navigate={navigate} context={navContext} />
         </main>
+
+        <footer className="learning-path" aria-label="Learning path">
+          <div className="learning-path-slot">
+            {previousMode ? (
+              <button type="button" className="learning-path-button" onClick={() => navigate(previousMode.id)}>
+                <ArrowLeft size={14} aria-hidden="true" />
+                <span>{previousMode.label}</span>
+              </button>
+            ) : null}
+          </div>
+          <p className="learning-path-hint">{LEARNING_PATH_HINTS[active.id]}</p>
+          <div className="learning-path-slot learning-path-slot--end">
+            {nextMode ? (
+              <button type="button" className="learning-path-button" onClick={() => navigate(nextMode.id)}>
+                <span>{nextMode.label}</span>
+                <ArrowRight size={14} aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+        </footer>
       </div>
     </div>
   )

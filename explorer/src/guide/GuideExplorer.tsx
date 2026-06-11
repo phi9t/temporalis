@@ -119,7 +119,7 @@ const components: Components = {
   },
 }
 
-export default function GuideExplorer(_props: ExplorerModeProps) {
+export default function GuideExplorer({ context }: ExplorerModeProps) {
   const [markdown, setMarkdown] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,8 +131,14 @@ export default function GuideExplorer(_props: ExplorerModeProps) {
 
   const toc = useMemo(() => {
     if (!markdown) return []
-    const sections: { num: string; title: string; id: string }[] = []
+    const sections: { num: string; title: string; id: string; anchor: string | null }[] = []
+    let lastAnchor: string | null = null
     for (const line of markdown.split('\n')) {
+      const anchorMatch = /^<a\s+id="([^"]+)"><\/a>$/.exec(line.trim())
+      if (anchorMatch) {
+        lastAnchor = anchorMatch[1]
+        continue
+      }
       const match = /^## (\d+)\. (.+)$/.exec(line)
       if (!match) continue
       const title = match[2].replace(/`/g, '')
@@ -140,7 +146,9 @@ export default function GuideExplorer(_props: ExplorerModeProps) {
         num: match[1],
         title,
         id: slugify(`${match[1]}. ${title}`),
+        anchor: lastAnchor,
       })
+      lastAnchor = null
     }
     return sections
   }, [markdown])
@@ -148,6 +156,15 @@ export default function GuideExplorer(_props: ExplorerModeProps) {
     () => markdown?.replace(/^<a\s+id="[^"]+"><\/a>\n/gm, '') ?? '',
     [markdown],
   )
+
+  const targetAnchor = context?.guideAnchor ?? null
+
+  useEffect(() => {
+    if (!markdown || !targetAnchor) return
+    const section = toc.find((item) => item.anchor === targetAnchor)
+    if (!section) return
+    document.getElementById(section.id)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }, [markdown, targetAnchor, toc])
 
   if (!markdown) {
     return (

@@ -2,12 +2,27 @@ import type { ComponentType } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
 /**
+ * Optional context carried along a cross-view navigation, so one mode can
+ * deep-link into a specific spot in another (Basics step → Deep Dive phase,
+ * Deep Dive phase → Guide section).
+ */
+export interface NavigateOptions {
+  guideAnchor?: string
+  deepDiveTrack?: 'lifecycle' | 'control'
+  deepDivePhaseId?: string
+  deepDiveScenarioSlug?: string
+}
+
+/**
  * Props every Explorer mode view receives from the family-switcher shell.
  * `navigate` lets a mode cross-link to another (e.g. Component → Architecture),
  * which generalizes the old bespoke `onOpenArchitecture` callback (R3 cross-links).
+ * `context` is the NavigateOptions payload from the navigation that opened
+ * this view, if any.
  */
 export interface ExplorerModeProps {
-  navigate: (id: string) => void
+  navigate: (id: string, options?: NavigateOptions) => void
+  context?: NavigateOptions | null
 }
 
 /**
