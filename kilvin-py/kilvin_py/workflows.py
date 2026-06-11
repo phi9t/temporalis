@@ -39,19 +39,7 @@ from .models import (
     TrainingWorkflowInput,
 )
 
-ALLOWED_STAGE_IDS = {
-    "vit_pretrain",
-    "joint_pretrain",
-    "continue_pretrain",
-    "long_context_midtrain",
-    "cpt",
-    "sft",
-    "parl_rl",
-    "agentic_synthesis",
-    "qat",
-}
-
-FOUNDATION_SEQUENCE = ["vit_pretrain", "joint_pretrain", "continue_pretrain", "long_context_midtrain"]
+ALLOWED_STAGE_IDS = {"pretrain", "sft", "rl"}
 
 
 def _validate_run_config(config: RunConfig) -> None:
@@ -82,16 +70,8 @@ def _validate_run_config(config: RunConfig) -> None:
             raise ValueError(f"duplicate stage_id in stage_sequence: {sid}")
         seen.add(sid)
 
-    foundation_ids = [sid for sid in config.stage_sequence if sid in FOUNDATION_SEQUENCE]
-    expected = [sid for sid in FOUNDATION_SEQUENCE if sid in config.stage_sequence]
-    if foundation_ids != expected:
-        raise ValueError(
-            "foundation stages must preserve vit/joint/continue/long_context order"
-        )
-
-    for stage in stages:
-        if stage.phase == "foundation" and stage.stage_id not in FOUNDATION_SEQUENCE:
-            raise ValueError(f"invalid foundation stage_id {stage.stage_id}")
+    if "pretrain" in config.stage_sequence and config.stage_sequence[0] != "pretrain":
+        raise ValueError("pretrain must run before fine-tuning stages")
 
     for stage in stages:
         for dep in stage.depends_on or []:
@@ -220,6 +200,7 @@ class KilvinTrainingWorkflow:
         self._current_step: tuple[str, str] | None = None
         self._run_id = ""
         self._run_config: RunConfig | None = None
+        self._named_artifact_uris: list[str] = []
 
     @workflow.query
     def run_status(self) -> KilvinRunState:
@@ -247,6 +228,7 @@ class KilvinTrainingWorkflow:
             uris.append(entry.input_artifact.uri)
             if entry.output_artifact:
                 uris.append(entry.output_artifact.uri)
+        uris.extend(self._named_artifact_uris)
         return uris
 
     @workflow.query
@@ -406,6 +388,29 @@ class KilvinTrainingWorkflow:
             input_checksum=artifact.checksum_sha256,
             started_at_ms=int(workflow.now().timestamp() * 1000),
         )
+
+    async def _persist_named_artifact(
+        self,
+        input: TrainingWorkflowInput,
+        stage: StageConfig,
+        step_name: str,
+        artifact_label: str,
+        payload: Any,
+    ) -> None:
+        """Persist a hood-open artifact (quota decision, env vars, logs) beside the step record."""
+
+        artifact = await workflow.execute_activity(
+            activities.persist_yaml_artifact,
+            ArtifactWriteInput(
+                run_id=input.run_config.run_id,
+                run_attempt=self._run_attempt,
+                artifact_name=f"{stage.stage_id}/{step_name}/{artifact_label}.yaml",
+                payload=_to_dict(payload),
+            ),
+            start_to_close_timeout=timedelta(seconds=20),
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+        self._named_artifact_uris.append(artifact.uri)
 
     async def _record_skipped_step(
         self,
@@ -595,7 +600,7 @@ class KilvinTrainingWorkflow:
             timeout_seconds=120,
             skip_result=DevPrepareOutput(
                 auto_job_id=f"kilvin-replay-{self._run_attempt}",
-                code_tos_key=input.extracted.checkpoint or "s3://models/k2/checkpoint",
+                code_tos_key=input.extracted.checkpoint or "s3://checkpoints/model-x",
             ),
         )
 
@@ -623,13 +628,22 @@ class KilvinTrainingWorkflow:
                     allocation_id=f"skip-allocation-{stage.stage_id}",
                     resource_epoch=0,
                     pools_reservation_id="skip",
-                    machine_type="h100-sxm",
+                    machine_type="a100-sxm",
                     pool_name="foundation",
                     node_count=1,
                     gpus_per_node=1,
                     rank_size=1,
                 ),
             )
+
+            if allocation.quota_decision is not None:
+                await self._persist_named_artifact(
+                    input=input,
+                    stage=stage,
+                    step_name="allocate_resources",
+                    artifact_label="quota_decision",
+                    payload=allocation.quota_decision,
+                )
 
             bundle = await self._run_step(
                 input=input,
@@ -644,12 +658,12 @@ class KilvinTrainingWorkflow:
                     allocation=allocation,
                     stage_index=stage_index,
                     train_stage=stage.stage_id,
-                    task_type="foundation_train",
+                    task_type="train",
                     total_tokens_target=stage.runtime_profile.total_tokens_target,
                     global_batch_tokens=stage.runtime_profile.global_batch_tokens,
                     max_steps=stage.runtime_profile.max_steps,
                     learning_rate=stage.runtime_profile.learning_rate,
-                    model=input.extracted.component_profile.get("model", "kilvin-base"),
+                    model=input.extracted.component_profile.get("model", "model-x"),
                 ),
                 timeout_seconds=180,
                 skip_result=MaterializedBundleOutput(
@@ -657,12 +671,22 @@ class KilvinTrainingWorkflow:
                     bundle_path="skipped://bundle",
                     bound_components=[],
                     runtime_setup={},
+                    env_vars={},
                     rendezvous={},
                     launch_plan=[],
                     token_plan={},
                     health_checks=[],
                 ),
             )
+
+            if bundle.env_vars:
+                await self._persist_named_artifact(
+                    input=input,
+                    stage=stage,
+                    step_name="materialize_training_bundle",
+                    artifact_label="env_vars",
+                    payload=bundle.env_vars,
+                )
 
             submit_out = await self._run_step(
                 input=input,
@@ -699,6 +723,21 @@ class KilvinTrainingWorkflow:
                 timeout_seconds=3600,
                 skip_result=MonitorOutput(final_status="SUCCEEDED"),
             )
+
+            # Persist log pointers before the failure check so a failed stage
+            # still leaves its logs artifact open for debugging.
+            if monitor_out.logs_uri:
+                await self._persist_named_artifact(
+                    input=input,
+                    stage=stage,
+                    step_name="monitor_training",
+                    artifact_label="logs",
+                    payload={
+                        "logs_uri": monitor_out.logs_uri,
+                        "log_tail": monitor_out.log_tail or [],
+                        "final_status": monitor_out.final_status,
+                    },
+                )
 
             if _is_failed_status(monitor_out.final_status):
                 raise ApplicationError(

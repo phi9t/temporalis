@@ -154,10 +154,23 @@ class AllocateResourcesInput:
     stage_id: str
     stage_index: int
     dataset_uri: str
-    node_count: int = 64
+    node_count: int = 8
     gpus_per_node: int = 8
-    machine_type: str = "h100-sxm"
+    machine_type: str = "a100-sxm"
     resource_pool: str = "foundation"
+
+
+@dataclass(frozen=True)
+class QuotaDecision:
+    """Why this placement was selected: cluster, racks, node pool, and data locality."""
+
+    cluster: str
+    racks: list[str]
+    node_pool: str
+    gpus_requested: int
+    gpus_granted: int
+    data_locality: str
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -176,6 +189,7 @@ class ReamAllocationOutput:
     nccl_profile: str = "nccl"
     rendezvous: dict[str, str] | None = None
     dataset_mount: str | None = None
+    quota_decision: QuotaDecision | None = None
 
 
 @dataclass(frozen=True)
@@ -200,6 +214,7 @@ class MaterializedBundleOutput:
     bundle_path: str
     bound_components: list[dict[str, Any]]
     runtime_setup: dict[str, Any]
+    env_vars: dict[str, str]
     rendezvous: dict[str, Any]
     launch_plan: list[dict[str, Any]]
     token_plan: dict[str, int]
@@ -234,6 +249,8 @@ class MonitorOutput:
     final_status: str
     running_pods: int = 0
     total_pods: int = 0
+    logs_uri: str = ""
+    log_tail: list[str] | None = None
 
 
 @dataclass(frozen=True)

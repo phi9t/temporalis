@@ -16,6 +16,7 @@ from .models import (
     MaterializeTrainingBundleInput,
     MonitorOutput,
     MonitorTrainingInput,
+    QuotaDecision,
     ReamAllocationOutput,
     SubmitK8sInput,
     SubmitK8sOutput,
@@ -30,8 +31,8 @@ async def extract_workflow_config(
     """Load workflow-level config and return the canonical typed extract output."""
 
     run_stages = input.run_config.stages
-    stage_zero_dataset = run_stages[0].dataset_profile.uri if run_stages else "hdfs://datasets/k2/"
-    stage_zero_checkpoint = run_stages[0].dataset_profile.uri if run_stages else "s3://models/k2/checkpoint"
+    stage_zero_dataset = run_stages[0].dataset_profile.uri if run_stages else "hdfs://datasets/fineweb"
+    stage_zero_checkpoint = run_stages[0].dataset_profile.uri if run_stages else "s3://checkpoints/model-x"
 
     return ExtractWorkflowConfigOutput(
         model_output_tos_key=input.job_params_uri,
@@ -71,6 +72,19 @@ async def update_cmd_state(input: dict | object) -> None:
 async def allocate_resources(input: AllocateResourcesInput) -> ReamAllocationOutput:
     """Gather quota/placement constraints, solve placement, and reserve resources."""
 
+    gpus_requested = input.node_count * input.gpus_per_node
+    quota_decision = QuotaDecision(
+        cluster="us-east-train-7",
+        racks=["rack-a3", "rack-b1"],
+        node_pool=f"{input.machine_type}-{gpus_requested}",
+        gpus_requested=gpus_requested,
+        gpus_granted=gpus_requested,
+        data_locality=f"{input.dataset_uri} available on cluster-local storage",
+        reason=(
+            f"{input.node_count}x{input.gpus_per_node} {input.machine_type} fit on two healthy "
+            "racks with RDMA networking and dataset-local storage"
+        ),
+    )
     return ReamAllocationOutput(
         allocation_id=f"alloc-{uuid.uuid4().hex[:10]}",
         resource_epoch=1,
@@ -79,11 +93,12 @@ async def allocate_resources(input: AllocateResourcesInput) -> ReamAllocationOut
         pool_name=input.resource_pool,
         node_count=input.node_count,
         gpus_per_node=input.gpus_per_node,
-        rank_size=input.node_count * input.gpus_per_node,
+        rank_size=gpus_requested,
         rdma_enabled=True,
         nccl_profile="nccl",
         rendezvous={"control": "grpc://kilvin-controller:9001"},
         dataset_mount=f"{input.dataset_uri}/mounts/{input.stage_id}",
+        quota_decision=quota_decision,
     )
 
 
@@ -120,11 +135,24 @@ async def materialize_training_bundle(
         }
     ]
 
+    env_vars = {
+        "MODEL_NAME": input.model,
+        "TRAIN_STAGE": input.train_stage,
+        "CHECKPOINT_URI": input.checkpoint,
+        "DATASET_MOUNT": input.allocation.dataset_mount or "",
+        "WORLD_SIZE": str(input.allocation.rank_size),
+        "NCCL_PROFILE": input.allocation.nccl_profile,
+        "RDMA_ENABLED": "1" if input.allocation.rdma_enabled else "0",
+        "GLOBAL_BATCH_TOKENS": str(input.global_batch_tokens),
+        "LEARNING_RATE": str(input.learning_rate),
+    }
+
     return MaterializedBundleOutput(
         bundle_id=f"bundle-{uuid.uuid4().hex[:10]}",
         bundle_path=f"{input.config_snapshot}/bundle/{input.train_stage}.yaml",
         bound_components=bound_components,
         runtime_setup=runtime_setup,
+        env_vars=env_vars,
         rendezvous=dict(input.allocation.rendezvous or {}),
         launch_plan=[
             {
@@ -159,9 +187,25 @@ async def monitor_training(input: MonitorTrainingInput) -> MonitorOutput:
             "k8s_namespace": input.k8s_namespace,
         }
     )
+    logs_uri = f"k8s://{input.k8s_namespace}/jobs/{input.auto_job_name}/logs"
     if input.auto_job_name.startswith("kilvin-fail"):
-        return MonitorOutput(final_status="FAILED", running_pods=0, total_pods=0)
-    return MonitorOutput(final_status="SUCCESS", running_pods=1, total_pods=1)
+        return MonitorOutput(
+            final_status="FAILED",
+            running_pods=0,
+            total_pods=0,
+            logs_uri=logs_uri,
+            log_tail=[f"{input.auto_job_name}: pod crash-looped, see {logs_uri}"],
+        )
+    return MonitorOutput(
+        final_status="SUCCESS",
+        running_pods=1,
+        total_pods=1,
+        logs_uri=logs_uri,
+        log_tail=[
+            f"{input.auto_job_name}: all pods Running",
+            f"{input.auto_job_name}: training loop healthy, checkpoints flowing",
+        ],
+    )
 
 
 @activity.defn
