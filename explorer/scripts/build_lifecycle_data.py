@@ -279,8 +279,8 @@ def build(repo_root: Path) -> dict[str, Any]:
             "label": "Kilvin client",
             "layer": "kilvin",
             "kind": "client",
-            "summary": "Starts the parent command workflow with a staged training config.",
-            "notes": "The sample config models foundation and post-foundation stages, which gives the walkthrough enough complexity to explain task queues, child workflows, activities, retries, and cleanup.",
+            "summary": "Starts the parent command workflow with the model X on FineWeb training config.",
+            "notes": "The sample config asks for one clean thing: train model X on FineWeb with 64 A100 GPUs. That single pretrain run still exposes task queues, child workflows, activities, retries, heartbeats, and hood-open artifacts.",
             "refs": [
                 local_ref(
                     repo_root,
@@ -449,7 +449,7 @@ def build(repo_root: Path) -> dict[str, Any]:
         {
             "id": "start",
             "label": "Start workflow",
-            "summary": "Kilvin submits a staged training run.",
+            "summary": "Kilvin submits the model X training run.",
             "node_ids": ["kilvin-client", "frontend-service", "history-service"],
             **guide_link(repo_root, guide, hacks, "happy-path-start-workflow-to-first-activation", "hacks/002_lifecycle_manifest.py"),
         },
@@ -501,10 +501,10 @@ def build(repo_root: Path) -> dict[str, Any]:
             "StartWorkflowExecution",
             "Kilvin asks Temporal Frontend to create the command workflow run.",
             [
-                "The client sends the workflow type, workflow id, task queue, and staged training input to the public Temporal API.",
+                "The client sends the workflow type, workflow id, task queue, and the model X training config to the public Temporal API.",
                 "Frontend is the first server boundary for the workflow start request.",
             ],
-            ["workflow_id", "task_queue", "workflow_type", "staged_training_config"],
+            ["workflow_id", "task_queue", "workflow_type", "model_x_training_config"],
             [
                 local_ref(
                     repo_root,

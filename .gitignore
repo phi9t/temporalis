@@ -22,3 +22,5 @@ temporal/
 runs/
 explorer/dist/
 explorer/node_modules/
+monoctl.egg-info/
+uv.lock

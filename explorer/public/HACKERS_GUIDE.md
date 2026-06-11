@@ -1,6 +1,6 @@
 # Temporal Hacker's Guide
 
-> A code-first guide to how a Kilvin-inspired Python asyncio workflow moves through sdk-python, the Python bridge, sdk-core, and the Temporal server. Read the happy path first; the advanced control paths are extensions of that same event-sourced loop.
+> A code-first guide to how a Kilvin-inspired Python asyncio workflow — one clean request to train model X on FineWeb with 64 A100 GPUs — moves through sdk-python, the Python bridge, sdk-core, and the Temporal server. Read the happy path first; the advanced control paths are extensions of that same event-sourced loop.
 
 <a id="how-to-read-this-guide"></a>
 ## 1. How to read this guide
@@ -15,7 +15,7 @@ Temporal has four boundaries that matter for this guide: the Python client/worke
 <a id="running-example-kilvin-inspired-training-workflow"></a>
 ## 3. Running example: Kilvin-inspired training workflow
 
-The running example is a parent workflow that starts a staged training run, schedules activities for resource allocation and workload materialization, starts or coordinates child work, monitors progress through a heartbeating activity, and cleans up resources. It is intentionally richer than a greeting workflow because it exposes task queues, child workflows, retries, heartbeats, cancellation, pause/resume, and replay.
+The running example is one clean request: train model X on FineWeb with 64 A100 GPUs. `ParentKilvinCmdWorkflow` extracts the command config and starts a child `KilvinTrainingWorkflow` on the `kilvin-training-task-queue`. The child prepares the dev image once, then for the pretrain stage allocates resources (gather quota and placement constraints, solve placement, reserve and pin 8 nodes x 8 A100s), materializes the training bundle (the concrete job spec plus env vars), submits the Kubernetes job, and monitors it through a heartbeating activity. Every step persists hood-open YAML artifacts under `.kilvin-artifacts/` — the materialized job spec, quota decision, env vars, dataset mount, Kubernetes job id, and log pointers — so the run stays inspectable while it executes and after it fails. It is intentionally richer than a greeting workflow because it exposes task queues, child workflows, retries, heartbeats, cancellation, pause/resume, and replay.
 
 <a id="happy-path-start-workflow-to-first-activation"></a>
 ## 4. Happy path: start workflow to first activation

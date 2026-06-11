@@ -10,8 +10,11 @@ behavior easier for the human to explain afterward.
   repos, drift checks, and snapshots.
 - `inspectl/`: local-first Python pipeline facade backed by Temporal concepts
   such as durable runs, retries, pause/resume, logs, and state snapshots.
-- `explorer/`: React teaching app for lifecycle, control-path, and hacker-guide
-  views.
+- `explorer/`: React teaching app — Basics, Deep Dive (lifecycle + control
+  paths), and Hacker's Guide views, all themed around one request: train
+  model X on FineWeb with 64 A100 GPUs.
+- `kilvin-py/`: the runnable Temporal Python implementation of that training
+  launch (parent/child workflows, activities, hood-open YAML artifacts).
 - `hacks/`: deterministic teaching probes that connect the guide and generated
   explorer data to source-grounded examples.
 - `docs/superpowers/specs/`: design specs for major features.
