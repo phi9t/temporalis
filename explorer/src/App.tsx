@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { ArrowLeft, BookOpen, Network, Route, Workflow } from 'lucide-react'
+import { ArrowLeft, BookOpen, Route, Workflow } from 'lucide-react'
 import { REPO_HOME, logoMarkUrl } from './lib/assets'
 import type { ExplorerMode } from './explorer-kit/mode'
 import BasicsExplorer from './basics/BasicsExplorer'
-import LifecycleExplorer from './lifecycle/LifecycleExplorer'
-import ControlPathsExplorer from './control/ControlPathsExplorer'
+import DeepDiveExplorer from './deep-dive/DeepDiveExplorer'
 import GuideExplorer from './guide/GuideExplorer'
 
 const MODES: ExplorerMode[] = [
@@ -16,18 +15,11 @@ const MODES: ExplorerMode[] = [
     View: BasicsExplorer,
   },
   {
-    id: 'lifecycle',
-    label: 'Lifecycle Deep Dive',
+    id: 'deep-dive',
+    label: 'Deep Dive',
     icon: Route,
-    subtitle: 'Kilvin-inspired asyncio workflow through Python SDK, bridge, sdk-core, and Temporal server',
-    View: LifecycleExplorer,
-  },
-  {
-    id: 'control',
-    label: 'Control Paths',
-    icon: Network,
-    subtitle: 'Retry, replay, pause/resume, heartbeats, cancellation, and sticky workflow cache',
-    View: ControlPathsExplorer,
+    subtitle: 'Lifecycle phases and control paths through the same Temporal swimlane',
+    View: DeepDiveExplorer,
   },
   {
     id: 'guide',

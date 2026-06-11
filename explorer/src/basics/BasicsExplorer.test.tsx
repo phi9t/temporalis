@@ -115,14 +115,11 @@ describe('BasicsExplorer', () => {
     expect(artifactText).toContain('Logs and events')
   })
 
-  it('navigates into the existing deep-dive modes', () => {
+  it('navigates into the merged deep-dive mode', () => {
     const navigate = vi.fn()
     render(<BasicsExplorer navigate={navigate} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Lifecycle Deep Dive' }))
-    expect(navigate).toHaveBeenCalledWith('lifecycle')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Control Paths' }))
-    expect(navigate).toHaveBeenCalledWith('control')
+    fireEvent.click(screen.getByRole('button', { name: 'Deep Dive' }))
+    expect(navigate).toHaveBeenCalledWith('deep-dive')
   })
 })

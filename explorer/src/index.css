@@ -836,6 +836,13 @@ body {
   gap: 20px;
 }
 
+.deep-dive-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 .lifecycle-main {
   display: grid;
   align-items: start;
@@ -854,6 +861,10 @@ body {
 @media (min-width: 1280px) {
   .lifecycle-workspace {
     grid-template-columns: minmax(0, 1fr) 390px;
+  }
+
+  .control-workspace.lifecycle-workspace {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .lifecycle-main {
@@ -1369,6 +1380,11 @@ body {
     grid-template-columns: minmax(340px, 0.72fr) minmax(620px, 1.08fr);
   }
 
+  .control-main.lifecycle-main.lifecycle-main--diagram-only {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: none;
+  }
+
   .control-sequence-shell {
     order: 1;
   }
@@ -1379,10 +1395,50 @@ body {
 
   .control-main--diagram-only .control-diagram-shell {
     order: 1;
+    position: static;
+    width: 100%;
+    justify-self: stretch;
   }
 
   .control-diagram-shell .flow-diagram {
     min-height: 420px;
+    width: 100%;
+  }
+
+  .control-diagram-shell .flow-grid {
+    gap: 6px;
+  }
+
+  .control-diagram-shell .flow-group-cell,
+  .control-diagram-shell .flow-step-cell {
+    min-height: 92px;
+    padding: 8px;
+  }
+
+  .control-diagram-shell .flow-component-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .control-diagram-shell .flow-component-chip {
+    min-height: 0;
+    gap: 1px;
+    padding: 4px 5px;
+    font-size: 11px;
+  }
+
+  .control-diagram-shell .flow-component-layer {
+    font-size: 8px;
+  }
+
+  .control-diagram-shell .flow-step-card {
+    gap: 6px;
+    padding: 9px;
+  }
+
+  .control-diagram-shell .flow-step-card p {
+    font-size: 11px;
   }
 }
 

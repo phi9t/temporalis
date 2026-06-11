@@ -123,7 +123,7 @@ export default function FlowDiagram<TSource>({
       <div className="flow-diagram-scroll">
         <div
           className="flow-grid"
-          style={{ gridTemplateColumns: `minmax(190px, 230px) repeat(${columnCount}, minmax(220px, 260px))` }}
+          style={{ gridTemplateColumns: `minmax(260px, 320px) repeat(${columnCount}, minmax(220px, 260px))` }}
         >
           {FLOW_GROUPS.map((group) => {
             const groupNodes = group.nodeIds.map((nodeId) => nodesById.get(nodeId)).filter(Boolean) as LifecycleNode[]

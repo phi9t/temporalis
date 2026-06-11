@@ -1,17 +1,24 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import ControlPathsExplorer from './ControlPathsExplorer'
+import DeepDiveExplorer from './DeepDiveExplorer'
 import type { ControlScenario, LifecycleManifest } from '@/lifecycle/types'
 
 vi.mock('@/lib/fetch', () => ({
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
   fetchExplorerJson: vi.fn(async (path: string) => {
     const data: Record<string, unknown> = {
+      'lifecycle/index.json': [
+        {
+          slug: 'kilvin-asyncio-happy-path',
+          label: 'Kilvin asyncio happy path',
+          manifest: 'lifecycle/kilvin-asyncio-happy-path.json',
+        },
+      ],
       'lifecycle/kilvin-asyncio-happy-path.json': lifecycle,
       'control-paths/index.json': [
         { slug: 'pause-resume', label: 'Pause / resume', manifest: 'control-paths/pause-resume.json' },
       ],
-      'control-paths/pause-resume.json': scenario,
+      'control-paths/pause-resume.json': controlScenario,
     }
 
     const value = data[path]
@@ -24,7 +31,28 @@ const lifecycle: LifecycleManifest = {
   generated_at: '2026-05-31T00:00:00Z',
   slug: 'kilvin-asyncio-happy-path',
   label: 'Kilvin asyncio happy path',
-  phases: [],
+  phases: [
+    {
+      id: 'start',
+      label: 'Start workflow',
+      summary: 'Kilvin submits a staged training run.',
+      node_ids: ['kilvin-client', 'frontend-service'],
+      guide_anchor: 'happy-path-start-workflow-to-first-activation',
+      guide_title: '4. Happy path: start workflow to first activation',
+      hack_script: 'hacks/002_lifecycle_manifest.py',
+      hack_summary: 'Walk the Kilvin asyncio happy-path lifecycle manifest in phase order.',
+    },
+    {
+      id: 'poll',
+      label: 'Poll workflow task',
+      summary: 'The worker polls for workflow work.',
+      node_ids: ['python-worker', 'matching-service'],
+      guide_anchor: 'happy-path-poll-workflow-task',
+      guide_title: '5. Happy path: poll workflow task',
+      hack_script: 'hacks/003_lifecycle_poll.py',
+      hack_summary: 'Inspect the worker poll phase of the lifecycle manifest.',
+    },
+  ],
   nodes: [
     {
       id: 'kilvin-client',
@@ -42,6 +70,24 @@ const lifecycle: LifecycleManifest = {
       kind: 'worker',
       summary: 'The Python SDK runs worker code.',
       notes: 'The worker hosts workflow and activity execution.',
+      refs: [],
+    },
+    {
+      id: 'workflow-activation',
+      label: 'Activation',
+      layer: 'sdk-python',
+      kind: 'workflow',
+      summary: 'Python resumes workflow code.',
+      notes: 'Replay feeds deterministic activations back to Python.',
+      refs: [],
+    },
+    {
+      id: 'activity-task',
+      label: 'Activity task',
+      layer: 'sdk-python',
+      kind: 'activity',
+      summary: 'Activity task execution happens in worker code.',
+      notes: 'Activities run outside deterministic workflow code.',
       refs: [],
     },
     {
@@ -81,24 +127,6 @@ const lifecycle: LifecycleManifest = {
       refs: [],
     },
     {
-      id: 'workflow-activation',
-      label: 'Activation',
-      layer: 'sdk-python',
-      kind: 'workflow',
-      summary: 'Python resumes workflow code.',
-      notes: 'Replay feeds deterministic activations back to Python.',
-      refs: [
-        {
-          repo: 'sdk-python',
-          label: '_handle_activation',
-          path: 'temporalio/worker/_workflow.py',
-          line: 244,
-          symbol: '_handle_activation',
-          url: 'https://github.com/temporalio/sdk-python/blob/main/temporalio/worker/_workflow.py',
-        },
-      ],
-    },
-    {
       id: 'history-service',
       label: 'History',
       layer: 'server',
@@ -116,17 +144,15 @@ const lifecycle: LifecycleManifest = {
       notes: 'Matching owns task queue delivery.',
       refs: [],
     },
-    {
-      id: 'activity-task',
-      label: 'Activity task',
-      layer: 'sdk-python',
-      kind: 'activity',
-      summary: 'Activity task execution happens in worker code.',
-      notes: 'Activities run outside deterministic workflow code.',
-      refs: [],
-    },
   ],
   edges: [
+    {
+      id: 'start-rpc',
+      from: 'kilvin-client',
+      to: 'frontend-service',
+      kind: 'rpc',
+      label: 'StartWorkflowExecution',
+    },
     {
       id: 'workflow-complete',
       from: 'workflow-activation',
@@ -134,11 +160,47 @@ const lifecycle: LifecycleManifest = {
       kind: 'completion',
       label: 'RespondWorkflowTaskCompleted',
     },
+    {
+      id: 'poll-workflow-task',
+      from: 'python-worker',
+      to: 'matching-service',
+      kind: 'poll',
+      label: 'PollWorkflowTaskQueue',
+    },
   ],
-  calls: [],
+  calls: [
+    {
+      id: 'call-start-workflow',
+      phase_id: 'start',
+      seq: 1,
+      from: 'kilvin-client',
+      to: 'frontend-service',
+      edge_id: 'start-rpc',
+      kind: 'rpc',
+      message: 'StartWorkflowExecution',
+      summary: 'Kilvin asks Temporal to start the command workflow.',
+      details: ['The app submits workflow id, task queue, workflow type, and staged training input.'],
+      payload: ['workflow_id'],
+      refs: [],
+    },
+    {
+      id: 'call-poll-workflow-task',
+      phase_id: 'poll',
+      seq: 2,
+      from: 'python-worker',
+      to: 'matching-service',
+      edge_id: 'poll-workflow-task',
+      kind: 'poll',
+      message: 'PollWorkflowTaskQueue',
+      summary: 'The worker asks matching for workflow task work.',
+      details: ['The worker long-polls for workflow task queue work after the start phase.'],
+      payload: ['task_queue'],
+      refs: [],
+    },
+  ],
 }
 
-const scenario: ControlScenario = {
+const controlScenario: ControlScenario = {
   slug: 'pause-resume',
   label: 'Pause / resume',
   summary: 'Signals change workflow state; replay preserves deterministic history.',
@@ -196,95 +258,54 @@ const scenario: ControlScenario = {
   ],
 }
 
-describe('ControlPathsExplorer', () => {
-  afterEach(() => {
-    cleanup()
-  })
+afterEach(() => cleanup())
 
-  it('loads control scenarios as lifecycle diagram overlays', async () => {
-    render(<ControlPathsExplorer navigate={vi.fn()} />)
+describe('DeepDiveExplorer', () => {
+  it('renders lifecycle as the default swimlane track', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
 
-    expect(screen.getByText('Loading control paths...')).toBeTruthy()
+    const diagram = await screen.findByRole('group', { name: 'Temporal swimlane flow diagram' })
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Pause / resume' }).getAttribute('aria-pressed')).toBe('true')
-    })
-
-    expect(screen.getByText('Signals change workflow state; replay preserves deterministic history.')).toBeTruthy()
-    expect(screen.queryByRole('link', { name: /9\. Pause\/resume/ })).toBeNull()
-    expect(screen.queryByText('python hacks/005_control_paths.py')).toBeNull()
-    const diagram = screen.getByRole('group', { name: 'Temporal swimlane flow diagram' })
-    expect(diagram).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Lifecycle' }).getAttribute('aria-pressed')).toBe('true')
     expect(diagram.textContent).toContain('User app')
     expect(diagram.textContent).toContain('Worker')
     expect(diagram.textContent).toContain('Temporal server')
     expect(diagram.textContent).toContain('Kilvin client')
     expect(diagram.textContent).toContain('Python Worker.run')
-    expect(diagram.textContent).toContain('Bridge')
-    expect(diagram.textContent).toContain('sdk-core')
+    expect(diagram.textContent).toContain('Bridge worker')
     expect(diagram.textContent).toContain('Core worker')
-    expect(diagram.textContent).toContain('Activity task')
     expect(diagram.textContent).toContain('Frontend')
     expect(diagram.textContent).toContain('History')
     expect(diagram.textContent).toContain('Matching')
+    expect(screen.getByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ }))
+      .toBeTruthy()
+  })
+
+  it('switches to control paths in the same swimlane presentation', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Control Paths' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Control Paths' }).getAttribute('aria-pressed')).toBe('true')
+    })
+
+    const diagram = screen.getByRole('group', { name: 'Temporal swimlane flow diagram' })
+    expect(screen.getByText('Signals change workflow state; replay preserves deterministic history.')).toBeTruthy()
     expect(diagram.textContent).toContain('SignalWorkflowExecution')
     expect(diagram.textContent).toContain('WorkflowActivation(signal)')
     expect(diagram.textContent).toContain('RespondWorkflowTaskCompleted')
-    expect(screen.getByRole('button', { name: 'Activation' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Core worker' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Flow step 02 History to Activation WorkflowActivation\(signal\)/ }))
+      .toBeTruthy()
   })
 
-  it('renders ordered control flow cards and defaults to the first step details', async () => {
-    render(<ControlPathsExplorer navigate={vi.fn()} />)
+  it('keeps component selection inside the merged swimlane', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
 
-    const firstStep = await screen.findByRole('button', {
-      name: /Flow step 01 Activation to History SignalWorkflowExecution/,
-    })
+    const coreWorker = await screen.findByRole('button', { name: 'Core worker' })
+    fireEvent.click(coreWorker)
 
-    expect(firstStep.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.queryByLabelText('Control path sequence')).toBeNull()
-    expect(screen.getByRole('button', { name: /Flow step 01 Activation to History SignalWorkflowExecution/ })).toBeTruthy()
-    expect(screen.getAllByText('A pause request is recorded durably.').length).toBeGreaterThan(0)
-  })
-
-  it('updates control step details when a flow card is selected', async () => {
-    render(<ControlPathsExplorer navigate={vi.fn()} />)
-
-    const secondStep = await screen.findByRole('button', {
-      name: /Flow step 02 History to Activation WorkflowActivation\(signal\)/,
-    })
-    fireEvent.click(secondStep)
-
-    expect(secondStep.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getAllByText('The signal is delivered to workflow code.').length).toBeGreaterThan(0)
-  })
-
-  it('opens node details when a swimlane component is selected', async () => {
-    render(<ControlPathsExplorer navigate={vi.fn()} />)
-
-    const activation = await screen.findByRole('button', { name: 'Activation' })
-    fireEvent.click(activation)
-
-    expect(activation.getAttribute('aria-pressed')).toBe('true')
-  })
-
-  it('selects a matching control step when a flow item is selected', async () => {
-    render(<ControlPathsExplorer navigate={vi.fn()} />)
-
-    const secondStep = await screen.findByRole('button', {
-      name: /Flow step 02 History to Activation WorkflowActivation\(signal\)/,
-    })
-    fireEvent.click(secondStep)
-
-    expect(secondStep.getAttribute('aria-pressed')).toBe('true')
-  })
-
-  it('uses the selected control step message as the flow label', async () => {
-    render(<ControlPathsExplorer navigate={vi.fn()} />)
-
-    await screen.findByRole('button', { name: /Flow step 01 Activation to History SignalWorkflowExecution/ })
-
-    expect(screen.getByRole('button', { name: /Flow step 01 Activation to History SignalWorkflowExecution/ })).toBeTruthy()
-    expect(screen.getAllByText('SignalWorkflowExecution').length).toBeGreaterThan(0)
+    expect(coreWorker.getAttribute('aria-pressed')).toBe('true')
   })
 })

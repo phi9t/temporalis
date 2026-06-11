@@ -412,13 +412,9 @@ export default function BasicsExplorer({ navigate }: ExplorerModeProps) {
           <h2 id="basics-next-title">Once the basics click, follow the same ideas through the real internals.</h2>
         </div>
         <div className="basics-next-actions">
-          <button type="button" className="basics-next-button" onClick={() => navigate('lifecycle')}>
+          <button type="button" className="basics-next-button" onClick={() => navigate('deep-dive')}>
             <Route size={16} aria-hidden="true" />
-            Lifecycle Deep Dive
-          </button>
-          <button type="button" className="basics-next-button" onClick={() => navigate('control')}>
-            <Network size={16} aria-hidden="true" />
-            Control Paths
+            Deep Dive
           </button>
         </div>
       </section>
