@@ -4,7 +4,7 @@ import uuid
 from temporalio.client import Client
 
 from kilvin_py import models
-from kilvin_py.workflows import ParentCmdWorkflow
+from kilvin_py.workflows import ParentKilvinCmdWorkflow
 
 
 def sample_run_config() -> models.RunConfig:
@@ -52,27 +52,6 @@ def sample_run_config() -> models.RunConfig:
                     optimizer="adamw",
                     precision="bf16",
                 ),
-                pipeline_strategy=models.PipelineStrategy(
-                    mode="parallel",
-                    max_parallelism=2,
-                    join_behavior="all_required",
-                ),
-                pipelines=[
-                    models.PipelineConfig(
-                        pipeline_id="moonvit3d",
-                        component_name="moonvit3d",
-                        component_version="siglip",
-                        machine_type="h100-sxm",
-                        node_count=128,
-                        gpus_per_node=8,
-                        rank_size=1024,
-                        resource_pool="vision",
-                        rdma_profile="ib-h100",
-                        nccl_profile="nccl-ib",
-                        max_seq_len=8192,
-                        modality_mix={"vision": 1.0},
-                    )
-                ],
             ),
             models.StageConfig(
                 stage_id="joint_pretrain",
@@ -134,7 +113,6 @@ def sample_run_config() -> models.RunConfig:
                     learning_rate=7e-05,
                     precision="bf16",
                 ),
-                pipeline_strategy=models.PipelineStrategy(mode="serial", max_parallelism=1),
             ),
             models.StageConfig(
                 stage_id="parl_rl",
@@ -206,7 +184,7 @@ async def main() -> None:
     run_config = sample_run_config()
     run_id = run_config.run_id
     result = await client.execute_workflow(
-        ParentCmdWorkflow.run,
+        ParentKilvinCmdWorkflow.run,
         models.StartKilvinCommandInput(
             run_config=run_config,
             cmd_name="k2.5-continuation",

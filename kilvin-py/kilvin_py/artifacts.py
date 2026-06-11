@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +31,8 @@ class ArtifactStore:
         return root / name
 
     def write_yaml(self, run_id: str, run_attempt: int, name: str, value: Any) -> StepIOArtifact:
-        payload = yaml.safe_dump(asdict(value), sort_keys=True).encode("utf-8")
+        canonical = asdict(value) if is_dataclass(value) and not isinstance(value, type) else value
+        payload = yaml.safe_dump(canonical, sort_keys=True).encode("utf-8")
         checksum = hashlib.sha256(payload).hexdigest()
         dest = self._artifact_path(run_id, run_attempt, name)
         dest.parent.mkdir(parents=True, exist_ok=True)

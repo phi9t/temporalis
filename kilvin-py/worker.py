@@ -11,21 +11,16 @@ async def main() -> None:
     worker = Worker(
         client,
         task_queue="kilvin-training-task-queue",
-        workflows=[workflows.ParentCmdWorkflow, workflows.TrainingWorkflow],
+        workflows=[workflows.ParentKilvinCmdWorkflow, workflows.KilvinTrainingWorkflow],
         activities=[
             activities.extract_cmd_config,
             activities.dev_prepare,
-            activities.validate_checkpoint,
-            activities.configure_training_data,
             activities.allocate_resources,
             activities.materialize_training_bundle,
             activities.submit_k8s_job,
             activities.monitor_training,
-            activities.purge_resources,
             activities.update_cmd_state,
-            activities.update_cmd_state_from_child,
             activities.persist_yaml_artifact,
-            activities.submit_k8s_job_activity,
         ],
     )
     await worker.run()

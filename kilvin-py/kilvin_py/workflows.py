@@ -1,54 +1,43 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
 
 from temporalio import workflow
+from temporalio.common import RetryPolicy
+from temporalio.exceptions import ApplicationError
 
-from . import activities
+with workflow.unsafe.imports_passed_through():
+    from . import activities
+
 from .models import (
     AllocateResourcesInput,
     ArtifactWriteInput,
     CancelSignal,
-    CheckpointOutput,
-    ConfigureTrainingDataInput,
     DevPrepareInput,
     DevPrepareOutput,
-    ExtractStageConfigInput,
-    ExtractStageConfigOutput,
-    ExtractWorkflowConfigInput,
+    ExtractCmdConfigInput,
+    KilvinRunState,
+    MaterializedBundleOutput,
     MaterializeTrainingBundleInput,
-    PipelineAllocation,
-    ReamAllocationOutput,
     MonitorOutput,
     MonitorTrainingInput,
+    ParentRunOutput,
     PauseAtStepSignal,
     PauseSignal,
-    PipelineBundleOutput,
-    PipelineConfig,
-    PipelineStrategy,
-    JoinBehavior,
-    PipelinePriority,
-    ParentRunOutput,
-    PurgeInput,
+    ReamAllocationOutput,
     ReplaySignal,
     ResumeSignal,
     RunConfig,
     StageConfig,
     StageExecutionFailure,
     StartKilvinCommandInput,
+    StepExecutionEnvelope,
     SubmitK8sInput,
     SubmitK8sOutput,
-    StepExecutionEnvelope,
     TrainingWorkflowInput,
-    KilvinRunState,
-    DataConfigureOutput,
 )
-
-
-workflow.unsafe.imports_passed_through()
 
 ALLOWED_STAGE_IDS = {
     "vit_pretrain",
@@ -63,61 +52,6 @@ ALLOWED_STAGE_IDS = {
 }
 
 FOUNDATION_SEQUENCE = ["vit_pretrain", "joint_pretrain", "continue_pretrain", "long_context_midtrain"]
-
-
-def _pipeline_profiles(stage: StageConfig) -> list[PipelineConfig]:
-    if stage.pipelines:
-        return stage.pipelines
-    return [
-        PipelineConfig(
-            pipeline_id="default-pipeline",
-            component_name="foundation_model",
-            machine_type="h100-sxm",
-            node_count=64,
-            gpus_per_node=8,
-            rank_size=512,
-            resource_pool="foundation",
-            stage_overrides={},
-        )
-    ]
-
-
-def _normalize_stage_pipeline_strategy(stage: StageConfig) -> StageConfig:
-    strategy = stage.pipeline_strategy
-    if strategy is None:
-        return stage
-    normalized = strategy.normalized_join_behavior()
-    if normalized == strategy.join_behavior:
-        return stage
-    return StageConfig(
-        stage_id=stage.stage_id,
-        stage_type=stage.stage_type,
-        phase=stage.phase,
-        enabled=stage.enabled,
-        dataset_profile=stage.dataset_profile,
-        runtime_profile=stage.runtime_profile,
-        pipeline_strategy=PipelineStrategy(
-            mode=strategy.mode,
-            max_parallelism=strategy.max_parallelism,
-            join_behavior=normalized,
-        ),
-        pipelines=stage.pipelines,
-        stage_retry=stage.stage_retry,
-        stage_timeout_minutes=stage.stage_timeout_minutes,
-        depends_on=stage.depends_on,
-    )
-
-
-def _normalize_run_config(config: RunConfig) -> RunConfig:
-    return RunConfig(
-        run_id=config.run_id,
-        kilvin_run_name=config.kilvin_run_name,
-        workflow_spec=config.workflow_spec,
-        policy=config.policy,
-        stage_sequence=config.stage_sequence,
-        stages=[_normalize_stage_pipeline_strategy(stage) for stage in config.stages],
-        metadata=config.metadata,
-    )
 
 
 def _validate_run_config(config: RunConfig) -> None:
@@ -176,14 +110,6 @@ def _ordered_stages(config: RunConfig) -> list[StageConfig]:
     return [stage for stage in config.stages if stage.enabled]
 
 
-def _parallel_capacity(strategy: PipelineStrategy | None) -> int:
-    if strategy is None or strategy.mode != "parallel":
-        return 1
-    if strategy.max_parallelism is None or strategy.max_parallelism <= 0:
-        return 0
-    return strategy.max_parallelism
-
-
 def _to_dict(value: Any) -> dict[str, Any]:
     if hasattr(value, "__dict__"):
         try:
@@ -195,57 +121,13 @@ def _to_dict(value: Any) -> dict[str, Any]:
     return {"value": value}
 
 
-def _should_fail_pipeline(status: str) -> bool:
+def _is_failed_status(status: str) -> bool:
     normalized = status.upper()
     return normalized not in {"SUCCESS", "SUCCEEDED", "OK"}
 
 
-def _pipeline_join_behavior(stage: StageConfig) -> str:
-    if stage.pipeline_strategy is None:
-        return JoinBehavior.ALL_REQUIRED.value
-    return stage.pipeline_strategy.normalized_join_behavior()
-
-
-def _pipeline_should_ignore_failure(join_behavior: str, stage: StageConfig, pipeline: PipelineConfig) -> bool:
-    if join_behavior != JoinBehavior.ALL_OR_SKIP_FAILED.value:
-        return False
-    if pipeline.skippable:
-        return True
-    if pipeline.priority == PipelinePriority.OPTIONAL:
-        return True
-    if pipeline.priority == PipelinePriority.PROBE:
-        return True
-    return False
-
-
-def _pipeline_is_required(pipeline: PipelineConfig) -> bool:
-    if pipeline.skippable:
-        return False
-    priority = pipeline.priority.value if isinstance(pipeline.priority, PipelinePriority) else str(pipeline.priority)
-    return priority == PipelinePriority.REQUIRED.value
-
-
-def _effective_stage_retry(stage: StageConfig, policy) -> int:
-    if stage.stage_retry is not None and stage.stage_retry > 0:
-        return stage.stage_retry
-    return max(1, policy.max_stage_retries)
-
-
-def _effective_timeout_seconds(stage: StageConfig, base_seconds: int) -> int:
-    if stage.stage_timeout_minutes and stage.stage_timeout_minutes > 0:
-        stage_limit = max(1, stage.stage_timeout_minutes * 60)
-        return min(base_seconds, stage_limit)
-    return base_seconds
-
-
-def _matches_pipeline(target_pipeline_id: str | None, step_pipeline_id: str | None) -> bool:
-    if target_pipeline_id is None:
-        return True
-    return target_pipeline_id == step_pipeline_id
-
-
 @workflow.defn
-class ParentCmdWorkflow:
+class ParentKilvinCmdWorkflow:
     def __init__(self) -> None:
         self._state = "PENDING"
         self._cancelled = False
@@ -276,11 +158,11 @@ class ParentCmdWorkflow:
             )
 
             await workflow.execute_child_workflow(
-                TrainingWorkflow.run,
+                KilvinTrainingWorkflow.run,
                 child_input,
                 id=f"kilvin-training-{input.run_config.run_id}",
                 task_queue="kilvin-training-task-queue",
-                retry_policy=workflow.RetryPolicy(maximum_attempts=2),
+                retry_policy=RetryPolicy(maximum_attempts=2),
             )
 
             if self._cancelled:
@@ -292,7 +174,7 @@ class ParentCmdWorkflow:
                     },
                     start_to_close_timeout=timedelta(seconds=30),
                 )
-                raise RuntimeError("parent workflow cancelled")
+                raise ApplicationError("parent workflow cancelled", non_retryable=True)
 
             await workflow.execute_activity(
                 activities.update_cmd_state,
@@ -324,7 +206,7 @@ class ParentCmdWorkflow:
 
 
 @workflow.defn
-class TrainingWorkflow:
+class KilvinTrainingWorkflow:
     def __init__(self) -> None:
         self.state = "RUNNING"
         self._run_attempt = 0
@@ -335,28 +217,18 @@ class TrainingWorkflow:
         self._cancelled = False
         self._replay_target: ReplaySignal | None = None
         self._replay_step_waiting = False
-        self._current_step: tuple[str, str | None, str] | None = None
+        self._current_step: tuple[str, str] | None = None
         self._run_id = ""
         self._run_config: RunConfig | None = None
-
-
-@dataclass(frozen=True)
-class PipelineTaskResult:
-    pipeline_id: str
-    submit_output: SubmitK8sOutput | None
-    monitor_output: MonitorOutput | None
-    error: Exception | None
 
     @workflow.query
     def run_status(self) -> KilvinRunState:
         current_stage = self._current_step[0] if self._current_step else ""
-        current_pipeline = self._current_step[1] if self._current_step else None
-        current_step = self._current_step[2] if self._current_step else None
+        current_step = self._current_step[1] if self._current_step else None
         return KilvinRunState(
             run_id=self._run_id,
             run_attempt=self._run_attempt,
             current_stage=current_stage,
-            current_pipeline=current_pipeline,
             current_step=current_step,
             overall_status=self.state,
             paused=self._paused,
@@ -379,7 +251,9 @@ class PipelineTaskResult:
 
     @workflow.query
     def run_plan(self) -> list[str]:
-        return [stage.stage_id for stage in _ordered_stages(_normalize_run_config)]
+        if self._run_config is None:
+            return []
+        return [stage.stage_id for stage in _ordered_stages(self._run_config)]
 
     @workflow.signal
     def pause(self, _input: PauseSignal | None = None) -> None:
@@ -407,7 +281,27 @@ class PipelineTaskResult:
     @workflow.signal
     def cancel(self, _input: CancelSignal | None = None) -> None:
         self._cancelled = True
+        self._paused = False
+        self._pause_filter = None
         self.state = "CANCELLED"
+
+    def _should_pause_at(self, stage: StageConfig, step_name: str, when: str) -> bool:
+        if self._pause_filter is None:
+            return False
+        return (
+            self._pause_filter.when == when
+            and self._pause_filter.stage_id == stage.stage_id
+            and self._pause_filter.step_name == step_name
+        )
+
+    async def _wait_while_paused(self) -> None:
+        if not self._paused:
+            return
+        self.state = "PAUSED"
+        await workflow.wait_condition(lambda: not self._paused)
+        if self._cancelled:
+            raise ApplicationError("training workflow cancelled", non_retryable=True)
+        self.state = "RUNNING"
 
     def _lookup_replay_stage_index(self, stages: list[StageConfig]) -> int | None:
         if not self._replay_target:
@@ -421,8 +315,6 @@ class PipelineTaskResult:
         self,
         stages: list[StageConfig],
         stage_index: int,
-        stage: StageConfig,
-        pipeline_id: str | None,
         step_name: str,
     ) -> bool:
         if not self._replay_target:
@@ -440,26 +332,10 @@ class PipelineTaskResult:
         if target.scope == "stage":
             return False
 
-        if target.scope == "pipeline":
-            if pipeline_id is None:
-                return False
-            return not _matches_pipeline(target.target_pipeline_id, pipeline_id)
-
         # target.scope == "step"
         if self._replay_step_waiting is False:
             return False
         if target.target_step != step_name:
-            if target.target_pipeline_id is None:
-                if pipeline_id is not None:
-                    return True
-                return True
-            if pipeline_id is None:
-                return False
-            return not _matches_pipeline(target.target_pipeline_id, pipeline_id)
-        if target.target_pipeline_id is not None and not _matches_pipeline(
-            target.target_pipeline_id,
-            pipeline_id,
-        ):
             return True
         self._replay_step_waiting = False
         self._replay_target = None
@@ -470,8 +346,6 @@ class PipelineTaskResult:
         run_id: str,
         stage: StageConfig,
         stage_index: int,
-        pipeline_id: str | None,
-        pipeline_index: int | None,
         step_name: str,
         status: str,
         input_artifact,
@@ -488,8 +362,6 @@ class PipelineTaskResult:
                 stage_id=stage.stage_id,
                 stage_index=stage_index,
                 step_name=step_name,
-                pipeline_id=pipeline_id,
-                pipeline_index=pipeline_index,
                 status=status,
                 retry_attempt=0,
                 input_artifact=input_artifact,
@@ -507,20 +379,19 @@ class PipelineTaskResult:
         input: TrainingWorkflowInput,
         stage: StageConfig,
         stage_index: int,
-        pipeline_id: str | None,
-        pipeline_index: int | None,
         step_name: str,
         payload: Any,
-    ) -> Any:
+    ) -> StepExecutionEnvelope:
         artifact = await workflow.execute_activity(
             activities.persist_yaml_artifact,
             ArtifactWriteInput(
                 run_id=input.run_config.run_id,
                 run_attempt=self._run_attempt,
-                artifact_name=f"{stage.stage_id}/{pipeline_id or 'default'}/{step_name}/in.yaml",
+                artifact_name=f"{stage.stage_id}/{step_name}/in.yaml",
                 payload=_to_dict(payload),
             ),
             start_to_close_timeout=timedelta(seconds=20),
+            retry_policy=RetryPolicy(maximum_attempts=3),
         )
 
         return StepExecutionEnvelope(
@@ -529,8 +400,6 @@ class PipelineTaskResult:
             stage_id=stage.stage_id,
             stage_index=stage_index,
             step_name=step_name,
-            pipeline_id=pipeline_id,
-            pipeline_index=pipeline_index,
             status="QUEUED",
             retry_attempt=0,
             input_artifact=artifact,
@@ -543,8 +412,6 @@ class PipelineTaskResult:
         input: TrainingWorkflowInput,
         stage: StageConfig,
         stage_index: int,
-        pipeline_id: str | None,
-        pipeline_index: int | None,
         step_name: str,
         payload: Any,
         reason: str,
@@ -553,15 +420,11 @@ class PipelineTaskResult:
             input=input,
             stage=stage,
             stage_index=stage_index,
-            pipeline_id=pipeline_id,
-            pipeline_index=pipeline_index,
             step_name=step_name,
             payload=_to_dict(
                 {
                     "step_name": step_name,
                     "stage_id": stage.stage_id,
-                    "pipeline_id": pipeline_id,
-                    "pipeline_index": pipeline_index,
                     "run_id": input.run_config.run_id,
                     "run_attempt": self._run_attempt,
                     "replay_skip": True,
@@ -574,8 +437,6 @@ class PipelineTaskResult:
             run_id=input.run_config.run_id,
             stage=stage,
             stage_index=stage_index,
-            pipeline_id=pipeline_id,
-            pipeline_index=pipeline_index,
             step_name=step_name,
             status="SKIPPED",
             input_artifact=envelope.input_artifact,
@@ -590,8 +451,6 @@ class PipelineTaskResult:
         input: TrainingWorkflowInput,
         stage: StageConfig,
         stage_index: int,
-        pipeline_id: str | None,
-        pipeline_index: int | None,
         step_name: str,
         activity_fn,
         activity_input: Any,
@@ -600,55 +459,42 @@ class PipelineTaskResult:
         skip_result: Any | None = None,
     ) -> Any:
         if self._cancelled:
-            raise RuntimeError("training workflow cancelled")
+            raise ApplicationError("training workflow cancelled", non_retryable=True)
 
-        if self._pause_filter and self._pause_filter.when == "pre":
-            if self._pause_filter.stage_id == stage.stage_id and (
-                self._pause_filter.pipeline_id is None or self._pause_filter.pipeline_id == pipeline_id
-            ) and self._pause_filter.step_name == step_name:
-                self._paused = True
+        if self._should_pause_at(stage, step_name, "pre"):
+            self._paused = True
+            self._pause_filter = None
 
-        if self._paused:
-            self.state = "PAUSED"
-            await workflow.wait_condition(lambda: not self._paused)
-            self.state = "RUNNING"
+        await self._wait_while_paused()
 
         stages = _ordered_stages(input.run_config)
         if self._should_skip_for_replay(
             stages=stages,
             stage_index=stage_index,
-            stage=stage,
-            pipeline_id=pipeline_id,
             step_name=step_name,
         ):
             await self._record_skipped_step(
                 input=input,
                 stage=stage,
                 stage_index=stage_index,
-                pipeline_id=pipeline_id,
-                pipeline_index=pipeline_index,
                 step_name=step_name,
                 payload=activity_input,
                 reason=f"skipped for replay scope={self._replay_target.scope if self._replay_target else 'none'}",
             )
             return skip_result
 
-        envelope = await self._persist_step_artifact(input, stage, stage_index, pipeline_id, pipeline_index, step_name, {
+        envelope = await self._persist_step_artifact(input, stage, stage_index, step_name, {
             "step_name": step_name,
             "stage_id": stage.stage_id,
-            "pipeline_id": pipeline_id,
-            "pipeline_index": pipeline_index,
             "run_id": input.run_config.run_id,
             "run_attempt": self._run_attempt,
             "payload": _to_dict(activity_input),
         })
-        self._current_step = (stage.stage_id, pipeline_id, step_name)
+        self._current_step = (stage.stage_id, step_name)
         self._append_step_trace(
             run_id=input.run_config.run_id,
             stage=stage,
             stage_index=stage_index,
-            pipeline_id=pipeline_id,
-            pipeline_index=pipeline_index,
             step_name=step_name,
             status="RUNNING",
             input_artifact=envelope.input_artifact,
@@ -661,7 +507,7 @@ class PipelineTaskResult:
                 activity_fn,
                 activity_input,
                 start_to_close_timeout=timedelta(seconds=timeout_seconds),
-                retry_policy=workflow.RetryPolicy(
+                retry_policy=RetryPolicy(
                     maximum_attempts=retry_attempts or 3,
                     initial_interval=timedelta(seconds=5),
                 ),
@@ -672,18 +518,17 @@ class PipelineTaskResult:
                 ArtifactWriteInput(
                     run_id=input.run_config.run_id,
                     run_attempt=self._run_attempt,
-                    artifact_name=f"{stage.stage_id}/{pipeline_id or 'default'}/{step_name}/out.yaml",
+                    artifact_name=f"{stage.stage_id}/{step_name}/out.yaml",
                     payload=_to_dict(output),
                 ),
                 start_to_close_timeout=timedelta(seconds=20),
+                retry_policy=RetryPolicy(maximum_attempts=3),
             )
             self._append_step_trace(
                 run_id=input.run_config.run_id,
                 stage=stage,
                 stage_index=stage_index,
                 step_name=step_name,
-                pipeline_id=pipeline_id,
-                pipeline_index=pipeline_index,
                 status="SUCCEEDED",
                 input_artifact=envelope.input_artifact,
                 output_artifact=output_artifact,
@@ -692,13 +537,16 @@ class PipelineTaskResult:
                 started_at_ms=envelope.started_at_ms,
                 completed_at_ms=int(workflow.now().timestamp() * 1000),
             )
+            if self._should_pause_at(stage, step_name, "post"):
+                self._paused = True
+                self._pause_filter = None
+            await self._wait_while_paused()
             return output
 
         except Exception as err:
             self._failures.append(
                 StageExecutionFailure(
                     stage_id=stage.stage_id,
-                    pipeline_id=pipeline_id,
                     step_name=step_name,
                     attempt=self._run_attempt,
                     error=str(err),
@@ -709,8 +557,6 @@ class PipelineTaskResult:
                 stage=stage,
                 stage_index=stage_index,
                 step_name=step_name,
-                pipeline_id=pipeline_id,
-                pipeline_index=pipeline_index,
                 status="FAILED",
                 input_artifact=envelope.input_artifact,
                 input_checksum=envelope.input_checksum,
@@ -720,71 +566,26 @@ class PipelineTaskResult:
             )
             raise
 
-    async def _run_pipeline(
-        self,
-        input: TrainingWorkflowInput,
-        stage: StageConfig,
-        stage_index: int,
-        bundle: PipelineBundleOutput,
-        bundle_name: str,
-    ) -> tuple[SubmitK8sOutput, MonitorOutput]:
-        submit_out = await self._run_step(
-            input=input,
-            stage=stage,
-            stage_index=stage_index,
-            pipeline_id=bundle.pipeline_id,
-            pipeline_index=None,
-            step_name="submit_k8s_job",
-            activity_fn=activities.submit_k8s_job,
-            activity_input=SubmitK8sInput(
-                pipeline_id=bundle.pipeline_id,
-                bundle=bundle.bundle,
-                namespace="kilvin-training",
-            ),
-            timeout_seconds=180,
-            skip_result=SubmitK8sOutput(
-                auto_job_name=f"replay-skip-{bundle.pipeline_id}",
-                primus_job_id="skip-replay",
-                primus_ui_url="skipped://monitor",
-                k8s_namespace="kilvin-training",
-            ),
-        )
-
-        monitor_out = await self._run_step(
-            input=input,
-            stage=stage,
-            stage_index=stage_index,
-            pipeline_id=bundle.pipeline_id,
-            pipeline_index=None,
-            step_name="monitor_training",
-            activity_fn=activities.monitor_training,
-            activity_input=MonitorTrainingInput(
-                pipeline_id=bundle.pipeline_id,
-                auto_job_name=submit_out.auto_job_name,
-                primus_job_id=submit_out.primus_job_id,
-                ir_name=bundle_name,
-                k8s_namespace=submit_out.k8s_namespace,
-            ),
-            timeout_seconds=3600,
-            skip_result=MonitorOutput(final_status="SUCCEEDED"),
-        )
-        return submit_out, monitor_out
-
     @workflow.run
     async def run(self, input: TrainingWorkflowInput) -> str:
         self._run_id = input.run_config.run_id
+        self._run_config = input.run_config
         self._run_attempt += 1
 
+        try:
+            _validate_run_config(input.run_config)
+        except ValueError as err:
+            raise ApplicationError(str(err), non_retryable=True) from err
         stages = _ordered_stages(input.run_config)
         if not stages:
-            raise RuntimeError(f"No enabled stages configured for {self._run_id}")
+            raise ApplicationError(
+                f"No enabled stages configured for {self._run_id}", non_retryable=True
+            )
 
         dev_prepare = await self._run_step(
             input=input,
             stage=stages[0],
             stage_index=0,
-            pipeline_id=None,
-            pipeline_index=None,
             step_name="dev_prepare",
             activity_fn=activities.dev_prepare,
             activity_input=DevPrepareInput(
@@ -798,104 +599,49 @@ class PipelineTaskResult:
             ),
         )
 
-        checkpoint = await self._run_step(
-            input=input,
-            stage=stages[0],
-            stage_index=0,
-            pipeline_id=None,
-            pipeline_index=None,
-            step_name="validate_checkpoint",
-            activity_fn=activities.validate_checkpoint,
-            activity_input=dev_prepare.code_tos_key,
-            timeout_seconds=120,
-            skip_result=CheckpointOutput(
-                checkpoint_path=input.extracted.checkpoint or "s3://models/k2/checkpoint",
-                manifest_uri="file://./.kilvin-artifacts/skip/manifest.yaml",
-                model_size_estimate=700_000_000_000,
-            ),
-        )
+        checkpoint = input.extracted.checkpoint or dev_prepare.code_tos_key
+        ir_name = f"kilvin-ir-{input.run_config.run_id}"
 
-        current_checkpoint = checkpoint.checkpoint_path
         for stage_index, stage in enumerate(stages):
             if self._cancelled:
                 break
-
-            configure_out = await self._run_step(
-                input=input,
-                stage=stage,
-                stage_index=stage_index,
-                pipeline_id=None,
-                pipeline_index=None,
-                step_name="configure_training_data",
-                activity_fn=activities.configure_training_data,
-                activity_input=ConfigureTrainingDataInput(
-                    dataset_uri=stage.dataset_profile.uri,
-                    dataset_stage=stage.stage_id,
-                    required_token_budget=stage.runtime_profile.total_tokens_target,
-                    min_examples=stage.dataset_profile.min_examples,
-                    token_budget_tolerance_ratio=stage.dataset_profile.token_budget_tolerance_ratio,
-                    data_mix_requirements=stage.dataset_profile.mix_requirements,
-                    quality_thresholds=stage.dataset_profile.quality_thresholds,
-                ),
-                timeout_seconds=120,
-                skip_result=DataConfigureOutput(
-                    dataset_id=f"skip-{stage.stage_id}",
-                    schema_version="skip",
-                    shard_count=0,
-                    estimated_tokens=stage.runtime_profile.total_tokens_target,
-                    stage_token_mix={"skipped": 1},
-                    composition_breakdown={"skipped": 1.0},
-                    quality_scores={"skipped": 1.0},
-                    total_examples=0,
-                ),
-            )
 
             allocation = await self._run_step(
                 input=input,
                 stage=stage,
                 stage_index=stage_index,
-                pipeline_id=None,
-                pipeline_index=None,
                 step_name="allocate_resources",
                 activity_fn=activities.allocate_resources,
                 activity_input=AllocateResourcesInput(
                     run_id=input.run_config.run_id,
                     stage_id=stage.stage_id,
                     stage_index=stage_index,
-                    pipeline_profiles=_pipeline_profiles(stage),
+                    dataset_uri=stage.dataset_profile.uri,
                 ),
                 timeout_seconds=180,
                 skip_result=ReamAllocationOutput(
                     allocation_id=f"skip-allocation-{stage.stage_id}",
                     resource_epoch=0,
                     pools_reservation_id="skip",
-                    pipeline_allocations=[
-                        PipelineAllocation(
-                            pipeline_id="default-pipeline",
-                            component_name="foundation_model",
-                            node_count=1,
-                            gpus_per_node=1,
-                            rank_size=1,
-                            machine_type="h100-sxm",
-                            pool_name="foundation",
-                        )
-                    ],
+                    machine_type="h100-sxm",
+                    pool_name="foundation",
+                    node_count=1,
+                    gpus_per_node=1,
+                    rank_size=1,
                 ),
             )
 
-            materialization_tasks = []
-            pipeline_profiles = _pipeline_profiles(stage)
-            for pipeline_index, profile in enumerate(pipeline_profiles):
-                materialization_input = MaterializeTrainingBundleInput(
-                    ir_name=f"kilvin-ir-{input.run_config.run_id}-{stage.stage_id}",
-                    checkpoint=current_checkpoint,
+            bundle = await self._run_step(
+                input=input,
+                stage=stage,
+                stage_index=stage_index,
+                step_name="materialize_training_bundle",
+                activity_fn=activities.materialize_training_bundle,
+                activity_input=MaterializeTrainingBundleInput(
+                    ir_name=f"{ir_name}-{stage.stage_id}",
+                    checkpoint=checkpoint,
                     config_snapshot=input.extracted.workflow_config_uri,
-                    pipeline_id=profile.pipeline_id,
-                    allocation=next(
-                        (a for a in allocation.pipeline_allocations if a.pipeline_id == profile.pipeline_id),
-                        allocation.pipeline_allocations[0],
-                    ),
-                    pipeline_profile=profile,
+                    allocation=allocation,
                     stage_index=stage_index,
                     train_stage=stage.stage_id,
                     task_type="foundation_train",
@@ -904,74 +650,62 @@ class PipelineTaskResult:
                     max_steps=stage.runtime_profile.max_steps,
                     learning_rate=stage.runtime_profile.learning_rate,
                     model=input.extracted.component_profile.get("model", "kilvin-base"),
-                )
-                materialization_tasks.append(
-                    self._run_step(
-                        input=input,
-                        stage=stage,
-                        stage_index=stage_index,
-                        pipeline_id=profile.pipeline_id,
-                        pipeline_index=pipeline_index,
-                        step_name="materialize_training_bundle",
-                        activity_fn=activities.materialize_training_bundle,
-                        activity_input=materialization_input,
-                        timeout_seconds=180,
-                        skip_result=PipelineBundleOutput(
-                            pipeline_id=profile.pipeline_id,
-                            bundle=None,  # type: ignore[call-arg]
-                        ),
-                    )
-                )
+                ),
+                timeout_seconds=180,
+                skip_result=MaterializedBundleOutput(
+                    bundle_id=f"skip-bundle-{stage.stage_id}",
+                    bundle_path="skipped://bundle",
+                    bound_components=[],
+                    runtime_setup={},
+                    rendezvous={},
+                    launch_plan=[],
+                    token_plan={},
+                    health_checks=[],
+                ),
+            )
 
-            if _parallel_capacity(stage.pipeline_strategy) > 1:
-                bundle_outputs = []
-                async for completed in workflow.as_completed(materialization_tasks):
-                    bundle_outputs.append(await completed)
-            else:
-                bundle_outputs = [await t for t in materialization_tasks]
-
-            pipeline_tasks = [
-                self._run_pipeline(
-                    input=input,
-                    stage=stage,
-                    stage_index=stage_index,
-                    bundle=bundle,
-                    bundle_name=f"kilvin-ir-{input.run_config.run_id}-{stage.stage_id}",
-                )
-                for bundle in bundle_outputs
-            ]
-
-            if _parallel_capacity(stage.pipeline_strategy) > 1:
-                pipeline_results = []
-                async for completed in workflow.as_completed(pipeline_tasks):
-                    pipeline_results.append(await completed)
-            else:
-                pipeline_results = [await t for t in pipeline_tasks]
-
-            for submit_out, monitor_out in pipeline_results:
-                if _should_fail_pipeline(monitor_out.final_status):
-                    raise RuntimeError(
-                        f"pipeline failed for {submit_out.auto_job_name}: {monitor_out.final_status}"
-                    )
-
-            await self._run_step(
+            submit_out = await self._run_step(
                 input=input,
                 stage=stage,
                 stage_index=stage_index,
-                pipeline_id=None,
-                pipeline_index=None,
-                step_name="purge_resources",
-                activity_fn=activities.purge_resources,
-                activity_input=PurgeInput(
-                    run_id=input.run_config.run_id,
+                step_name="submit_k8s_job",
+                activity_fn=activities.submit_k8s_job,
+                activity_input=SubmitK8sInput(
                     stage_id=stage.stage_id,
-                    preserve_artifacts=input.run_config.policy.preserve_artifacts_on_failure,
-                    checkpoint=current_checkpoint,
+                    bundle=bundle,
+                    namespace="kilvin-training",
                 ),
                 timeout_seconds=180,
+                skip_result=SubmitK8sOutput(
+                    auto_job_name=f"replay-skip-{stage.stage_id}",
+                    primus_job_id="skip-replay",
+                    primus_ui_url="skipped://monitor",
+                    k8s_namespace="kilvin-training",
+                ),
             )
 
-            current_checkpoint = f"{current_checkpoint}/{stage.stage_id}"
+            monitor_out = await self._run_step(
+                input=input,
+                stage=stage,
+                stage_index=stage_index,
+                step_name="monitor_training",
+                activity_fn=activities.monitor_training,
+                activity_input=MonitorTrainingInput(
+                    auto_job_name=submit_out.auto_job_name,
+                    primus_job_id=submit_out.primus_job_id,
+                    ir_name=f"{ir_name}-{stage.stage_id}",
+                    k8s_namespace=submit_out.k8s_namespace,
+                ),
+                timeout_seconds=3600,
+                skip_result=MonitorOutput(final_status="SUCCEEDED"),
+            )
+
+            if _is_failed_status(monitor_out.final_status):
+                raise ApplicationError(
+                    f"stage {stage.stage_id} failed for {submit_out.auto_job_name}: {monitor_out.final_status}"
+                )
+
+            checkpoint = f"{checkpoint}/{stage.stage_id}"
 
             if self._replay_target and self._replay_target.scope == "step" and self._replay_target.target_stage_id == stage.stage_id:
                 self._replay_target = None
