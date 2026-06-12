@@ -7,10 +7,10 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from monoctl.git_probe import inspect_repo, is_git_repo
-from monoctl.manifest import load_manifest
-from monoctl.models import Manifest, RepoState, RepositorySpec, Snapshot
+from monoctl.models import Manifest, RepoState, Snapshot
 from monoctl.render import render_snapshot_markdown
+from monoctl.validation import validate_workspace
+from monoctl.workspace import inspect_manifest, resolve_repo_path
 
 
 DEFAULT_MANIFEST = Path(".monorepo/repos.yaml")
@@ -20,74 +20,6 @@ DEFAULT_REPORT_DIR = Path("docs/.monorepo/snapshots")
 
 def _manifest_path(value: str | None) -> Path:
     return Path(value) if value else DEFAULT_MANIFEST
-
-
-def _resolve_repo_path(manifest_path: Path, repo: RepositorySpec) -> Path:
-    repo_path = Path(repo.path)
-    if repo_path.is_absolute():
-        return repo_path
-    return (manifest_path.parent / repo_path).resolve()
-
-
-def _inspect_manifest(manifest_path: Path) -> tuple[Manifest, list[RepoState]]:
-    manifest = load_manifest(manifest_path)
-    states: list[RepoState] = []
-    for repo in manifest.repos:
-        repo_path = _resolve_repo_path(manifest_path, repo)
-        if not is_git_repo(repo_path):
-            states.append(
-                RepoState(
-                    id=repo.id,
-                    path=repo.path,
-                    branch=None,
-                    head="missing",
-                    describe=None,
-                    is_dirty=False,
-                    dirty_summary=[],
-                    remotes={},
-                )
-            )
-            continue
-        states.append(
-            inspect_repo(
-                repo_path,
-                repo_id=repo.id,
-                display_path=repo.path,
-            )
-        )
-    return manifest, states
-
-
-def _doctor_findings(
-    manifest_path: Path, manifest: Manifest, states: list[RepoState]
-) -> tuple[list[str], list[str]]:
-    failures: list[str] = []
-    warnings: list[str] = []
-    for repo, state in zip(manifest.repos, states, strict=True):
-        repo_path = _resolve_repo_path(manifest_path, repo)
-        if not repo_path.exists():
-            failures.append(f"{repo.id}: missing path {repo.path}")
-            continue
-        if not is_git_repo(repo_path):
-            failures.append(f"{repo.id}: path is not a git repo ({repo.path})")
-            continue
-        remote_url = state.remotes.get(repo.upstream_remote)
-        if remote_url is None:
-            failures.append(f"{repo.id}: missing upstream remote {repo.upstream_remote}")
-        elif repo.expected_remote_url and remote_url != repo.expected_remote_url:
-            failures.append(
-                f"{repo.id}: remote {repo.upstream_remote} URL mismatch "
-                f"({remote_url} != {repo.expected_remote_url})"
-            )
-        if state.branch and state.branch != repo.expected_default_branch:
-            failures.append(
-                f"{repo.id}: branch mismatch ({state.branch} != {repo.expected_default_branch})"
-            )
-        if state.branch is None:
-            warnings.append(f"{repo.id}: detached HEAD")
-        if state.is_dirty:
-            failures.append(f"{repo.id}: dirty worktree")
-    return failures, warnings
 
 
 def _print_status(states: list[RepoState]) -> None:
@@ -124,47 +56,15 @@ def _run_git_command(command: list[str], cwd: Path) -> None:
     subprocess.run(command, cwd=cwd, check=True)
 
 
-def _init_findings(
-    manifest_path: Path, manifest: Manifest, states: list[RepoState]
-) -> list[str]:
-    failures: list[str] = []
-    for repo, state in zip(manifest.repos, states, strict=True):
-        repo_path = _resolve_repo_path(manifest_path, repo)
-        if not repo_path.exists():
-            if not repo.expected_remote_url:
-                failures.append(f"{repo.id}: missing expected_remote_url for clone")
-            continue
-        if not is_git_repo(repo_path):
-            failures.append(f"{repo.id}: path is not a git repo ({repo.path})")
-            continue
-        remote_url = state.remotes.get(repo.upstream_remote)
-        if remote_url is None:
-            failures.append(f"{repo.id}: missing upstream remote {repo.upstream_remote}")
-        elif repo.expected_remote_url and remote_url != repo.expected_remote_url:
-            failures.append(
-                f"{repo.id}: remote {repo.upstream_remote} URL mismatch "
-                f"({remote_url} != {repo.expected_remote_url})"
-            )
-        if state.branch is None:
-            failures.append(f"{repo.id}: detached HEAD")
-        elif state.branch != repo.expected_default_branch:
-            failures.append(
-                f"{repo.id}: branch mismatch ({state.branch} != {repo.expected_default_branch})"
-            )
-        if state.is_dirty:
-            failures.append(f"{repo.id}: dirty worktree")
-    return failures
-
-
 def _init_repos(manifest_path: Path, manifest: Manifest, states: list[RepoState]) -> int:
-    failures = _init_findings(manifest_path, manifest, states)
-    for failure in failures:
+    validation = validate_workspace(manifest_path, manifest, states, mode="init")
+    for failure in validation.failures:
         print(f"FAIL: {failure}")
-    if failures:
+    if validation.failures:
         return 1
 
     for repo, state in zip(manifest.repos, states, strict=True):
-        repo_path = _resolve_repo_path(manifest_path, repo)
+        repo_path = resolve_repo_path(manifest_path, repo)
         if not repo_path.exists():
             repo_path.parent.mkdir(parents=True, exist_ok=True)
             command = [
@@ -217,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     manifest_path = _manifest_path(args.manifest)
-    manifest, states = _inspect_manifest(manifest_path)
+    manifest, states = inspect_manifest(manifest_path)
 
     if args.command == "list":
         for repo in manifest.repos:
@@ -227,12 +127,12 @@ def main(argv: list[str] | None = None) -> int:
         _print_status(states)
         return 0
     if args.command == "doctor":
-        failures, warnings = _doctor_findings(manifest_path, manifest, states)
-        for warning in warnings:
+        validation = validate_workspace(manifest_path, manifest, states, mode="doctor")
+        for warning in validation.warnings:
             print(f"WARNING: {warning}")
-        for failure in failures:
+        for failure in validation.failures:
             print(f"FAIL: {failure}")
-        return 1 if failures else 0
+        return 1 if validation.failures else 0
     if args.command == "init":
         return _init_repos(manifest_path, manifest, states)
     if args.command == "snapshot":

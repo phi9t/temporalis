@@ -144,6 +144,22 @@ repos:
     assert "temporal: branch=main" in result.stdout
 
 
+def test_wrapper_prefers_repo_virtualenv_for_python_runtime() -> None:
+    result = subprocess.run(
+        [
+            str(Path(__file__).resolve().parents[1] / ".monorepo" / "monoctl"),
+            "list",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "sdk-python\t../sdk-python\tsdk\tcritical" in result.stdout
+
+
 def test_status_includes_describe_and_remote_summary(
     tmp_path: Path, capsys
 ) -> None:

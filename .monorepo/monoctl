@@ -5,4 +5,18 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 
 cd "$REPO_ROOT"
-exec python3 -m monoctl.cli "$@"
+
+if [[ -n "${MONOCTL_PYTHON:-}" ]]; then
+  PYTHON="$MONOCTL_PYTHON"
+elif [[ -x "$REPO_ROOT/.venv/bin/python" ]]; then
+  PYTHON="$REPO_ROOT/.venv/bin/python"
+else
+  PYTHON="python3"
+fi
+
+if ! "$PYTHON" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; then
+  echo "monoctl requires Python 3.11 or newer; set MONOCTL_PYTHON or create .venv/bin/python" >&2
+  exit 1
+fi
+
+exec "$PYTHON" -m monoctl.cli "$@"
