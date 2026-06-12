@@ -1,4 +1,5 @@
 .agent/
+.tools/
 .codex
 .worktrees/
 .pytest_cache/
