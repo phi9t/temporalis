@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import re
 import subprocess
 from pathlib import Path
@@ -103,3 +104,34 @@ def test_agentic_release_artifacts_are_tracked_under_agents() -> None:
     tracked = set(tracked_files_under(".agents"))
     assert ".agents/checks/control_path_check.py" in tracked
     assert ".agents/notes/release-learning-session.md" in tracked
+
+
+def load_quickstart_module():
+    path = ROOT / "scripts" / "quickstart_check.py"
+    spec = importlib.util.spec_from_file_location("quickstart_check", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_quickstart_missing_ref_helper_reports_ids() -> None:
+    quickstart = load_quickstart_module()
+    assert quickstart.items_missing_refs(
+        [
+            {"id": "with-refs", "refs": [{"url": "https://example.test/#L1"}]},
+            {"id": "without-refs", "refs": []},
+            {"id": "missing-refs"},
+        ]
+    ) == ["without-refs", "missing-refs"]
+
+
+def test_quickstart_required_generated_data_files_exist() -> None:
+    quickstart = load_quickstart_module()
+    missing = [
+        path
+        for path in quickstart.REQUIRED_DATA_FILES
+        if not (ROOT / "explorer" / "public" / "data" / path).is_file()
+    ]
+    assert missing == []
