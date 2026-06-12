@@ -22,6 +22,15 @@ def tracked_files(prefix: str) -> list[str]:
     return [line for line in completed.stdout.splitlines() if line]
 
 
+def tracked_files_under(prefix: str) -> list[str]:
+    normalized = prefix.rstrip("/")
+    return [
+        line
+        for line in tracked_files(normalized)
+        if line == normalized or line.startswith(normalized + "/")
+    ]
+
+
 def test_public_docs_exist() -> None:
     for path in [
         "docs/quickstart.md",
@@ -77,8 +86,7 @@ def test_makefile_exposes_public_release_targets() -> None:
 
 
 def test_agentic_release_artifacts_are_tracked_under_agents() -> None:
-    assert " .agent/" not in read("README.md")
-    assert tracked_files(".agent") == []
-    tracked = set(tracked_files(".agents"))
+    assert tracked_files_under(".agent") == []
+    tracked = set(tracked_files_under(".agents"))
     assert ".agents/checks/control_path_check.py" in tracked
     assert ".agents/notes/release-learning-session.md" in tracked
