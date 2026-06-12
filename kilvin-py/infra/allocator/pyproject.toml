@@ -1,0 +1,10 @@
+[project]
+name = "kilvin-allocator"
+version = "0.1.0"
+description = "Finite-ledger resource allocator for the kilvin demo."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "pyyaml>=6.0",
+]

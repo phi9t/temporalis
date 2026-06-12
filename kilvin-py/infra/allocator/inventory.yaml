@@ -1,0 +1,3 @@
+name: local-k3s
+cpus: 8
+memory_gb: 16
