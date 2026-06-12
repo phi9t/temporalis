@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -29,6 +30,17 @@ def tracked_files_under(prefix: str) -> list[str]:
         for line in tracked_files(normalized)
         if line == normalized or line.startswith(normalized + "/")
     ]
+
+
+def files_under(path: str) -> list[str]:
+    root = ROOT / path
+    if not root.exists():
+        return []
+    return sorted(
+        str(candidate.relative_to(ROOT))
+        for candidate in root.rglob("*")
+        if candidate.is_file()
+    )
 
 
 def test_public_docs_exist() -> None:
@@ -82,11 +94,12 @@ def test_makefile_exposes_public_release_targets() -> None:
         "verify-release:",
         "runtime-proof:",
     ]:
-        assert target in makefile
+        assert re.search(rf"^{re.escape(target)}", makefile, re.MULTILINE), target
 
 
 def test_agentic_release_artifacts_are_tracked_under_agents() -> None:
     assert tracked_files_under(".agent") == []
+    assert files_under(".agent") == []
     tracked = set(tracked_files_under(".agents"))
     assert ".agents/checks/control_path_check.py" in tracked
     assert ".agents/notes/release-learning-session.md" in tracked
