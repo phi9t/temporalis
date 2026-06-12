@@ -135,3 +135,31 @@ def test_quickstart_required_generated_data_files_exist() -> None:
         if not (ROOT / "explorer" / "public" / "data" / path).is_file()
     ]
     assert missing == []
+
+
+def test_quickstart_checked_json_loader_reports_invalid_json(tmp_path) -> None:
+    quickstart = load_quickstart_module()
+    quickstart.DATA = tmp_path
+    (tmp_path / "bad.json").write_text("{", encoding="utf-8")
+
+    failures: list[str] = []
+
+    assert quickstart.load_json_checked("bad.json", failures) is None
+    assert len(failures) == 1
+    assert failures[0].startswith("generated data is invalid JSON: bad.json:")
+
+
+def test_quickstart_control_path_index_reports_malformed_entries(tmp_path) -> None:
+    quickstart = load_quickstart_module()
+    quickstart.DATA = tmp_path
+    (tmp_path / "control-paths").mkdir()
+    (tmp_path / "control-paths" / "index.json").write_text(
+        '[{"manifest": 12, "slug": "bad-manifest"}, {"manifest": "missing.json"}]',
+        encoding="utf-8",
+    )
+
+    failures: list[str] = []
+
+    quickstart.check_control_paths(failures)
+    assert "control-path entry has non-string manifest: bad-manifest" in failures
+    assert "control-path entry missing string slug" in failures

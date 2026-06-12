@@ -31,6 +31,16 @@ def load_json(relative_path: str) -> dict | list:
     return json.loads((DATA / relative_path).read_text(encoding="utf-8"))
 
 
+def load_json_checked(relative_path: str, failures: list[str]) -> dict | list | None:
+    try:
+        return load_json(relative_path)
+    except FileNotFoundError:
+        failures.append(f"missing generated data: {relative_path}")
+    except json.JSONDecodeError as error:
+        failures.append(f"generated data is invalid JSON: {relative_path}: {error}")
+    return None
+
+
 def items_missing_refs(items: Iterable[dict]) -> list[str]:
     missing: list[str] = []
     for item in items:
@@ -50,7 +60,12 @@ def check_required_files(failures: list[str]) -> None:
 
 
 def check_lifecycle(failures: list[str]) -> None:
-    lifecycle = load_json("lifecycle/kilvin-asyncio-happy-path.json")
+    lifecycle = load_json_checked("lifecycle/kilvin-asyncio-happy-path.json", failures)
+    if lifecycle is None:
+        return
+    if not isinstance(lifecycle, dict):
+        failures.append("lifecycle manifest is not an object")
+        return
     calls = lifecycle.get("calls", [])
     require(bool(calls), "lifecycle manifest has no calls", failures)
     missing = items_missing_refs(calls)
@@ -58,18 +73,47 @@ def check_lifecycle(failures: list[str]) -> None:
 
 
 def check_control_paths(failures: list[str]) -> None:
-    index = load_json("control-paths/index.json")
+    index = load_json_checked("control-paths/index.json", failures)
+    if index is None:
+        return
+    if not isinstance(index, list):
+        failures.append("control-path index is not a list")
+        return
     require(bool(index), "control-path index is empty", failures)
     for entry in index:
-        scenario = load_json(entry["manifest"])
+        if not isinstance(entry, dict):
+            failures.append("control-path entry is not an object")
+            continue
+
+        slug = entry.get("slug")
+        manifest = entry.get("manifest")
+        if not isinstance(slug, str):
+            failures.append("control-path entry missing string slug")
+        if not isinstance(manifest, str):
+            label = slug if isinstance(slug, str) else "<missing slug>"
+            failures.append(f"control-path entry has non-string manifest: {label}")
+        if not isinstance(slug, str) or not isinstance(manifest, str):
+            continue
+
+        scenario = load_json_checked(manifest, failures)
+        if scenario is None:
+            continue
+        if not isinstance(scenario, dict):
+            failures.append(f"control scenario is not an object: {slug}")
+            continue
         steps = scenario.get("steps", [])
-        require(bool(steps), f"control scenario has no steps: {entry['slug']}", failures)
+        require(bool(steps), f"control scenario has no steps: {slug}", failures)
         missing = items_missing_refs(steps)
-        require(not missing, f"control steps missing refs in {entry['slug']}: {', '.join(missing)}", failures)
+        require(not missing, f"control steps missing refs in {slug}: {', '.join(missing)}", failures)
 
 
 def check_kilvin_internals(failures: list[str]) -> None:
-    internals = load_json("kilvin/internals.json")
+    internals = load_json_checked("kilvin/internals.json", failures)
+    if internals is None:
+        return
+    if not isinstance(internals, dict):
+        failures.append("Kilvin Internals manifest is not an object")
+        return
     expected_labels = [
         "Interpret training intent",
         "Build image and deps",
