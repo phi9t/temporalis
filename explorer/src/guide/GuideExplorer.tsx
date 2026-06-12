@@ -6,7 +6,6 @@ import { AsyncBoundary } from '@/explorer-kit/AsyncBoundary'
 import { Card } from '@/components/ui/card'
 import { REPO_HOME } from '@/lib/assets'
 import { errorMessage, fetchExplorerText } from '@/lib/fetch'
-import type { ExplorerModeProps } from '@/explorer-kit/mode'
 
 const REF = 'phi9t-mainline'
 
@@ -40,20 +39,20 @@ function loadMermaid() {
         theme: 'base',
         themeVariables: {
           darkMode: true,
-          fontFamily: 'Fira Code Variable, ui-monospace, monospace',
+          fontFamily: 'Spline Sans Mono Variable, ui-monospace, monospace',
           fontSize: '13px',
-          background: '#0b0f19',
-          primaryColor: '#161d2e',
-          primaryBorderColor: '#6366f1',
-          primaryTextColor: '#f3f4f6',
-          secondaryColor: '#16233a',
-          tertiaryColor: '#1d1838',
-          lineColor: '#38bdf8',
-          textColor: '#cbd5e1',
-          titleColor: '#f3f4f6',
-          clusterBkg: 'rgba(99,102,241,0.06)',
-          clusterBorder: 'rgba(99,102,241,0.35)',
-          edgeLabelBackground: '#0b0f19',
+          background: '#100f0c',
+          primaryColor: '#1c1915',
+          primaryBorderColor: '#f4b442',
+          primaryTextColor: '#f0ead7',
+          secondaryColor: '#15201c',
+          tertiaryColor: '#201a12',
+          lineColor: '#62d3bd',
+          textColor: '#cfc8b6',
+          titleColor: '#f0ead7',
+          clusterBkg: 'rgba(244,180,66,0.05)',
+          clusterBorder: 'rgba(244,180,66,0.3)',
+          edgeLabelBackground: '#100f0c',
         },
       })
       return mermaid
@@ -119,7 +118,11 @@ const components: Components = {
   },
 }
 
-export default function GuideExplorer({ context }: ExplorerModeProps) {
+/**
+ * The Hacker's Guide rendered as a Deep Dive track panel. `anchor` names the
+ * HACKERS_GUIDE.md section anchor to scroll into view once the markdown loads.
+ */
+export default function GuideExplorer({ anchor }: { anchor?: string | null }) {
   const [markdown, setMarkdown] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -157,7 +160,7 @@ export default function GuideExplorer({ context }: ExplorerModeProps) {
     [markdown],
   )
 
-  const targetAnchor = context?.guideAnchor ?? null
+  const targetAnchor = anchor ?? null
 
   useEffect(() => {
     if (!markdown || !targetAnchor) return

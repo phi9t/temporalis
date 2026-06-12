@@ -1329,6 +1329,242 @@ def control_scenarios(repo_root: Path, guide: dict[str, str], hacks: dict[str, d
     ]
 
 
+def _guide_section(guide: dict[str, str], anchor: str) -> dict[str, str]:
+    if anchor not in guide:
+        raise ValueError(f"guide anchor {anchor!r} missing from HACKERS_GUIDE.md")
+    return {"guide_anchor": anchor, "guide_title": guide[anchor]}
+
+
+def kilvin_internals(repo_root: Path, guide: dict[str, str]) -> dict[str, Any]:
+    """Business-logic manifest: what KilvinTrainingWorkflow and its activities do."""
+
+    def step(
+        step_id: str,
+        seq: int,
+        label: str,
+        activity_fn: str,
+        summary: str,
+        details: list[str],
+        *,
+        input_model: str,
+        output_model: str,
+        timeout_seconds: int,
+        heartbeat: bool = False,
+        artifacts: list[str],
+        guide_anchor: str,
+    ) -> dict[str, Any]:
+        return {
+            "id": step_id,
+            "seq": seq,
+            "label": label,
+            "activity": activity_fn,
+            "summary": summary,
+            "details": details,
+            "input_model": input_model,
+            "output_model": output_model,
+            "timeout_seconds": timeout_seconds,
+            "retry": "3 attempts, 5s initial backoff",
+            "heartbeat": heartbeat,
+            "artifacts": artifacts,
+            **_guide_section(guide, guide_anchor),
+            "refs": [
+                local_ref(
+                    repo_root,
+                    "kilvin-py/kilvin_py/activities.py",
+                    f"async def {activity_fn}(",
+                    f"{activity_fn} activity",
+                    pattern=rf"^async def {activity_fn}\(",
+                ),
+                local_ref(
+                    repo_root,
+                    "kilvin-py/kilvin_py/workflows.py",
+                    f'step_name="{step_id}"',
+                    "workflow call site",
+                    pattern=rf'step_name="{step_id}",',
+                ),
+            ],
+        }
+
+    return {
+        "generated_at": lock_generated_at(repo_root),
+        "workflow": {
+            "name": "KilvinTrainingWorkflow",
+            "task_queue": "kilvin-training-task-queue",
+            "summary": "One workflow materializes one training intent end to end: from a researcher's run config to a monitored Kubernetes job.",
+            "details": [
+                "The workflow validates the run config, interprets the intent into a typed plan, concretizes dependencies once, then runs allocate -> materialize -> submit -> monitor for each enabled stage.",
+                "Every step goes through the same durable envelope (_run_step): check cancellation, honor pause gates, check replay-skip, persist the step input as in.yaml, execute the activity with a retry policy, persist the result as out.yaml, and append a typed step trace.",
+                "Because the trace and pause/replay state live in workflow state rebuilt from History, the run survives worker restarts and stays inspectable mid-flight through queries.",
+            ],
+            **_guide_section(guide, "running-example-kilvin-inspired-training-workflow"),
+            "refs": [
+                local_ref(
+                    repo_root,
+                    "kilvin-py/kilvin_py/workflows.py",
+                    "class KilvinTrainingWorkflow",
+                    "KilvinTrainingWorkflow",
+                    pattern=r"^class KilvinTrainingWorkflow:",
+                ),
+                local_ref(
+                    repo_root,
+                    "kilvin-py/kilvin_py/workflows.py",
+                    "async def _run_step",
+                    "step envelope (_run_step)",
+                    pattern=r"^\s+async def _run_step\(",
+                ),
+                local_ref(
+                    repo_root,
+                    "kilvin-py/worker.py",
+                    "Worker(",
+                    "worker registration",
+                ),
+            ],
+        },
+        "steps": [
+            step(
+                "interpret_intent",
+                1,
+                "Interpret training intent",
+                "interpret_training_intent",
+                "Turns the researcher's run config into the typed plan the rest of the workflow executes.",
+                [
+                    "Reads the run config and job params URI and resolves the base checkpoint, the workflow config URI, and a component profile (run name, model, dataset root, spec version).",
+                    "Everything downstream consumes this TrainingIntent instead of re-parsing raw config, so the plan is decided once and recorded durably.",
+                ],
+                input_model="InterpretIntentInput",
+                output_model="TrainingIntent",
+                timeout_seconds=30,
+                artifacts=["{stage}/interpret_intent/in.yaml", "{stage}/interpret_intent/out.yaml"],
+                guide_anchor="running-example-kilvin-inspired-training-workflow",
+            ),
+            step(
+                "concretize_dependencies",
+                2,
+                "Concretize dependencies",
+                "concretize_dependencies",
+                "Builds the training image and pins dependencies into a concrete code bundle.",
+                [
+                    "Produces an auto job id and a code bundle key derived from the intent's checkpoint, so later stages launch from an immutable artifact instead of a mutable branch.",
+                    "Runs once per workflow, before the per-stage loop: every stage shares the same pinned code bundle.",
+                ],
+                input_model="ConcretizeDependenciesInput",
+                output_model="ConcretizeDependenciesOutput",
+                timeout_seconds=120,
+                artifacts=["{stage}/concretize_dependencies/in.yaml", "{stage}/concretize_dependencies/out.yaml"],
+                guide_anchor="running-example-kilvin-inspired-training-workflow",
+            ),
+            step(
+                "allocate_resources",
+                3,
+                "Allocate resources",
+                "allocate_resources",
+                "Gathers quota and placement constraints, solves placement, and reserves the GPU allocation.",
+                [
+                    "Resolves the cluster, racks, node pool, RDMA/NCCL networking profile, rendezvous endpoint, and dataset mount for the stage's requested shape (8 nodes x 8 A100s).",
+                    "The QuotaDecision explains why the placement was granted; the workflow persists it as quota_decision.yaml so the reasoning is inspectable after the fact.",
+                ],
+                input_model="AllocateResourcesInput",
+                output_model="ReamAllocationOutput",
+                timeout_seconds=180,
+                artifacts=[
+                    "{stage}/allocate_resources/in.yaml",
+                    "{stage}/allocate_resources/out.yaml",
+                    "{stage}/allocate_resources/quota_decision.yaml",
+                ],
+                guide_anchor="retry-and-failure-handling",
+            ),
+            step(
+                "materialize_training_bundle",
+                4,
+                "Materialize training bundle",
+                "materialize_training_bundle",
+                "Expands the intent plus the allocation into the concrete launch spec for this stage.",
+                [
+                    "Binds components to machines, computes the token budget and learning-rate plan, assembles env vars and the launch plan, and lists health checks (NCCL rings, KV router, data loader, RDMA topology).",
+                    "This is the 10-lines-of-intent to 1000-line-spec moment; env_vars.yaml is persisted separately because wrong env vars are the most common thing to debug.",
+                ],
+                input_model="MaterializeTrainingBundleInput",
+                output_model="MaterializedBundleOutput",
+                timeout_seconds=180,
+                artifacts=[
+                    "{stage}/materialize_training_bundle/in.yaml",
+                    "{stage}/materialize_training_bundle/out.yaml",
+                    "{stage}/materialize_training_bundle/env_vars.yaml",
+                ],
+                guide_anchor="running-example-kilvin-inspired-training-workflow",
+            ),
+            step(
+                "submit_k8s_job",
+                5,
+                "Submit Kubernetes job",
+                "submit_k8s_job",
+                "Submits the materialized bundle as a job in the kilvin-training namespace.",
+                [
+                    "Returns the generated job name, the Primus job id, and the monitoring UI URL that the workflow records for operators.",
+                    "Submission is intentionally separate from monitoring so a retry resubmits cleanly without confusing the watch loop.",
+                ],
+                input_model="SubmitK8sInput",
+                output_model="SubmitK8sOutput",
+                timeout_seconds=180,
+                artifacts=["{stage}/submit_k8s_job/in.yaml", "{stage}/submit_k8s_job/out.yaml"],
+                guide_anchor="running-example-kilvin-inspired-training-workflow",
+            ),
+            step(
+                "monitor_training",
+                6,
+                "Monitor training",
+                "monitor_training",
+                "Watches the running job and heartbeats progress until it reaches a final status.",
+                [
+                    "Heartbeats carry the job name, Primus id, and namespace so a retried attempt resumes with context and cancellation has a checkpoint to land on.",
+                    "Log pointers are persisted as logs.yaml before the failure check, so a failed stage still leaves its logs artifact open for debugging; a failed final status raises and fails the stage.",
+                ],
+                input_model="MonitorTrainingInput",
+                output_model="MonitorOutput",
+                timeout_seconds=3600,
+                heartbeat=True,
+                artifacts=[
+                    "{stage}/monitor_training/in.yaml",
+                    "{stage}/monitor_training/out.yaml",
+                    "{stage}/monitor_training/logs.yaml",
+                ],
+                guide_anchor="activity-execution-and-heartbeats",
+            ),
+        ],
+        "signals": [
+            {"name": "pause", "summary": "Park the run before the next step; durable even if no worker is polling yet."},
+            {"name": "resume", "summary": "Clear the pause and let the workflow continue from exactly where it parked."},
+            {"name": "pause_at_step", "summary": "Arm a one-shot breakpoint: pause before (pre) or after (post) a named stage/step."},
+            {"name": "replay_step", "summary": "Bump the run attempt and re-run from a target stage or step, skipping earlier work with recorded skip artifacts."},
+            {"name": "cancel", "summary": "Mark the run cancelled; the next step boundary raises a non-retryable error."},
+        ],
+        "queries": [
+            {"name": "run_status", "summary": "The full KilvinRunState: current stage/step, paused flag, traces, and failures."},
+            {"name": "run_step_trace", "summary": "Every step execution envelope with status, checksums, and artifact pointers."},
+            {"name": "run_artifacts", "summary": "Flat list of every YAML artifact URI the run has written so far."},
+            {"name": "run_plan", "summary": "The ordered stage ids the workflow resolved from the run config."},
+        ],
+        "control_refs": [
+            local_ref(
+                repo_root,
+                "kilvin-py/kilvin_py/workflows.py",
+                "def pause(",
+                "signal handlers",
+                pattern=r"^\s+def pause\(",
+            ),
+            local_ref(
+                repo_root,
+                "kilvin-py/kilvin_py/workflows.py",
+                "def run_status(",
+                "query handlers",
+                pattern=r"^\s+def run_status\(",
+            ),
+        ],
+        "control_guide": _guide_section(guide, "pause-resume-as-signalupdate-driven-coordination"),
+        "artifact_root": ".kilvin-artifacts/{run_id}/{attempt}/artifacts/{stage}/{step}/",
+    }
+
+
 def write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
@@ -1362,6 +1598,8 @@ def main() -> None:
         out / "lifecycle" / "index.json",
         [{"slug": lifecycle["slug"], "label": lifecycle["label"], "manifest": "lifecycle/kilvin-asyncio-happy-path.json"}],
     )
+
+    write_json(out / "kilvin" / "internals.json", kilvin_internals(repo_root, guide))
 
     scenarios = control_scenarios(repo_root, guide, hacks)
     write_json(

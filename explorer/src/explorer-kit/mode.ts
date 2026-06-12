@@ -8,7 +8,7 @@ import type { LucideIcon } from 'lucide-react'
  */
 export interface NavigateOptions {
   guideAnchor?: string
-  deepDiveTrack?: 'lifecycle' | 'control'
+  deepDiveTrack?: 'lifecycle' | 'control' | 'kilvin' | 'guide'
   deepDivePhaseId?: string
   deepDiveScenarioSlug?: string
 }

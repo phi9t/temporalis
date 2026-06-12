@@ -7,6 +7,8 @@
 
 Start with the Kilvin running example, then follow each section's source map and `hacks/NNN_*.py` probe. The scripts are intentionally small and mostly offline: they inspect generated explorer manifests and source-grounded refs instead of requiring a live Temporal cluster.
 
+This guide is one of four tracks in the explorer's Deep Dive view, and the other three are the same material in diagram form: the Lifecycle track animates the happy path of sections 4-6, the Control Paths track overlays sections 7-10 onto that swimlane, and the Kilvin Internals track walks the business logic of section 3 step by step. Read a section here, then watch it move there — each lifecycle phase and control scenario links back to its section in this guide.
+
 <a id="30-second-architecture"></a>
 ## 2. 30-second architecture
 
@@ -16,6 +18,8 @@ Temporal has four boundaries that matter for this guide: the Python client/worke
 ## 3. Running example: Kilvin-inspired training workflow
 
 The running example is one clean request: train model X on FineWeb with 64 A100 GPUs. A single `KilvinTrainingWorkflow` on the `kilvin-training-task-queue` materializes that intent end to end: it interprets the training intent into a typed plan, concretizes dependencies (builds the training image and pins the code bundle), allocates resources (gather quota and placement constraints, solve placement, reserve and pin 8 nodes x 8 A100s), materializes the training bundle (the concrete job spec plus env vars), submits the Kubernetes job, and monitors it through a heartbeating activity. Every step persists hood-open YAML artifacts under `.kilvin-artifacts/` — the materialized job spec, quota decision, env vars, dataset mount, Kubernetes job id, and log pointers — so the run stays inspectable while it executes and after it fails. It is intentionally richer than a greeting workflow because one workflow exposes task queues, activities, retries, heartbeats, cancellation, pause/resume, and replay.
+
+The explorer's Deep Dive -> Kilvin Internals track renders this same workflow from a generated manifest: each step with its activity, typed input/output models, timeout and retry policy, and the artifacts it persists, plus the signal/query control surface. The source refs there resolve to exact lines in `kilvin-py/kilvin_py/workflows.py` and `activities.py`, so the panel and the implementation cannot drift silently.
 
 <a id="happy-path-start-workflow-to-first-activation"></a>
 ## 4. Happy path: start workflow to first activation

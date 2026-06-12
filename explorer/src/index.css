@@ -1094,6 +1094,167 @@ body {
   }
 }
 
+/* -----------------------------------------------------------------------------
+   Deep Dive — kilvin internals track (business logic rail + detail)
+   ----------------------------------------------------------------------------- */
+.kilvin-workspace {
+  display: grid;
+  align-items: start;
+  gap: 20px;
+}
+
+@media (min-width: 1024px) {
+  .kilvin-workspace {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+
+  .kilvin-rail {
+    position: sticky;
+    top: 24px;
+  }
+}
+
+.kilvin-rail-heading {
+  margin-bottom: 10px;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.kilvin-rail-steps {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.kilvin-rail-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-btn);
+  background: none;
+  color: var(--color-ink-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.kilvin-rail-item:hover {
+  border-color: var(--hairline-strong);
+  color: var(--color-ink);
+}
+
+.kilvin-rail-item--active {
+  border-color: var(--amber-line);
+  background: rgba(244, 180, 66, 0.07);
+  color: var(--color-ink);
+  box-shadow: inset 2px 0 0 var(--amber);
+}
+
+.kilvin-rail-seq {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-badge);
+  padding: 2px 6px;
+  background: rgba(16, 15, 12, 0.5);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.kilvin-rail-item--active .kilvin-rail-seq {
+  border-color: var(--amber-line);
+  color: var(--amber);
+}
+
+.kilvin-rail-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kilvin-rail-sub {
+  display: block;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.kilvin-durability {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kilvin-durability span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-badge);
+  padding: 2px 7px;
+  background: rgba(16, 15, 12, 0.5);
+  color: var(--color-ink-soft);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.kilvin-durability .kilvin-durability--heartbeat {
+  border-color: var(--amber-line);
+  color: var(--amber);
+}
+
+.kilvin-control-list {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.kilvin-control-list > div {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-btn);
+  background: rgba(16, 15, 12, 0.5);
+}
+
+.kilvin-control-list dt {
+  color: var(--teal);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.kilvin-control-list dd {
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: 12px;
+}
+
+.kilvin-crosslinks {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--radius-btn);
+  background: rgba(22, 21, 16, 0.55);
+}
+
 .flow-diagram {
   width: 100%;
   min-width: 0;

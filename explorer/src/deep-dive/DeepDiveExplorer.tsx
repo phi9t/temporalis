@@ -9,8 +9,10 @@ import FlowDiagram, { FlowLegend, controlStepToFlowItem, lifecycleCallToFlowItem
 import LifecycleDrawer from '@/lifecycle/LifecycleDrawer'
 import { getSortedLifecycleCalls } from '@/lifecycle/manifestValidation'
 import type { ControlScenario, ControlStep, LifecycleCall, LifecycleManifest, LifecycleNode } from '@/lifecycle/types'
+import GuideExplorer from '@/guide/GuideExplorer'
+import KilvinInternals from './KilvinInternals'
 
-type DeepDiveTrack = 'lifecycle' | 'control'
+type DeepDiveTrack = 'lifecycle' | 'control' | 'kilvin' | 'guide'
 
 interface LifecycleEntry {
   slug: string
@@ -27,10 +29,13 @@ interface ControlEntry {
 const TRACK_OPTIONS: Array<{ value: DeepDiveTrack; label: string }> = [
   { value: 'lifecycle', label: 'Lifecycle' },
   { value: 'control', label: 'Control Paths' },
+  { value: 'kilvin', label: 'Kilvin Internals' },
+  { value: 'guide', label: "Hacker's Guide" },
 ]
 
-export default function DeepDiveExplorer({ navigate, context }: ExplorerModeProps) {
+export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
   const [track, setTrack] = useState<DeepDiveTrack>(context?.deepDiveTrack ?? 'lifecycle')
+  const [guideAnchor, setGuideAnchor] = useState<string | null>(context?.guideAnchor ?? null)
 
   const [lifecycleIndex, setLifecycleIndex] = useState<LifecycleEntry[] | null>(null)
   const [lifecycleSlug, setLifecycleSlug] = useState<string>('')
@@ -52,16 +57,31 @@ export default function DeepDiveExplorer({ navigate, context }: ExplorerModeProp
   const pendingPhaseIdRef = useRef<string | null>(context?.deepDivePhaseId ?? null)
   const pendingScenarioSlugRef = useRef<string | null>(context?.deepDiveScenarioSlug ?? null)
 
-  const openGuideSection = useCallback(
-    (anchor: string) => navigate('guide', { guideAnchor: anchor }),
-    [navigate],
-  )
+  const openGuideSection = useCallback((anchor: string) => {
+    setGuideAnchor(anchor)
+    setTrack('guide')
+    window.scrollTo({ top: 0 })
+  }, [])
 
   const selectLifecycleCall = useCallback((call: LifecycleCall) => {
     setLifecyclePhaseId(call.phase_id)
     setSelectedLifecycleCall(call)
     setSelectedLifecycleNode(null)
   }, [])
+
+  const traceLifecyclePhase = useCallback(
+    (phaseId: string) => {
+      const call = lifecycleCalls.find((item) => item.phase_id === phaseId)
+      if (call) {
+        selectLifecycleCall(call)
+      } else {
+        pendingPhaseIdRef.current = phaseId
+      }
+      setTrack('lifecycle')
+      window.scrollTo({ top: 0 })
+    },
+    [lifecycleCalls, selectLifecycleCall],
+  )
 
   useEffect(() => {
     fetchExplorerJson<LifecycleEntry[]>('lifecycle/index.json')
@@ -140,6 +160,7 @@ export default function DeepDiveExplorer({ navigate, context }: ExplorerModeProp
     if (!context) return
 
     if (context.deepDiveTrack) setTrack(context.deepDiveTrack)
+    if (context.guideAnchor) setGuideAnchor(context.guideAnchor)
 
     if (context.deepDivePhaseId) {
       const call = lifecycleCalls.find((item) => item.phase_id === context.deepDivePhaseId)
@@ -268,6 +289,24 @@ export default function DeepDiveExplorer({ navigate, context }: ExplorerModeProp
       options={TRACK_OPTIONS}
     />
   )
+
+  if (track === 'kilvin') {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="deep-dive-controls">{trackSelector}</div>
+        <KilvinInternals onOpenGuide={openGuideSection} onTraceLifecycle={() => traceLifecyclePhase('execute-activity')} />
+      </div>
+    )
+  }
+
+  if (track === 'guide') {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="deep-dive-controls">{trackSelector}</div>
+        <GuideExplorer anchor={guideAnchor} />
+      </div>
+    )
+  }
 
   if (track === 'lifecycle') {
     if (!lifecycleIndex) {

@@ -1,10 +1,9 @@
 import { useCallback, useState } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, Route, Workflow } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Route, Workflow } from 'lucide-react'
 import { REPO_HOME, logoMarkUrl } from './lib/assets'
 import type { ExplorerMode, NavigateOptions } from './explorer-kit/mode'
 import BasicsExplorer from './basics/BasicsExplorer'
 import DeepDiveExplorer from './deep-dive/DeepDiveExplorer'
-import GuideExplorer from './guide/GuideExplorer'
 
 const MODES: ExplorerMode[] = [
   {
@@ -18,22 +17,14 @@ const MODES: ExplorerMode[] = [
     id: 'deep-dive',
     label: 'Deep Dive',
     icon: Route,
-    subtitle: 'Lifecycle phases and control paths through the same Temporal swimlane',
+    subtitle: "Lifecycle, control paths, the kilvin workflow internals, and the code-first Hacker's Guide",
     View: DeepDiveExplorer,
-  },
-  {
-    id: 'guide',
-    label: "Hacker's Guide",
-    icon: BookOpen,
-    subtitle: 'Temporal internals, code-first - rendered from HACKERS_GUIDE.md',
-    View: GuideExplorer,
   },
 ]
 
 const LEARNING_PATH_HINTS: Record<string, string> = {
   basics: 'Start here: one training run told in plain language.',
-  'deep-dive': 'Follow the same run through the real Temporal internals.',
-  guide: 'Read the code-first narrative and run the paired hacks.',
+  'deep-dive': "Follow the same run through Temporal internals, the kilvin business logic, and the Hacker's Guide.",
 }
 
 export default function App() {

@@ -5,6 +5,15 @@ import type { ControlScenario, LifecycleManifest } from '@/lifecycle/types'
 
 vi.mock('@/lib/fetch', () => ({
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
+  fetchExplorerText: vi.fn(
+    async () => `# Temporal Hacker's Guide
+
+<a id="happy-path-start-workflow-to-first-activation"></a>
+## 4. Happy path: start workflow to first activation
+
+The start request crosses into Frontend.
+`,
+  ),
   fetchExplorerJson: vi.fn(async (path: string) => {
     const data: Record<string, unknown> = {
       'lifecycle/index.json': [
@@ -19,6 +28,7 @@ vi.mock('@/lib/fetch', () => ({
         { slug: 'pause-resume', label: 'Pause / resume', manifest: 'control-paths/pause-resume.json' },
       ],
       'control-paths/pause-resume.json': controlScenario,
+      'kilvin/internals.json': kilvinInternals,
     }
 
     const value = data[path]
@@ -26,6 +36,63 @@ vi.mock('@/lib/fetch', () => ({
     return value
   }),
 }))
+
+const kilvinInternals = {
+  generated_at: '2026-05-31T00:00:00Z',
+  workflow: {
+    name: 'KilvinTrainingWorkflow',
+    task_queue: 'kilvin-training-task-queue',
+    summary: 'One workflow materializes one training intent end to end.',
+    details: ['Every step goes through the same durable envelope.'],
+    guide_anchor: 'running-example-kilvin-inspired-training-workflow',
+    guide_title: '3. Running example: Kilvin-inspired training workflow',
+    refs: [],
+  },
+  steps: [
+    {
+      id: 'interpret_intent',
+      seq: 1,
+      label: 'Interpret training intent',
+      activity: 'interpret_training_intent',
+      summary: 'Turns the run config into the typed plan.',
+      details: ['Resolves checkpoint, config URI, and component profile.'],
+      input_model: 'InterpretIntentInput',
+      output_model: 'TrainingIntent',
+      timeout_seconds: 30,
+      retry: '3 attempts, 5s initial backoff',
+      heartbeat: false,
+      artifacts: ['{stage}/interpret_intent/in.yaml', '{stage}/interpret_intent/out.yaml'],
+      guide_anchor: 'happy-path-start-workflow-to-first-activation',
+      guide_title: '4. Happy path: start workflow to first activation',
+      refs: [],
+    },
+    {
+      id: 'monitor_training',
+      seq: 2,
+      label: 'Monitor training',
+      activity: 'monitor_training',
+      summary: 'Watches the running job and heartbeats progress.',
+      details: ['Log pointers are persisted before the failure check.'],
+      input_model: 'MonitorTrainingInput',
+      output_model: 'MonitorOutput',
+      timeout_seconds: 3600,
+      retry: '3 attempts, 5s initial backoff',
+      heartbeat: true,
+      artifacts: ['{stage}/monitor_training/logs.yaml'],
+      guide_anchor: 'happy-path-start-workflow-to-first-activation',
+      guide_title: '4. Happy path: start workflow to first activation',
+      refs: [],
+    },
+  ],
+  signals: [{ name: 'pause', summary: 'Park the run before the next step.' }],
+  queries: [{ name: 'run_status', summary: 'The full run state.' }],
+  control_refs: [],
+  control_guide: {
+    guide_anchor: 'happy-path-start-workflow-to-first-activation',
+    guide_title: '4. Happy path: start workflow to first activation',
+  },
+  artifact_root: '.kilvin-artifacts/{run_id}/{attempt}/artifacts/{stage}/{step}/',
+}
 
 const lifecycle: LifecycleManifest = {
   generated_at: '2026-05-31T00:00:00Z',
@@ -325,9 +392,8 @@ describe('DeepDiveExplorer', () => {
     expect(coreWorker.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('shows the selected call in the detail drawer with guide and hack links', async () => {
-    const navigate = vi.fn()
-    render(<DeepDiveExplorer navigate={navigate} />)
+  it('shows the selected call in the detail drawer and opens the guide track in place', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
 
     await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
 
@@ -336,9 +402,48 @@ describe('DeepDiveExplorer', () => {
     expect(screen.getByText('python hacks/002_lifecycle_manifest.py')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: '4. Happy path: start workflow to first activation' }))
-    expect(navigate).toHaveBeenCalledWith('guide', {
-      guideAnchor: 'happy-path-start-workflow-to-first-activation',
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: "Hacker's Guide" }).getAttribute('aria-pressed')).toBe('true')
     })
+    await screen.findByRole('heading', { name: "Temporal Hacker's Guide" })
+  })
+
+  it('renders the kilvin internals track from the generated manifest', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} context={{ deepDiveTrack: 'kilvin' }} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Kilvin Internals' }).getAttribute('aria-pressed')).toBe('true')
+    })
+
+    expect(await screen.findByRole('navigation', { name: 'Kilvin internals' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'KilvinTrainingWorkflow' })).toBeTruthy()
+    expect(screen.getByText('task queue: kilvin-training-task-queue')).toBeTruthy()
+    expect(screen.getByText('Every step goes through the same durable envelope.')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /02.*Monitor training/ }))
+
+    expect(screen.getByRole('heading', { name: 'Monitor training' })).toBeTruthy()
+    expect(screen.getByText('3600s timeout')).toBeTruthy()
+    expect(screen.getByText('heartbeats')).toBeTruthy()
+    expect(screen.getByText('{stage}/monitor_training/logs.yaml')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /SQ.*Signals & queries/ }))
+    expect(screen.getByText('Park the run before the next step.')).toBeTruthy()
+    expect(screen.getByText('run_status')).toBeTruthy()
+  })
+
+  it('traces a kilvin step into the lifecycle track', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} context={{ deepDiveTrack: 'kilvin' }} />)
+
+    await screen.findByRole('navigation', { name: 'Kilvin internals' })
+    fireEvent.click(screen.getByRole('button', { name: /01.*Interpret training intent/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Trace how this activity executes/ }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Lifecycle' }).getAttribute('aria-pressed')).toBe('true')
+    })
+    expect(screen.getByRole('group', { name: 'Temporal swimlane flow diagram' })).toBeTruthy()
   })
 
   it('renders a swimlane legend on both tracks', async () => {

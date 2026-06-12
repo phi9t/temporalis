@@ -20,7 +20,7 @@ Read [the source](temporal/service/history/handler.go).
 
 describe('GuideExplorer', () => {
   it("renders the hacker's guide with a contents rail", async () => {
-    render(<GuideExplorer navigate={vi.fn()} />)
+    render(<GuideExplorer />)
 
     expect(screen.getByText("Loading the Hacker's Guide...")).toBeTruthy()
 
@@ -37,11 +37,11 @@ describe('GuideExplorer', () => {
     )
   })
 
-  it('scrolls to the section named by the navigation context guide anchor', async () => {
+  it('scrolls to the section named by the anchor prop', async () => {
     const scrollIntoView = vi.fn()
     Element.prototype.scrollIntoView = scrollIntoView
 
-    render(<GuideExplorer navigate={vi.fn()} context={{ guideAnchor: 'thirty-second-architecture' }} />)
+    render(<GuideExplorer anchor="thirty-second-architecture" />)
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /30-second architecture/ })).toBeTruthy()

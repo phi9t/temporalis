@@ -418,6 +418,58 @@ def test_read_hack_metadata_requires_valid_numbered_metadata(tmp_path: Path) -> 
         read_hack_metadata(repo)
 
 
+def test_kilvin_internals_manifest_is_grounded_in_source() -> None:
+    run_generator()
+    internals = load_json(OUT / "kilvin" / "internals.json")
+
+    assert internals["workflow"]["name"] == "KilvinTrainingWorkflow"
+    assert internals["workflow"]["task_queue"] == "kilvin-training-task-queue"
+    assert internals["workflow"]["details"]
+
+    assert [step["id"] for step in internals["steps"]] == [
+        "interpret_intent",
+        "concretize_dependencies",
+        "allocate_resources",
+        "materialize_training_bundle",
+        "submit_k8s_job",
+        "monitor_training",
+    ]
+    assert [step["seq"] for step in internals["steps"]] == list(range(1, 7))
+
+    anchors = explicit_guide_anchors()
+    for step in internals["steps"]:
+        assert step["guide_anchor"] in anchors
+        assert step["guide_title"]
+        assert step["details"]
+        assert step["artifacts"]
+        assert step["timeout_seconds"] > 0
+        activity_ref = find_ref(
+            step["refs"], "kilvin", "kilvin-py/kilvin_py/activities.py", f"{step['activity']} activity"
+        )
+        assert f"async def {step['activity']}(" in ref_line(activity_ref)
+        call_ref = find_ref(step["refs"], "kilvin", "kilvin-py/kilvin_py/workflows.py", "workflow call site")
+        assert f'step_name="{step["id"]}"' in ref_line(call_ref)
+
+    monitor = internals["steps"][-1]
+    assert monitor["heartbeat"] is True
+    assert any(artifact.endswith("logs.yaml") for artifact in monitor["artifacts"])
+
+    assert {entry["name"] for entry in internals["signals"]} == {
+        "pause",
+        "resume",
+        "pause_at_step",
+        "replay_step",
+        "cancel",
+    }
+    assert {entry["name"] for entry in internals["queries"]} == {
+        "run_status",
+        "run_step_trace",
+        "run_artifacts",
+        "run_plan",
+    }
+    assert internals["control_guide"]["guide_anchor"] in anchors
+
+
 def test_lifecycle_phases_have_guide_and_hack_links() -> None:
     run_generator()
     manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")

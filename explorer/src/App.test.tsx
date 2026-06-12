@@ -11,11 +11,11 @@ describe('App', () => {
     const nav = screen.getByRole('navigation', { name: 'Explorer section' })
 
     expect(screen.getByRole('button', { name: 'Basics' }).getAttribute('aria-pressed')).toBe('true')
-    expect(nav.querySelectorAll('button')).toHaveLength(3)
+    expect(nav.querySelectorAll('button')).toHaveLength(2)
     expect(nav.textContent).toContain('Deep Dive')
     expect(nav.textContent).not.toContain('Lifecycle Deep Dive')
     expect(nav.textContent).not.toContain('Control Paths')
-    expect(nav.textContent).toContain("Hacker's Guide")
+    expect(nav.textContent).not.toContain("Hacker's Guide")
     expect(screen.getByText(/Workflows, activities, task queues, history, workers, retry, and replay/)).toBeTruthy()
   })
 
