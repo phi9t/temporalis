@@ -36,6 +36,16 @@
       ],
       "affected_edge_ids": [
         "heartbeat"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python activity heartbeat API",
+          "path": "temporalio/activity.py",
+          "line": 320,
+          "symbol": "def heartbeat",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/activity.py"
+        }
       ]
     },
     {
@@ -57,6 +67,16 @@
       ],
       "affected_edge_ids": [
         "heartbeat"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History heartbeat cancellation state",
+          "path": "service/history/api/recordactivitytaskheartbeat/api.go",
+          "line": 87,
+          "symbol": "UpdateActivityProgress",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/recordactivitytaskheartbeat/api.go"
+        }
       ]
     },
     {
@@ -78,6 +98,16 @@
       ],
       "affected_edge_ids": [
         "activity-complete"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records canceled activity",
+          "path": "service/history/api/respondactivitytaskcanceled/api.go",
+          "line": 90,
+          "symbol": "AddActivityTaskCanceledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/respondactivitytaskcanceled/api.go"
+        }
       ]
     }
   ],

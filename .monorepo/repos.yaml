@@ -72,3 +72,16 @@ repos:
     check_commands:
       - cargo test --manifest-path sdk-rust/Cargo.toml
     notes: Rust SDK layered on sdk-core.
+  - id: ui
+    path: ../ui
+    role: ui
+    upstream_remote: origin
+    expected_remote_url: git@github.com:temporalio/ui.git
+    expected_default_branch: main
+    criticality: high
+    depends_on:
+      - temporal
+      - cli
+    check_commands:
+      - pnpm test
+    notes: Temporal Web UI and workflow history inspection surface.

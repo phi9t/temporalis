@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-31T02:47:28Z",
+  "generated_at": "2026-06-12T14:18:51Z",
   "slug": "kilvin-asyncio-happy-path",
   "label": "Kilvin asyncio happy path",
   "phases": [
@@ -495,7 +495,16 @@
         "workflow_task_queue",
         "input"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records WorkflowExecutionStarted",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 2854,
+          "symbol": "AddWorkflowExecutionStartedEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
     },
     {
       "id": "call-enqueue-first-workflow-task",
@@ -516,7 +525,16 @@
         "workflow_task",
         "scheduled_event_id"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History schedules workflow task",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 3432,
+          "symbol": "AddWorkflowTaskScheduledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
     },
     {
       "id": "call-python-poll-activation",
@@ -565,7 +583,16 @@
         "poller_kind=workflow",
         "task_queue"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "C bridge poll activation",
+          "path": "crates/sdk-core-c-bridge/src/worker.rs",
+          "line": 664,
+          "symbol": "temporal_core_worker_poll_workflow_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core-c-bridge/src/worker.rs"
+        }
+      ]
     },
     {
       "id": "call-core-poll-matching",
@@ -616,7 +643,16 @@
         "history",
         "started_event_id"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Matching PollWorkflowTaskQueue",
+          "path": "service/matching/matching_engine.go",
+          "line": 665,
+          "symbol": "PollWorkflowTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/matching_engine.go"
+        }
+      ]
     },
     {
       "id": "call-core-activation",
@@ -637,7 +673,16 @@
         "activation_jobs",
         "history_events"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core builds WorkflowActivation",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 446,
+          "symbol": "get_wf_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
+      ]
     },
     {
       "id": "call-workflow-commands-to-core",
@@ -659,7 +704,16 @@
         "task_queue",
         "timeouts"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python completes activation",
+          "path": "temporalio/worker/_workflow.py",
+          "line": 240,
+          "symbol": "complete_workflow_activation",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_workflow.py"
+        }
+      ]
     },
     {
       "id": "call-core-respond-workflow-task-completed",
@@ -718,7 +772,16 @@
         "commands=[ScheduleActivityTask]",
         "workflow_task_token"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History applies workflow task completion",
+          "path": "service/history/api/respondworkflowtaskcompleted/api.go",
+          "line": 320,
+          "symbol": "AddWorkflowTaskCompletedEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/respondworkflowtaskcompleted/api.go"
+        }
+      ]
     },
     {
       "id": "call-schedule-activity-command",
@@ -739,7 +802,16 @@
         "activity_id",
         "activity_task_queue"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History handles ScheduleActivityTask",
+          "path": "service/history/api/respondworkflowtaskcompleted/workflow_task_completed_handler.go",
+          "line": 545,
+          "symbol": "AddActivityTaskScheduledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/respondworkflowtaskcompleted/workflow_task_completed_handler.go"
+        }
+      ]
     },
     {
       "id": "call-enqueue-activity-task",
@@ -760,7 +832,16 @@
         "activity_task",
         "scheduled_event_id"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records activity task schedule",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 4182,
+          "symbol": "AddActivityTaskScheduledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
     },
     {
       "id": "call-core-poll-activity-task",
@@ -781,7 +862,16 @@
         "activity_task_queue",
         "identity"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core poll activity task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 158,
+          "symbol": "async fn poll_activity_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
+      ]
     },
     {
       "id": "call-matching-activity-task",
@@ -802,7 +892,16 @@
         "activity_type",
         "input"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Matching PollActivityTaskQueue",
+          "path": "service/matching/matching_engine.go",
+          "line": 936,
+          "symbol": "PollActivityTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/matching_engine.go"
+        }
+      ]
     },
     {
       "id": "call-core-activity-task",
@@ -824,7 +923,16 @@
         "input",
         "heartbeat_details"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python handles activity task",
+          "path": "temporalio/worker/_activity.py",
+          "line": 304,
+          "symbol": "_handle_start_activity_task",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_activity.py"
+        }
+      ]
     },
     {
       "id": "call-activity-heartbeat",
@@ -845,7 +953,16 @@
         "progress",
         "heartbeat_details"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python activity heartbeat bridge",
+          "path": "temporalio/worker/_activity.py",
+          "line": 290,
+          "symbol": "record_activity_heartbeat",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_activity.py"
+        }
+      ]
     },
     {
       "id": "call-core-record-activity-heartbeat",
@@ -904,7 +1021,16 @@
         "heartbeat_details",
         "cancel_requested"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History updates activity progress",
+          "path": "service/history/api/recordactivitytaskheartbeat/api.go",
+          "line": 87,
+          "symbol": "UpdateActivityProgress",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/recordactivitytaskheartbeat/api.go"
+        }
+      ]
     },
     {
       "id": "call-activity-complete",
@@ -924,7 +1050,16 @@
         "task_token",
         "activity_result"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python bridge completes activity",
+          "path": "temporalio/bridge/worker.py",
+          "line": 242,
+          "symbol": "complete_activity_task",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/bridge/worker.py"
+        }
+      ]
     },
     {
       "id": "call-core-respond-activity-task-completed",
@@ -983,7 +1118,16 @@
         "activity_result",
         "completed_event_id"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records activity completion",
+          "path": "service/history/api/respondactivitytaskcompleted/api.go",
+          "line": 110,
+          "symbol": "AddActivityTaskCompletedEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/respondactivitytaskcompleted/api.go"
+        }
+      ]
     },
     {
       "id": "call-enqueue-followup-workflow-task",
@@ -1004,7 +1148,16 @@
         "workflow_task",
         "new_history_events"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History schedules follow-up workflow task",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 3432,
+          "symbol": "AddWorkflowTaskScheduledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
     },
     {
       "id": "call-core-poll-followup-workflow-task",
@@ -1025,7 +1178,16 @@
         "task_queue",
         "identity"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core poll follow-up workflow task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 152,
+          "symbol": "async fn poll_workflow_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
+      ]
     },
     {
       "id": "call-followup-workflow-task",
@@ -1046,7 +1208,16 @@
         "activity_completed_event",
         "history"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Matching returns follow-up workflow task",
+          "path": "service/matching/matching_engine.go",
+          "line": 665,
+          "symbol": "PollWorkflowTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/matching_engine.go"
+        }
+      ]
     },
     {
       "id": "call-followup-activation",
@@ -1067,7 +1238,16 @@
         "activity_result",
         "history_events"
       ],
-      "refs": []
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core builds follow-up activation",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 446,
+          "symbol": "get_wf_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
+      ]
     }
   ]
 }

@@ -211,16 +211,43 @@ def test_representative_lifecycle_calls_include_source_refs() -> None:
             assert isinstance(ref["line"], int) and ref["line"] > 0
 
 
+def test_all_lifecycle_calls_and_control_steps_include_upstream_source_refs() -> None:
+    run_generator()
+    manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
+    control_index = load_json(OUT / "control-paths" / "index.json")
+    upstream_repos = {"sdk-python", "sdk-core", "temporal", "ui"}
+
+    for call in manifest["calls"]:
+        assert call["refs"], call["id"]
+        assert any(ref["repo"] in upstream_repos or ref["repo"] == "kilvin" for ref in call["refs"]), call["id"]
+
+    control_refs = []
+    for entry in control_index:
+        scenario = load_json(OUT / entry["manifest"])
+        for step in scenario["steps"]:
+            assert step["refs"], step["id"]
+            assert any(ref["repo"] in upstream_repos for ref in step["refs"]), step["id"]
+            control_refs.extend(step["refs"])
+
+    assert any(ref["repo"] == "ui" for ref in control_refs)
+
+
 def test_source_refs_resolve_to_real_lines() -> None:
     run_generator()
     manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
     refs = [ref for node in manifest["nodes"] for ref in node["refs"]]
+    refs.extend(ref for call in manifest["calls"] for ref in call["refs"])
+    control_index = load_json(OUT / "control-paths" / "index.json")
+    for entry in control_index:
+        scenario = load_json(OUT / entry["manifest"])
+        refs.extend(ref for step in scenario["steps"] for ref in step["refs"])
     required = {
         ("kilvin", "kilvin-py/worker.py"),
         ("sdk-python", "temporalio/worker/_worker.py"),
         ("sdk-python", "temporalio/bridge/worker.py"),
         ("sdk-core", "crates/sdk-core/src/lib.rs"),
         ("temporal", "service/frontend/workflow_handler.go"),
+        ("ui", "src/lib/services/events-service.ts"),
     }
     got = {(ref["repo"], ref["path"]) for ref in refs}
     assert required <= got
@@ -231,22 +258,49 @@ def test_important_source_refs_resolve_to_intended_lines() -> None:
     run_generator()
     manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
     refs = [ref for node in manifest["nodes"] for ref in node["refs"]]
+    refs.extend(ref for call in manifest["calls"] for ref in call["refs"])
+    control_index = load_json(OUT / "control-paths" / "index.json")
+    for entry in control_index:
+        scenario = load_json(OUT / entry["manifest"])
+        refs.extend(ref for step in scenario["steps"] for ref in step["refs"])
 
     start_ref = find_ref(refs, "kilvin", "kilvin-py/start_workflow.py", "start_workflow.py")
     activation_ref = find_ref(refs, "sdk-python", "temporalio/worker/_workflow.py", "_handle_activation")
     frontend_ref = find_ref(refs, "temporal", "service/frontend/workflow_handler.go", "StartWorkflowExecution")
+    matching_ref = find_ref(refs, "temporal", "service/matching/matching_engine.go", "Matching PollWorkflowTaskQueue")
+    replay_ref = find_ref(
+        refs,
+        "sdk-core",
+        "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+        "Core replay from history",
+    )
+    ui_ref = find_ref(
+        refs,
+        "ui",
+        "src/lib/services/events-service.ts",
+        "UI fetch event history",
+    )
 
     assert "await client.execute_workflow(" in ref_line(start_ref)
     assert "async def _handle_activation(" in ref_line(activation_ref)
     assert "func" in ref_line(frontend_ref)
     assert "StartWorkflowExecution(" in ref_line(frontend_ref)
+    assert "PollWorkflowTaskQueue(" in ref_line(matching_ref)
+    assert "pub(crate) fn get_wf_activation(" in ref_line(replay_ref)
+    assert "export const fetchAllEvents" in ref_line(ui_ref)
 
 
 def test_source_ref_urls_follow_pinning_policy() -> None:
     run_generator()
     manifest = load_json(OUT / "lifecycle" / "kilvin-asyncio-happy-path.json")
     refs = [ref for node in manifest["nodes"] for ref in node["refs"]]
+    refs.extend(ref for call in manifest["calls"] for ref in call["refs"])
+    control_index = load_json(OUT / "control-paths" / "index.json")
+    for entry in control_index:
+        scenario = load_json(OUT / entry["manifest"])
+        refs.extend(ref for step in scenario["steps"] for ref in step["refs"])
     heads = lock_heads()
+    assert "ui" in heads
 
     for ref in refs:
         if ref["repo"] == "kilvin":
@@ -301,6 +355,7 @@ def test_control_path_steps_reference_existing_nodes_and_edges() -> None:
                 assert step["to"] in node_ids
             assert step.get("edge_id") in edge_ids
             assert step["edge_id"] in step.get("affected_edge_ids", [])
+            assert step["refs"]
             edge = edges[step["edge_id"]]
             assert (edge["from"], edge["to"]) == (step["from"], step["to"]) or (edge["from"], edge["to"]) == (
                 step["to"],

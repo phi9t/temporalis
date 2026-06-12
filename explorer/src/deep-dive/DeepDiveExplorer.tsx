@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ExplorerModeProps } from '@/explorer-kit/mode'
 import { errorMessage, fetchExplorerJson } from '@/lib/fetch'
 import FlowDiagram, { FlowLegend, controlStepToFlowItem, lifecycleCallToFlowItem } from '@/lifecycle/FlowDiagram'
-import LifecycleDrawer from '@/lifecycle/LifecycleDrawer'
+import LifecycleDrawer, { SourceRefs } from '@/lifecycle/LifecycleDrawer'
 import { getSortedLifecycleCalls } from '@/lifecycle/manifestValidation'
 import type { ControlScenario, ControlStep, LifecycleCall, LifecycleManifest, LifecycleNode } from '@/lifecycle/types'
 import KilvinInternals from './KilvinInternals'
@@ -137,6 +137,7 @@ function MobileControlStepDetails({
           ))}
         </ul>
       ) : null}
+      <SourceRefs refs={step.refs} />
     </section>
   )
 }

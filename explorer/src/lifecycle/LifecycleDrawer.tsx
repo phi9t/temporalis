@@ -26,7 +26,7 @@ function GuideHackPanel({ link }: { link: GuideHackLink | null }) {
   )
 }
 
-function SourceRefs({ refs }: { refs: SourceRef[] }) {
+export function SourceRefs({ refs }: { refs: SourceRef[] }) {
   if (refs.length === 0) return null
 
   return (
@@ -135,6 +135,7 @@ function ControlStepDetails({
             <li key={detail}>{detail}</li>
           ))}
         </ul>
+        <SourceRefs refs={step.refs} />
         <GuideHackPanel link={guide} />
       </CardContent>
     </Card>

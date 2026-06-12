@@ -20,6 +20,7 @@ sdk-go/
 sdk-python/
 sdk-rust/
 temporal/
+ui/
 .inspectl/
 runs/
 explorer/dist/

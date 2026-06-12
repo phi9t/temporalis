@@ -304,6 +304,16 @@ const controlScenario: ControlScenario = {
       details: ['History stores the signal event.'],
       affected_node_ids: ['workflow-activation', 'history-service'],
       affected_edge_ids: ['workflow-complete'],
+      refs: [
+        {
+          repo: 'temporal',
+          label: 'History SignalWorkflowExecution',
+          path: 'service/history/handler.go',
+          line: 900,
+          symbol: 'SignalWorkflowExecution',
+          url: 'https://github.com/temporalio/temporal/blob/abc123/service/history/handler.go',
+        },
+      ],
     },
     {
       id: 'pause-resume-activation',
@@ -317,6 +327,7 @@ const controlScenario: ControlScenario = {
       details: ['Python updates deterministic pause state.'],
       affected_node_ids: ['workflow-activation', 'history-service'],
       affected_edge_ids: ['workflow-complete'],
+      refs: [],
     },
     {
       id: 'pause-resume-command',
@@ -330,6 +341,7 @@ const controlScenario: ControlScenario = {
       details: ['History receives workflow task completion.'],
       affected_node_ids: ['workflow-activation', 'history-service'],
       affected_edge_ids: ['workflow-complete'],
+      refs: [],
     },
   ],
 }
@@ -523,6 +535,23 @@ describe('DeepDiveExplorer', () => {
     expect(signalStep.className).toContain('flow-step-card--overlay')
     expect(screen.getAllByText('A pause request is recorded durably.').length).toBeGreaterThan(0)
     expect(screen.queryByText('python hacks/005_control_paths.py')).toBeNull()
+  })
+
+  it('shows source links for selected control-path steps', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Control Paths' }))
+
+    const signalStep = await screen.findByRole('button', {
+      name: /Flow step 01 Activation to History SignalWorkflowExecution/,
+    })
+    fireEvent.click(signalStep)
+
+    expect(screen.getByRole('heading', { name: 'SignalWorkflowExecution' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /History SignalWorkflowExecution/ }).getAttribute('href')).toBe(
+      'https://github.com/temporalio/temporal/blob/abc123/service/history/handler.go#L900',
+    )
   })
 
   it('opens directly on a control scenario from a navigation context', async () => {

@@ -36,6 +36,24 @@
       ],
       "affected_edge_ids": [
         "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core fetches workflow history",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 218,
+          "symbol": "get_workflow_execution_history",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        },
+        {
+          "repo": "ui",
+          "label": "UI fetch event history",
+          "path": "src/lib/services/events-service.ts",
+          "line": 90,
+          "symbol": "fetchAllEvents",
+          "url": "https://github.com/temporalio/ui/blob/83b2d4ec55bce7e268a16304471fc1bfeb58a6f9/src/lib/services/events-service.ts"
+        }
       ]
     },
     {
@@ -57,6 +75,16 @@
       ],
       "affected_edge_ids": [
         "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core replay from history",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 446,
+          "symbol": "get_wf_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
       ]
     },
     {
@@ -78,6 +106,16 @@
       ],
       "affected_edge_ids": [
         "workflow-complete"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core applies replayed workflow task",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 565,
+          "symbol": "apply_next_wft_from_history",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
       ]
     }
   ],

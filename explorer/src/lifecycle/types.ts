@@ -72,6 +72,7 @@ export interface ControlStep {
   details: string[]
   affected_node_ids: string[]
   affected_edge_ids: string[]
+  refs: SourceRef[]
 }
 
 export type ControlSelection =

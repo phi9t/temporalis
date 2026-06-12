@@ -34,5 +34,11 @@
     "head": "c2c4bc1928c3606ebad477ae6c0bf3728115ef42",
     "remote": "git@github.com:temporalio/temporal.git",
     "github": "https://github.com/temporalio/temporal"
+  },
+  "ui": {
+    "branch": "main",
+    "head": "83b2d4ec55bce7e268a16304471fc1bfeb58a6f9",
+    "remote": "git@github.com:temporalio/ui.git",
+    "github": "https://github.com/temporalio/ui"
   }
 }

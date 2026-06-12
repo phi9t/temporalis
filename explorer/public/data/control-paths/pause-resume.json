@@ -35,6 +35,24 @@
       ],
       "affected_edge_ids": [
         "frontend-history"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Frontend SignalWorkflowExecution",
+          "path": "service/frontend/workflow_handler.go",
+          "line": 2247,
+          "symbol": "SignalWorkflowExecution",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/frontend/workflow_handler.go"
+        },
+        {
+          "repo": "temporal",
+          "label": "History SignalWorkflowExecution",
+          "path": "service/history/handler.go",
+          "line": 966,
+          "symbol": "SignalWorkflowExecution",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/handler.go"
+        }
       ]
     },
     {
@@ -56,6 +74,16 @@
       ],
       "affected_edge_ids": [
         "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python handles signal activation",
+          "path": "temporalio/worker/_workflow.py",
+          "line": 244,
+          "symbol": "_handle_activation",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_workflow.py"
+        }
       ]
     },
     {
@@ -77,6 +105,16 @@
       ],
       "affected_edge_ids": [
         "workflow-complete"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core completes paused workflow task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 170,
+          "symbol": "async fn complete_workflow_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
       ]
     }
   ],

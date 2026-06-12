@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-31T02:47:28Z",
+  "generated_at": "2026-06-12T14:18:51Z",
   "repos": [
     {
       "id": "temporal",
@@ -71,6 +71,18 @@
       "dirty_summary": [],
       "remotes": {
         "origin": "git@github.com:temporalio/sdk-rust.git"
+      }
+    },
+    {
+      "id": "ui",
+      "path": "../ui",
+      "branch": "main",
+      "head": "83b2d4ec55bce7e268a16304471fc1bfeb58a6f9",
+      "describe": "v2.51.0-15-g83b2d4ec",
+      "is_dirty": false,
+      "dirty_summary": [],
+      "remotes": {
+        "origin": "git@github.com:temporalio/ui.git"
       }
     }
   ]

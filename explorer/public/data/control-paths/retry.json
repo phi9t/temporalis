@@ -36,6 +36,16 @@
       ],
       "affected_edge_ids": [
         "activity-complete"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core reports activity failure",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 199,
+          "symbol": "async fn fail_activity_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
       ]
     },
     {
@@ -57,6 +67,16 @@
       ],
       "affected_edge_ids": [
         "activity-dispatch"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records failed activity attempt",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 4506,
+          "symbol": "AddActivityTaskFailedEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
       ]
     },
     {
@@ -78,6 +98,16 @@
       ],
       "affected_edge_ids": [
         "activity-dispatch"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Matching dispatches retry activity",
+          "path": "service/matching/matching_engine.go",
+          "line": 936,
+          "symbol": "PollActivityTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/matching_engine.go"
+        }
       ]
     }
   ],

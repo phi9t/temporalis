@@ -135,6 +135,7 @@ def control_step(
     edge_id: str | None = None,
     affected_node_ids: list[str] | None = None,
     affected_edge_ids: list[str] | None = None,
+    refs: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "id": step_id,
@@ -148,6 +149,7 @@ def control_step(
         "details": details,
         "affected_node_ids": affected_node_ids or [],
         "affected_edge_ids": affected_edge_ids or [],
+        "refs": refs or [],
     }
 
 
@@ -998,6 +1000,231 @@ def build(repo_root: Path) -> dict[str, Any]:
             ["activation_jobs", "activity_result", "history_events"],
         ),
     ]
+    call_source_refs = {
+        "call-record-start": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/workflow/mutable_state_impl.go",
+                "AddWorkflowExecutionStartedEvent",
+                "History records WorkflowExecutionStarted",
+                pattern=r"^func \(.*\) AddWorkflowExecutionStartedEvent\(",
+            )
+        ],
+        "call-enqueue-first-workflow-task": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/workflow/mutable_state_impl.go",
+                "AddWorkflowTaskScheduledEvent",
+                "History schedules workflow task",
+                pattern=r"^func \(.*\) AddWorkflowTaskScheduledEvent\(",
+            )
+        ],
+        "call-bridge-core-poll": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core-c-bridge/src/worker.rs",
+                "temporal_core_worker_poll_workflow_activation",
+                "C bridge poll activation",
+                pattern=r"^pub extern \"C\" fn temporal_core_worker_poll_workflow_activation\(",
+            )
+        ],
+        "call-matching-workflow-task": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/matching/matching_engine.go",
+                "PollWorkflowTaskQueue",
+                "Matching PollWorkflowTaskQueue",
+                pattern=r"^func \(.*\) PollWorkflowTaskQueue\(",
+            )
+        ],
+        "call-core-activation": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+                "get_wf_activation",
+                "Core builds WorkflowActivation",
+                pattern=r"^\s+pub\(crate\) fn get_wf_activation\(",
+            )
+        ],
+        "call-workflow-commands-to-core": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-python",
+                "temporalio/worker/_workflow.py",
+                "complete_workflow_activation",
+                "Python completes activation",
+                pattern=r"^\s+await self\._bridge_worker\(\)\.complete_workflow_activation\(completion\)",
+            )
+        ],
+        "call-history-apply-workflow-task-completed": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/api/respondworkflowtaskcompleted/api.go",
+                "AddWorkflowTaskCompletedEvent",
+                "History applies workflow task completion",
+                pattern=r"^\s+completedEvent, err = ms\.AddWorkflowTaskCompletedEvent\(",
+            )
+        ],
+        "call-schedule-activity-command": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/api/respondworkflowtaskcompleted/workflow_task_completed_handler.go",
+                "AddActivityTaskScheduledEvent",
+                "History handles ScheduleActivityTask",
+                pattern=r"^\s+event, _, err := handler\.mutableState\.AddActivityTaskScheduledEvent\(",
+            )
+        ],
+        "call-enqueue-activity-task": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/workflow/mutable_state_impl.go",
+                "AddActivityTaskScheduledEvent",
+                "History records activity task schedule",
+                pattern=r"^func \(.*\) AddActivityTaskScheduledEvent\(",
+            )
+        ],
+        "call-core-poll-activity-task": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/client.rs",
+                "async fn poll_activity_task",
+                "Core poll activity task",
+                pattern=r"^\s+async fn poll_activity_task\(",
+            )
+        ],
+        "call-matching-activity-task": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/matching/matching_engine.go",
+                "PollActivityTaskQueue",
+                "Matching PollActivityTaskQueue",
+                pattern=r"^func \(.*\) PollActivityTaskQueue\(",
+            )
+        ],
+        "call-core-activity-task": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-python",
+                "temporalio/worker/_activity.py",
+                "_handle_start_activity_task",
+                "Python handles activity task",
+                pattern=r"^\s+async def _handle_start_activity_task\(",
+            )
+        ],
+        "call-activity-heartbeat": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-python",
+                "temporalio/worker/_activity.py",
+                "record_activity_heartbeat",
+                "Python activity heartbeat bridge",
+                pattern=r"^\s+self\._bridge_worker\(\)\.record_activity_heartbeat\(heartbeat\)",
+            )
+        ],
+        "call-history-record-activity-heartbeat": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/api/recordactivitytaskheartbeat/api.go",
+                "UpdateActivityProgress",
+                "History updates activity progress",
+                pattern=r"^\s+mutableState\.UpdateActivityProgress\(ai, request\)",
+            )
+        ],
+        "call-activity-complete": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-python",
+                "temporalio/bridge/worker.py",
+                "complete_activity_task",
+                "Python bridge completes activity",
+                pattern=r"^\s+async def complete_activity_task\(",
+            )
+        ],
+        "call-history-record-activity-task-completed": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/api/respondactivitytaskcompleted/api.go",
+                "AddActivityTaskCompletedEvent",
+                "History records activity completion",
+                pattern=r"^\s+if _, err = mutableState\.AddActivityTaskCompletedEvent\(",
+            )
+        ],
+        "call-enqueue-followup-workflow-task": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/workflow/mutable_state_impl.go",
+                "AddWorkflowTaskScheduledEvent",
+                "History schedules follow-up workflow task",
+                pattern=r"^func \(.*\) AddWorkflowTaskScheduledEvent\(",
+            )
+        ],
+        "call-core-poll-followup-workflow-task": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/client.rs",
+                "async fn poll_workflow_task",
+                "Core poll follow-up workflow task",
+                pattern=r"^\s+async fn poll_workflow_task\(",
+            )
+        ],
+        "call-followup-workflow-task": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/matching/matching_engine.go",
+                "PollWorkflowTaskQueue",
+                "Matching returns follow-up workflow task",
+                pattern=r"^func \(.*\) PollWorkflowTaskQueue\(",
+            )
+        ],
+        "call-followup-activation": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+                "get_wf_activation",
+                "Core builds follow-up activation",
+                pattern=r"^\s+pub\(crate\) fn get_wf_activation\(",
+            )
+        ],
+    }
+    for item in calls:
+        item["refs"].extend(call_source_refs.get(item["id"], []))
+
     return {
         "generated_at": lock_generated_at(repo_root),
         "slug": "kilvin-asyncio-happy-path",
@@ -1010,7 +1237,8 @@ def build(repo_root: Path) -> dict[str, Any]:
 
 
 def control_scenarios(repo_root: Path, guide: dict[str, str], hacks: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    return [
+    repos = load_repos(repo_root)
+    scenarios = [
         {
             "slug": "pause-resume",
             "label": "Pause / resume",
@@ -1327,6 +1555,195 @@ def control_scenarios(repo_root: Path, guide: dict[str, str], hacks: dict[str, d
             **guide_link(repo_root, guide, hacks, "sticky-workflow-cache-and-eviction", "hacks/005_control_paths.py"),
         },
     ]
+    step_source_refs = {
+        "pause-resume-signal-recorded": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/frontend/workflow_handler.go",
+                "SignalWorkflowExecution",
+                "Frontend SignalWorkflowExecution",
+                pattern=r"^func \(.*\) SignalWorkflowExecution\(",
+            ),
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/handler.go",
+                "SignalWorkflowExecution",
+                "History SignalWorkflowExecution",
+                pattern=r"^func \(.*\) SignalWorkflowExecution\(",
+            ),
+        ],
+        "pause-resume-activation": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-python",
+                "temporalio/worker/_workflow.py",
+                "_handle_activation",
+                "Python handles signal activation",
+                pattern=r"^\s+async def _handle_activation\(",
+            )
+        ],
+        "pause-resume-command": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/client.rs",
+                "async fn complete_workflow_task",
+                "Core completes paused workflow task",
+                pattern=r"^\s+async fn complete_workflow_task\(",
+            )
+        ],
+        "retry-failure": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/client.rs",
+                "async fn fail_activity_task",
+                "Core reports activity failure",
+                pattern=r"^\s+async fn fail_activity_task\(",
+            )
+        ],
+        "retry-policy": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/workflow/mutable_state_impl.go",
+                "AddActivityTaskFailedEvent",
+                "History records failed activity attempt",
+                pattern=r"^func \(.*\) AddActivityTaskFailedEvent\(",
+            )
+        ],
+        "retry-dispatch": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/matching/matching_engine.go",
+                "PollActivityTaskQueue",
+                "Matching dispatches retry activity",
+                pattern=r"^func \(.*\) PollActivityTaskQueue\(",
+            )
+        ],
+        "replay-history-read": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/client.rs",
+                "get_workflow_execution_history",
+                "Core fetches workflow history",
+                pattern=r"^\s+async fn get_workflow_execution_history\(",
+            ),
+            ref(
+                repo_root,
+                repos,
+                "ui",
+                "src/lib/services/events-service.ts",
+                "fetchAllEvents",
+                "UI fetch event history",
+                pattern=r"^export const fetchAllEvents",
+            ),
+        ],
+        "replay-activation": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+                "get_wf_activation",
+                "Core replay from history",
+                pattern=r"^\s+pub\(crate\) fn get_wf_activation\(",
+            )
+        ],
+        "replay-command-check": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+                "apply_next_wft_from_history",
+                "Core applies replayed workflow task",
+                pattern=r"^\s+pub\(crate\) fn apply_next_wft_from_history\(",
+            )
+        ],
+        "heartbeat-cancellation-progress": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-python",
+                "temporalio/activity.py",
+                "def heartbeat",
+                "Python activity heartbeat API",
+                pattern=r"^def heartbeat\(",
+            )
+        ],
+        "heartbeat-cancellation-server-state": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/api/recordactivitytaskheartbeat/api.go",
+                "UpdateActivityProgress",
+                "History heartbeat cancellation state",
+                pattern=r"^\s+mutableState\.UpdateActivityProgress\(ai, request\)",
+            )
+        ],
+        "heartbeat-cancellation-cancel-complete": [
+            ref(
+                repo_root,
+                repos,
+                "temporal",
+                "service/history/api/respondactivitytaskcanceled/api.go",
+                "AddActivityTaskCanceledEvent",
+                "History records canceled activity",
+                pattern=r"^\s+if _, err := mutableState\.AddActivityTaskCanceledEvent\(",
+            )
+        ],
+        "sticky-cache-eviction-miss": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/workflow/workflow_stream.rs",
+                "request_eviction_of_lru_run",
+                "Core evicts sticky workflow run",
+                pattern=r"^\s+fn request_eviction_of_lru_run\(",
+            )
+        ],
+        "sticky-cache-eviction-replay": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+                "apply_next_wft_from_history",
+                "Core replays after sticky miss",
+                pattern=r"^\s+pub\(crate\) fn apply_next_wft_from_history\(",
+            )
+        ],
+        "sticky-cache-eviction-rebuilt-activation": [
+            ref(
+                repo_root,
+                repos,
+                "sdk-core",
+                "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+                "get_wf_activation",
+                "Core rebuilds activation after replay",
+                pattern=r"^\s+pub\(crate\) fn get_wf_activation\(",
+            )
+        ],
+    }
+    for scenario in scenarios:
+        for step in scenario["steps"]:
+            step["refs"].extend(step_source_refs[step["id"]])
+    return scenarios
 
 
 def _guide_section(guide: dict[str, str], anchor: str) -> dict[str, str]:

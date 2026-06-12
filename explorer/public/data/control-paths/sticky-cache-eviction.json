@@ -36,6 +36,16 @@
       ],
       "affected_edge_ids": [
         "core-matching"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core evicts sticky workflow run",
+          "path": "crates/sdk-core/src/worker/workflow/workflow_stream.rs",
+          "line": 451,
+          "symbol": "request_eviction_of_lru_run",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/workflow_stream.rs"
+        }
       ]
     },
     {
@@ -57,6 +67,16 @@
       ],
       "affected_edge_ids": [
         "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core replays after sticky miss",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 565,
+          "symbol": "apply_next_wft_from_history",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
       ]
     },
     {
@@ -78,6 +98,16 @@
       ],
       "affected_edge_ids": [
         "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core rebuilds activation after replay",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 446,
+          "symbol": "get_wf_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
       ]
     }
   ],
