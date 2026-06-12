@@ -17,6 +17,7 @@ from kilvin_py.allocator_client import (  # noqa: E402
     AllocatorUnavailable,
     QuotaExhausted,
 )
+from kilvin_py.k8s_manifest import render_job_manifest  # noqa: E402
 
 
 def test_settings_defaults_and_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -97,3 +98,29 @@ def test_allocator_client_release() -> None:
         return httpx.Response(200, json={"released": "alloc-1"})
 
     asyncio.run(_client_with(handler).release("alloc-1"))
+
+
+def test_render_job_manifest_is_the_literal_launch_spec() -> None:
+    manifest = render_job_manifest(
+        job_name="kilvin-pretrain-abc123",
+        namespace="kilvin-training",
+        image="localhost:5001/kilvin-trainer@sha256:deadbeef",
+        env={"MAX_STEPS": "200", "MODEL_NAME": "model-x"},
+        cpus=2,
+        memory_gb=4,
+        run_id="run-a",
+        stage_id="pretrain",
+    )
+
+    assert manifest["kind"] == "Job"
+    assert manifest["metadata"]["namespace"] == "kilvin-training"
+    assert manifest["metadata"]["labels"]["kilvin.run-id"] == "run-a"
+    spec = manifest["spec"]
+    assert spec["backoffLimit"] == 0
+    pod = spec["template"]["spec"]
+    assert pod["restartPolicy"] == "Never"
+    container = pod["containers"][0]
+    assert container["image"].endswith("@sha256:deadbeef")
+    assert {"name": "MAX_STEPS", "value": "200"} in container["env"]
+    assert container["resources"]["requests"]["cpu"] == "2"
+    assert container["resources"]["limits"]["memory"] == "4Gi"
