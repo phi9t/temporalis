@@ -12,6 +12,7 @@ Open https://phi9t.github.io/temporalis/ and start in Basics. Then switch to Dee
 git clone https://github.com/phi9t/temporalis.git
 cd temporalis
 make quickstart
+./explorer/scripts/workflow.sh install
 make explorer-dev
 ```
 

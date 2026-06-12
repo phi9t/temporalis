@@ -2,10 +2,11 @@
 
 The runtime proof is the optional Tier 2 path. It runs the Kilvin workflow locally with real side effects: Temporal, a Python worker, uv+docker image materialization, an allocator ledger, a local registry, k3s Job submission, monitoring, and artifacts.
 
-Start with:
+Start with the doctor. After it passes, start the local Kilvin infrastructure and run the proof:
 
 ```bash
 make kilvin-doctor
+kilvin-py/infra/up.sh
 make runtime-proof
 ```
 

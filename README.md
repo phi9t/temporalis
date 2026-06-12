@@ -18,6 +18,7 @@ Clone the repo, install the normal Python and Node prerequisites, and run:
 
 ```bash
 make quickstart
+./explorer/scripts/workflow.sh install
 make explorer-dev
 ```
 
@@ -49,6 +50,7 @@ The control layer does three things:
 - `sdk-go`
 - `sdk-python`
 - `sdk-rust`
+- `ui`
 
 ## Common commands
 
