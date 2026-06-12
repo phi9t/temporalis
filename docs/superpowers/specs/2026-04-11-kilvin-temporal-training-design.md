@@ -1,5 +1,7 @@
 # Kilvin Temporal Training Framework Design (v0)
 
+> **Historical design (April 2026).** This v0 spec predates the current implementation: the parent command workflow (`ParentKilvinCmdWorkflow`) and `dev_prepare` described below were since removed in favor of a single `KilvinTrainingWorkflow` that materializes one training intent end to end (with `concretize_dependencies` as the dependency-pinning step). See `kilvin-py/README.md` for the implementation as it exists today.
+
 ## Goal
 Build **kilvin** from scratch as a Temporal-native training orchestration framework, replacing the legacy hand-rolled workflow model with a deterministic, durable, typed workflow engine. The framework is intentionally language-first by SDK and includes parallel implementations in **Python** and **Go** that share the same design principles but use each language’s idioms.
 
