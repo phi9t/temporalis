@@ -7,7 +7,8 @@
     "details": [
       "The workflow validates the run config, interprets the intent into a typed plan, concretizes dependencies once, then runs allocate -> materialize -> submit -> monitor for each enabled stage.",
       "Every step goes through the same durable envelope (_run_step): check cancellation, honor pause gates, check replay-skip, persist the step input as in.yaml, execute the activity with a retry policy, persist the result as out.yaml, and append a typed step trace.",
-      "Because the trace and pause/replay state live in workflow state rebuilt from History, the run survives worker restarts and stays inspectable mid-flight through queries."
+      "Because the trace and pause/replay state live in workflow state rebuilt from History, the run survives worker restarts and stays inspectable mid-flight through queries.",
+      "Locally everything is real at laptop scale: a tiny CPU GPT-2 trainer image, CPU quota from a local allocator, and a k3s cluster in docker compose."
     ],
     "guide_anchor": "running-example-kilvin-inspired-training-workflow",
     "guide_title": "3. Running example: Kilvin-inspired training workflow",
@@ -35,7 +36,7 @@
         "ref": "phi9t-mainline",
         "label": "worker registration",
         "path": "kilvin-py/worker.py",
-        "line": 12,
+        "line": 14,
         "symbol": "Worker(",
         "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/worker.py"
       }
@@ -69,7 +70,7 @@
           "ref": "phi9t-mainline",
           "label": "interpret_training_intent activity",
           "path": "kilvin-py/kilvin_py/activities.py",
-          "line": 28,
+          "line": 53,
           "symbol": "async def interpret_training_intent(",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/activities.py"
         },
@@ -91,12 +92,12 @@
       "activity": "concretize_dependencies",
       "summary": "Builds the training image and pins dependencies into a concrete code bundle.",
       "details": [
-        "Produces an auto job id and a code bundle key derived from the intent's checkpoint, so later stages launch from an immutable artifact instead of a mutable branch.",
+        "Runs `uv lock --check`, builds the trainer image with `docker build` (the Dockerfile runs `uv sync --frozen`), pushes it to the local registry, and returns the digest-pinned reference plus the lockfile SHA.",
         "Runs once per workflow, before the per-stage loop: every stage shares the same pinned code bundle."
       ],
       "input_model": "ConcretizeDependenciesInput",
       "output_model": "ConcretizeDependenciesOutput",
-      "timeout_seconds": 120,
+      "timeout_seconds": 900,
       "retry": "3 attempts, 5s initial backoff",
       "heartbeat": false,
       "artifacts": [
@@ -111,7 +112,7 @@
           "ref": "phi9t-mainline",
           "label": "concretize_dependencies activity",
           "path": "kilvin-py/kilvin_py/activities.py",
-          "line": 50,
+          "line": 91,
           "symbol": "async def concretize_dependencies(",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/activities.py"
         },
@@ -120,7 +121,7 @@
           "ref": "phi9t-mainline",
           "label": "workflow call site",
           "path": "kilvin-py/kilvin_py/workflows.py",
-          "line": 539,
+          "line": 541,
           "symbol": "step_name=\"concretize_dependencies\"",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/workflows.py"
         }
@@ -131,13 +132,13 @@
       "seq": 3,
       "label": "Allocate resources",
       "activity": "allocate_resources",
-      "summary": "Gathers quota and placement constraints, solves placement, and reserves the GPU allocation.",
+      "summary": "Reserves CPU and memory from the local allocator service's finite ledger.",
       "details": [
-        "Resolves the cluster, racks, node pool, RDMA/NCCL networking profile, rendezvous endpoint, and dataset mount for the stage's requested shape (8 nodes x 8 A100s).",
-        "The QuotaDecision explains why the placement was granted; the workflow persists it as quota_decision.yaml so the reasoning is inspectable after the fact."
+        "POSTs to the resource-allocator service, which holds a finite CPU/memory ledger for the local-k3s cluster; a 409 (pool exhausted) becomes a retryable error so Temporal's retry policy is the real backoff loop.",
+        "The real quota decision is persisted as quota_decision.yaml so the reasoning is inspectable after the fact."
       ],
       "input_model": "AllocateResourcesInput",
-      "output_model": "ReamAllocationOutput",
+      "output_model": "ResourceAllocationOutput",
       "timeout_seconds": 180,
       "retry": "3 attempts, 5s initial backoff",
       "heartbeat": false,
@@ -154,7 +155,7 @@
           "ref": "phi9t-mainline",
           "label": "allocate_resources activity",
           "path": "kilvin-py/kilvin_py/activities.py",
-          "line": 62,
+          "line": 136,
           "symbol": "async def allocate_resources(",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/activities.py"
         },
@@ -163,7 +164,7 @@
           "ref": "phi9t-mainline",
           "label": "workflow call site",
           "path": "kilvin-py/kilvin_py/workflows.py",
-          "line": 563,
+          "line": 572,
           "symbol": "step_name=\"allocate_resources\"",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/workflows.py"
         }
@@ -176,7 +177,7 @@
       "activity": "materialize_training_bundle",
       "summary": "Expands the intent plus the allocation into the concrete launch spec for this stage.",
       "details": [
-        "Binds components to machines, computes the token budget and learning-rate plan, assembles env vars and the launch plan, and lists health checks (NCCL rings, KV router, data loader, RDMA topology).",
+        "Renders the Kubernetes Job manifest as the literal launch spec: digest-pinned trainer image, env vars, resource requests/limits, and backoffLimit 0 so Temporal owns retries.",
         "This is the 10-lines-of-intent to 1000-line-spec moment; env_vars.yaml is persisted separately because wrong env vars are the most common thing to debug."
       ],
       "input_model": "MaterializeTrainingBundleInput",
@@ -197,7 +198,7 @@
           "ref": "phi9t-mainline",
           "label": "materialize_training_bundle activity",
           "path": "kilvin-py/kilvin_py/activities.py",
-          "line": 96,
+          "line": 164,
           "symbol": "async def materialize_training_bundle(",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/activities.py"
         },
@@ -206,7 +207,7 @@
           "ref": "phi9t-mainline",
           "label": "workflow call site",
           "path": "kilvin-py/kilvin_py/workflows.py",
-          "line": 597,
+          "line": 605,
           "symbol": "step_name=\"materialize_training_bundle\"",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/workflows.py"
         }
@@ -217,14 +218,14 @@
       "seq": 5,
       "label": "Submit Kubernetes job",
       "activity": "submit_k8s_job",
-      "summary": "Submits the materialized bundle as a job in the kilvin-training namespace.",
+      "summary": "Creates the Job on the k3s cluster (from kilvin-py/infra/docker-compose.yml) in the kilvin-training namespace.",
       "details": [
-        "Returns the generated job name, the Primus job id, and the monitoring UI URL that the workflow records for operators.",
+        "Returns the generated Kubernetes job name and UID that the workflow records for operators.",
         "Submission is intentionally separate from monitoring so a retry resubmits cleanly without confusing the watch loop."
       ],
       "input_model": "SubmitK8sInput",
       "output_model": "SubmitK8sOutput",
-      "timeout_seconds": 180,
+      "timeout_seconds": 120,
       "retry": "3 attempts, 5s initial backoff",
       "heartbeat": false,
       "artifacts": [
@@ -239,7 +240,7 @@
           "ref": "phi9t-mainline",
           "label": "submit_k8s_job activity",
           "path": "kilvin-py/kilvin_py/activities.py",
-          "line": 159,
+          "line": 196,
           "symbol": "async def submit_k8s_job(",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/activities.py"
         },
@@ -248,7 +249,7 @@
           "ref": "phi9t-mainline",
           "label": "workflow call site",
           "path": "kilvin-py/kilvin_py/workflows.py",
-          "line": 640,
+          "line": 644,
           "symbol": "step_name=\"submit_k8s_job\"",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/workflows.py"
         }
@@ -261,8 +262,8 @@
       "activity": "monitor_training",
       "summary": "Watches the running job and heartbeats progress until it reaches a final status.",
       "details": [
-        "Heartbeats carry the job name, Primus id, and namespace so a retried attempt resumes with context and cancellation has a checkpoint to land on.",
-        "Log pointers are persisted as logs.yaml before the failure check, so a failed stage still leaves its logs artifact open for debugging; a failed final status raises and fails the stage."
+        "Polls Job conditions and pod logs with heartbeats, so cancellation has a checkpoint to land on while the pod is running.",
+        "Log pointers are persisted as logs.yaml before the failure check, the allocation is released, and a failed final status raises and fails the stage."
       ],
       "input_model": "MonitorTrainingInput",
       "output_model": "MonitorOutput",
@@ -282,7 +283,7 @@
           "ref": "phi9t-mainline",
           "label": "monitor_training activity",
           "path": "kilvin-py/kilvin_py/activities.py",
-          "line": 170,
+          "line": 209,
           "symbol": "async def monitor_training(",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/activities.py"
         },
@@ -291,7 +292,7 @@
           "ref": "phi9t-mainline",
           "label": "workflow call site",
           "path": "kilvin-py/kilvin_py/workflows.py",
-          "line": 660,
+          "line": 663,
           "symbol": "step_name=\"monitor_training\"",
           "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/workflows.py"
         }

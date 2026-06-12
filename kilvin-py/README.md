@@ -14,8 +14,8 @@ artifact behind.
 | Step | Activity | What it persists |
 | --- | --- | --- |
 | 1 | `interpret_training_intent` | the typed plan extracted from the run config |
-| 2 | `concretize_dependencies` | the pinned code bundle (image + deps) |
-| 3 | `allocate_resources` | the placement decision plus `quota_decision.yaml` |
+| 2 | `concretize_dependencies` | the digest-pinned trainer image plus lockfile SHA |
+| 3 | `allocate_resources` | the allocator grant plus `quota_decision.yaml` |
 | 4 | `materialize_training_bundle` | the concrete job spec plus `env_vars.yaml` |
 | 5 | `submit_k8s_job` | the Kubernetes job id and namespace |
 | 6 | `monitor_training` | heartbeats while polling, plus `logs.yaml` |
@@ -36,37 +36,31 @@ alone:
 Signals: `pause`, `resume`, `pause_at_step`, `replay_step`, `cancel`.
 Queries: `run_status`, `run_step_trace`, `run_artifacts`, `run_plan`.
 
-## Run it
+## Run it for real
 
-Three terminals (or background the first two). Requires the
-[`temporal` CLI](https://docs.temporal.io/cli) and Python ≥ 3.11 with
-`temporalio` (a ready `.venv` works too).
+Prereqs: docker (colima), kubectl, uv, python 3.10+.
+
+1. `infra/up.sh` — brings up Temporal (+ UI at http://localhost:8080), the
+   resource allocator, a local registry, and a k3s cluster, all via docker
+   compose. First run downloads images; give colima >=4 CPUs / 8GB
+   (`colima start --cpu 4 --memory 8`).
+2. `python worker.py` — host worker; it drives `uv`, `docker build/push`, and
+   the k3s kubeconfig exported to `infra/.kubeconfig/kubeconfig.yaml`.
+3. `python start_workflow.py` — one training run, end to end. First run builds
+   the trainer image (torch CPU wheels; a few minutes, cached afterwards).
+4. Watch: Temporal UI, `kubectl --kubeconfig infra/.kubeconfig/kubeconfig.yaml
+   -n kilvin-training get jobs,pods`, `curl localhost:7070/v1/allocations`,
+   and `.kilvin-artifacts/<run-id>/...` (quota_decision.yaml, env_vars.yaml,
+   logs.yaml with the real loss curve).
+5. `infra/down.sh` — tear down (resets the ledger and registry).
+
+The workflow id is still `kilvin-training-run-<id>`, so the same query handles
+work once the run starts:
 
 ```bash
-# 1. A real local Temporal server (in-memory, with Web UI on :8233)
-temporal server start-dev
-
-# 2. The worker — registers the workflow and all seven activities
-cd kilvin-py
-python worker.py
-
-# 3. Submit the request
-python start_workflow.py
-# Result: KILVIN_TRAINING_COMPLETED:run-<id>
-```
-
-Then look under the hood:
-
-```bash
-# The durable step trace, straight from the workflow's query handler.
-# If the result printed run-abc12345, the workflow id is kilvin-training-run-abc12345.
 temporal workflow query -w kilvin-training-run-<id> --type run_step_trace
-
-# The stage plan and every artifact URI
 temporal workflow query -w kilvin-training-run-<id> --type run_plan
 temporal workflow query -w kilvin-training-run-<id> --type run_artifacts
-
-# The raw event history Temporal replays from (the real source of truth)
 temporal workflow show -w kilvin-training-run-<id>
 ```
 

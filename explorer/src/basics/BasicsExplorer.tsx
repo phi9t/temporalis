@@ -502,6 +502,10 @@ export default function BasicsExplorer({ navigate }: ExplorerModeProps) {
             durable and inspectable, so it can retry fragile steps, resume after restarts, and expose override points
             without forcing researchers to hand-assemble every cluster detail.
           </p>
+          <p>
+            In this repo the same workflow materializes that intent for real at laptop scale: a tiny CPU GPT-2, quota
+            from a local allocator, and a Kubernetes job on k3s — all from one docker compose stack.
+          </p>
         </div>
         <ol className="basics-flow" aria-label="Model training workflow overview">
           <li className="basics-flow-step" aria-label="Hero overview step 1: Build deps">

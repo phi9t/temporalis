@@ -12,7 +12,7 @@ For newcomers, start the app and open the Basics tab:
 make explorer-dev
 ```
 
-The Basics path explains workflows, activities, workers, task queues, history, retry, and replay through an MLsys training launch: start from the intent to train model X on FineWeb with 64 A100 GPUs, gather resource constraints, solve a concrete placement plan, reserve and pin resources, and keep hood-open artifacts such as the materialized job spec, env vars, quota decision, dataset path, Kubernetes job id, and logs available for debugging. From there, the Deep Dive view (Lifecycle and Control Paths tracks) maps the same ideas onto real Temporal internals. The same request is runnable code in `kilvin-py/`: `start_workflow.py` submits the model-X-on-FineWeb run and every step persists those hood-open artifacts under `.kilvin-artifacts/`.
+The Basics path explains workflows, activities, workers, task queues, history, retry, and replay through an MLsys training launch: start from the intent to train model X on FineWeb with 64 A100 GPUs, gather resource constraints, solve a concrete placement plan, reserve and pin resources, and keep hood-open artifacts such as the materialized job spec, env vars, quota decision, dataset path, Kubernetes job id, and logs available for debugging. From there, the Deep Dive view (Lifecycle and Control Paths tracks) maps the same ideas onto real Temporal internals. The same request is runnable code in `kilvin-py/`: `start_workflow.py` submits the model-X-on-FineWeb run and every step persists those hood-open artifacts under `.kilvin-artifacts/`, with real local materialization through uv+docker concretization, an allocator ledger, and a k3s job via docker compose.
 
 The explorer is backed by the root [HACKERS_GUIDE.md](HACKERS_GUIDE.md), generated manifests under `explorer/public/data/`, and deterministic teaching probes in `hacks/`.
 It includes a rendered Hacker's Guide alongside the Deep Dive view.
@@ -20,7 +20,7 @@ It includes a rendered Hacker's Guide alongside the Deep Dive view.
 Start with:
 
 - `explorer/`: Basics plus Deep Dive (Lifecycle, Control Paths, Kilvin Internals, and the Hacker's Guide).
-- `kilvin-py/`: the runnable Temporal Python implementation of the training launch; see `kilvin-py/README.md` to run it against a local `temporal server start-dev` and drive its signals and queries.
+- `kilvin-py/`: the runnable Temporal Python implementation of the training launch; see `kilvin-py/README.md` for real local materialization with uv+docker concretization, an allocator ledger, and a k3s job via docker compose.
 - `HACKERS_GUIDE.md`: canonical narrative for the happy path, control paths, source refs, and paired hack scripts.
 - `hacks/001_source_map.py`: prints the source anchors used by the guide and explorer.
 - `hacks/002_lifecycle_manifest.py`: walks the Kilvin asyncio happy-path manifest in guide order.

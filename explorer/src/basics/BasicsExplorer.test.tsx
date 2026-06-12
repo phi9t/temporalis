@@ -11,6 +11,7 @@ describe('BasicsExplorer', () => {
     expect(screen.getAllByText(/train model X on FineWeb with 64 A100 GPUs/).length).toBeGreaterThan(0)
     expect(screen.getByText(/turn that intent into a concrete launch plan/)).toBeTruthy()
     expect(screen.getByText(/retry fragile steps, resume after restarts, and expose override points/)).toBeTruthy()
+    expect(screen.getByText(/for real at laptop scale/)).toBeTruthy()
 
     for (const concept of ['Workflow', 'Activity', 'Worker', 'Task Queue', 'History', 'Replay']) {
       expect(screen.getByRole('heading', { name: concept })).toBeTruthy()

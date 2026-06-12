@@ -14,7 +14,9 @@ behavior easier for the human to explain afterward.
   paths, kilvin internals, Hacker's Guide), all themed around one request: train
   model X on FineWeb with 64 A100 GPUs.
 - `kilvin-py/`: the runnable Temporal Python implementation of that training
-  launch (one training workflow, activities, hood-open YAML artifacts).
+  launch (one training workflow, activities, hood-open YAML artifacts, and real
+  local materialization: uv+docker concretization, allocator ledger, k3s job via
+  docker compose).
 - `hacks/`: deterministic teaching probes that connect the guide and generated
   explorer data to source-grounded examples.
 - `docs/superpowers/specs/`: design specs for major features.
