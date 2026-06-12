@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import uuid
 from pathlib import Path
 
+import pytest
+from temporalio import activity
+from temporalio.client import Client
+from temporalio.testing import WorkflowEnvironment
+from temporalio.worker import Worker
 
 ROOT = Path(__file__).resolve().parents[1]
 KILVIN_PY = ROOT / "kilvin-py"
@@ -11,6 +17,8 @@ sys.path.insert(0, str(KILVIN_PY))
 
 import start_workflow  # noqa: E402
 from kilvin_py import activities, models  # noqa: E402
+from kilvin_py.k8s_manifest import render_job_manifest  # noqa: E402
+from kilvin_py.workflows import KilvinTrainingWorkflow  # noqa: E402
 
 
 def test_sample_run_config_is_the_single_training_intent() -> None:
@@ -20,15 +28,13 @@ def test_sample_run_config_is_the_single_training_intent() -> None:
     assert config.stage_sequence == ["pretrain"]
     assert len(config.stages) == 1
     assert config.stages[0].dataset_profile.uri == start_workflow.INTENT_DATASET_URI
-    assert start_workflow.INTENT_GPU_COUNT == start_workflow.INTENT_NODE_COUNT * start_workflow.INTENT_GPUS_PER_NODE
     assert start_workflow.workflow_id_for_run("run-demo") == "kilvin-training-run-demo"
     assert start_workflow.TASK_QUEUE == "kilvin-training-task-queue"
+    assert "laptop" in (start_workflow.sample_run_config.__doc__ or "").lower()
 
 
-def test_activities_materialize_the_same_hood_open_story() -> None:
+def test_interpret_intent_derives_the_laptop_scale_plan() -> None:
     config = start_workflow.sample_run_config()
-    stage = config.stages[0]
-
     intent = asyncio.run(
         activities.interpret_training_intent(
             models.InterpretIntentInput(
@@ -37,54 +43,49 @@ def test_activities_materialize_the_same_hood_open_story() -> None:
             )
         )
     )
-    assert intent.checkpoint == "s3://checkpoints/model-x/base"
-    assert intent.component_profile["model"] == start_workflow.INTENT_MODEL
-    assert intent.component_profile["dataset_root"] == start_workflow.INTENT_DATASET_URI
 
-    allocation = asyncio.run(
-        activities.allocate_resources(
-            models.AllocateResourcesInput(
-                run_id=config.run_id,
-                stage_id=stage.stage_id,
-                stage_index=0,
-                dataset_uri=stage.dataset_profile.uri,
-                node_count=start_workflow.INTENT_NODE_COUNT,
-                gpus_per_node=start_workflow.INTENT_GPUS_PER_NODE,
-            )
-        )
+    assert intent.component_profile["model"] == "model-x"
+    assert intent.image_ref == f"localhost:5001/kilvin-trainer:{config.run_id}"
+    env = intent.trainer_env or {}
+    assert env["MAX_STEPS"] == "200"
+    assert env["TRAIN_STAGE"] == "pretrain"
+    assert env["RUN_ID"] == config.run_id
+    assert int(env["N_LAYER"]) >= 1
+    assert intent.cpus == 2 and intent.memory_gb == 4
+
+
+def test_materialize_renders_the_literal_job_manifest() -> None:
+    allocation = models.ResourceAllocationOutput(
+        allocation_id="alloc-1",
+        cluster="local-k3s",
+        cpus=2,
+        memory_gb=4,
+        dataset_mount="hdfs://d",
     )
-    assert allocation.rank_size == 64
-    assert allocation.dataset_mount == "fsx://us-east-train-7/fineweb/pretrain"
-    assert allocation.quota_decision is not None
-    assert allocation.quota_decision.cluster == "us-east-train-7"
-    assert allocation.quota_decision.gpus_requested == 64
-    assert "s3://fineweb-us-east" in allocation.quota_decision.data_locality
-    assert "InfiniBand" in allocation.quota_decision.reason
-
     bundle = asyncio.run(
         activities.materialize_training_bundle(
             models.MaterializeTrainingBundleInput(
-                ir_name=f"kilvin-ir-{config.run_id}-pretrain",
-                checkpoint=intent.checkpoint or "s3://checkpoints/model-x/base",
-                config_snapshot=intent.workflow_config_uri,
+                ir_name="kilvin-ir-run-a-pretrain",
+                checkpoint="s3://checkpoints/model-x/base",
+                config_snapshot="file://./.kilvin-cache/run-a/workflow.yaml",
                 allocation=allocation,
                 stage_index=0,
-                train_stage=stage.stage_id,
+                train_stage="pretrain",
                 task_type="train",
-                total_tokens_target=stage.runtime_profile.total_tokens_target,
-                global_batch_tokens=stage.runtime_profile.global_batch_tokens,
-                max_steps=stage.runtime_profile.max_steps,
-                learning_rate=stage.runtime_profile.learning_rate,
-                model=intent.component_profile["model"],
+                image_ref="localhost:5001/kilvin-trainer@sha256:abc",
+                trainer_env={"MAX_STEPS": "200", "RUN_ID": "run-a"},
+                model="model-x",
+                run_id="run-a",
             )
         )
     )
-    assert bundle.env_vars["MODEL_NAME"] == "model-x"
-    assert bundle.env_vars["DATASET_MOUNT"] == "fsx://us-east-train-7/fineweb/pretrain"
-    assert bundle.env_vars["WORLD_SIZE"] == "64"
-    assert bundle.launch_plan[0]["entrypoint"] == "kilvin-train"
-    assert "--stage" in bundle.launch_plan[0]["args"]
-    assert "rdma-topology" in bundle.health_checks
+
+    manifest = bundle.job_manifest
+    assert manifest["spec"]["backoffLimit"] == 0
+    container = manifest["spec"]["template"]["spec"]["containers"][0]
+    assert container["image"] == "localhost:5001/kilvin-trainer@sha256:abc"
+    assert {"name": "MAX_STEPS", "value": "200"} in container["env"]
+    assert bundle.env_vars["CHECKPOINT_URI"] == "s3://checkpoints/model-x/base"
 
 
 def test_workflow_persists_explorer_artifact_names() -> None:
@@ -100,10 +101,130 @@ def test_workflow_persists_explorer_artifact_names() -> None:
     assert "outer loop" not in readme.lower()
 
 
-def test_workflow_skip_paths_preserve_the_same_training_intent() -> None:
-    workflow_source = (KILVIN_PY / "kilvin_py" / "workflows.py").read_text(encoding="utf-8")
+def _fake_activities() -> list:
+    @activity.defn(name="interpret_training_intent")
+    async def fake_interpret(input: models.InterpretIntentInput) -> models.TrainingIntent:
+        return models.TrainingIntent(
+            model_output_tos_key=input.job_params_uri,
+            workflow_config_uri="file://./.kilvin-cache/test/workflow.yaml",
+            checkpoint="s3://checkpoints/model-x/base",
+            stage_index=0,
+            component_profile={
+                "model": "model-x",
+                "run_name": "t",
+                "dataset_root": "d",
+                "spec_version": "v",
+            },
+            image_ref="localhost:5001/kilvin-trainer:test",
+            trainer_env={"MAX_STEPS": "1"},
+        )
 
-    assert 'checkpoint="s3://checkpoints/model-x/base"' in workflow_source
-    assert '"model": "model-x"' in workflow_source
-    assert '"dataset_root": stages[0].dataset_profile.uri' in workflow_source
-    assert 'code_tos_key=intent.checkpoint or "s3://checkpoints/model-x/base"' in workflow_source
+    @activity.defn(name="concretize_dependencies")
+    async def fake_concretize(
+        input: models.ConcretizeDependenciesInput,
+    ) -> models.ConcretizeDependenciesOutput:
+        return models.ConcretizeDependenciesOutput(
+            image_ref=input.image_ref,
+            image_digest="sha256:fake",
+            lockfile_sha256="fake",
+        )
+
+    @activity.defn(name="allocate_resources")
+    async def fake_allocate(input: models.AllocateResourcesInput) -> models.ResourceAllocationOutput:
+        return models.ResourceAllocationOutput(
+            allocation_id="alloc-fake",
+            cluster="local-k3s",
+            cpus=input.cpus,
+            memory_gb=input.memory_gb,
+        )
+
+    @activity.defn(name="materialize_training_bundle")
+    async def fake_materialize(
+        input: models.MaterializeTrainingBundleInput,
+    ) -> models.MaterializedBundleOutput:
+        manifest = render_job_manifest(
+            job_name="kilvin-test",
+            namespace=input.namespace,
+            image=input.image_ref,
+            env=input.trainer_env,
+            cpus=input.allocation.cpus,
+            memory_gb=input.allocation.memory_gb,
+            run_id=input.run_id,
+            stage_id=input.train_stage,
+        )
+        return models.MaterializedBundleOutput(
+            bundle_id="bundle-fake",
+            bundle_path="fake://bundle",
+            job_manifest=manifest,
+            env_vars=dict(input.trainer_env),
+            launch_plan=[],
+            health_checks=[],
+        )
+
+    @activity.defn(name="submit_k8s_job")
+    async def fake_submit(input: models.SubmitK8sInput) -> models.SubmitK8sOutput:
+        return models.SubmitK8sOutput(
+            job_name="kilvin-test",
+            job_uid="uid-1",
+            k8s_namespace=input.namespace,
+        )
+
+    @activity.defn(name="monitor_training")
+    async def fake_monitor(input: models.MonitorTrainingInput) -> models.MonitorOutput:
+        return models.MonitorOutput(final_status="SUCCESS", log_tail=["step=1 loss=4.2"])
+
+    return [
+        fake_interpret,
+        fake_concretize,
+        fake_allocate,
+        fake_materialize,
+        fake_submit,
+        fake_monitor,
+        activities.persist_yaml_artifact,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_workflow_orchestrates_six_steps_and_pause_resume_with_fakes(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    env = await WorkflowEnvironment.start_time_skipping()
+    try:
+        client: Client = env.client
+        task_queue = f"kilvin-test-{uuid.uuid4().hex[:6]}"
+        config = start_workflow.sample_run_config()
+
+        async with Worker(
+            client,
+            task_queue=task_queue,
+            workflows=[KilvinTrainingWorkflow],
+            activities=_fake_activities(),
+        ):
+            handle = await client.start_workflow(
+                KilvinTrainingWorkflow.run,
+                models.TrainingWorkflowInput(run_id=config.run_id, run_config=config),
+                id=f"kilvin-test-{config.run_id}",
+                task_queue=task_queue,
+            )
+            await handle.signal(KilvinTrainingWorkflow.pause)
+            status = await handle.query(KilvinTrainingWorkflow.run_status)
+            assert status.paused is True
+            await handle.signal(KilvinTrainingWorkflow.resume)
+
+            result = await handle.result()
+            assert result == f"KILVIN_TRAINING_COMPLETED:{config.run_id}"
+
+            trace = await handle.query(KilvinTrainingWorkflow.run_step_trace)
+            succeeded = [t.step_name for t in trace if t.status == "SUCCEEDED"]
+            assert succeeded == [
+                "interpret_intent",
+                "concretize_dependencies",
+                "allocate_resources",
+                "materialize_training_bundle",
+                "submit_k8s_job",
+                "monitor_training",
+            ]
+    finally:
+        await env.shutdown()
