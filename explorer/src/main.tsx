@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@fontsource-variable/inter/wght.css'
-import '@fontsource-variable/fira-code/wght.css'
+import '@fontsource-variable/bricolage-grotesque/wght.css'
+import '@fontsource-variable/spline-sans-mono/wght.css'
 import './index.css'
 import App from './App.tsx'
 
