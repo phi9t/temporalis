@@ -33,6 +33,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Deep Dive' }).getAttribute('aria-pressed')).toBe('true')
     const updatedFooter = screen.getByRole('contentinfo', { name: 'Learning path' })
     expect(updatedFooter.textContent).toContain('Basics')
-    expect(updatedFooter.textContent).toContain("Hacker's Guide")
+    expect(updatedFooter.textContent).toContain('Temporal internals')
+    expect(updatedFooter.textContent).not.toContain("Hacker's Guide")
   })
 })

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, ExternalLink, HeartPulse, RotateCcw, Timer } from 'lucide-react'
+import { ArrowRight, ExternalLink, HeartPulse, RotateCcw, Timer } from 'lucide-react'
 import { AsyncBoundary } from '@/explorer-kit/AsyncBoundary'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { errorMessage, fetchExplorerJson } from '@/lib/fetch'
@@ -53,6 +53,65 @@ interface KilvinInternalsManifest {
 
 type InternalsSelection = { type: 'workflow' } | { type: 'step'; id: string } | { type: 'controls' }
 
+function selectionMatches(selection: InternalsSelection, candidate: InternalsSelection) {
+  if (selection.type !== candidate.type) return false
+  if (selection.type === 'step' && candidate.type === 'step') return selection.id === candidate.id
+  return true
+}
+
+function KilvinCompactSelector({
+  manifest,
+  selection,
+  onSelect,
+}: {
+  manifest: KilvinInternalsManifest
+  selection: InternalsSelection
+  onSelect: (selection: InternalsSelection) => void
+}) {
+  const items: Array<{ key: string; marker: string; label: string; selection: InternalsSelection }> = [
+    {
+      key: 'workflow',
+      marker: 'WF',
+      label: manifest.workflow.name,
+      selection: { type: 'workflow' },
+    },
+    ...manifest.steps.map((step) => ({
+      key: step.id,
+      marker: String(step.seq).padStart(2, '0'),
+      label: step.label,
+      selection: { type: 'step' as const, id: step.id },
+    })),
+    {
+      key: 'controls',
+      marker: 'SQ',
+      label: 'Signals & queries',
+      selection: { type: 'controls' },
+    },
+  ]
+
+  return (
+    <nav className="kilvin-compact-selector" aria-label="Kilvin compact selector">
+      {items.map((item) => {
+        const isActive = selectionMatches(selection, item.selection)
+
+        return (
+          <button
+            key={item.key}
+            type="button"
+            className={cn('kilvin-compact-item', isActive && 'kilvin-compact-item--active')}
+            aria-label={`Compact kilvin ${item.label} ${item.marker}`}
+            aria-pressed={isActive}
+            onClick={() => onSelect(item.selection)}
+          >
+            <span>{item.marker}</span>
+            <strong>{item.label}</strong>
+          </button>
+        )
+      })}
+    </nav>
+  )
+}
+
 function SourceRefLinks({ refs }: { refs: SourceRef[] }) {
   if (refs.length === 0) return null
 
@@ -80,24 +139,13 @@ function SourceRefLinks({ refs }: { refs: SourceRef[] }) {
   )
 }
 
-function GuideSectionAction({ link, onOpenGuide }: { link: GuideSectionLink; onOpenGuide: (anchor: string) => void }) {
-  return (
-    <button type="button" className="guide-action" onClick={() => onOpenGuide(link.guide_anchor)}>
-      <BookOpen size={13} aria-hidden="true" />
-      <span>{link.guide_title}</span>
-    </button>
-  )
-}
-
 function StepDetails({
   step,
   artifactRoot,
-  onOpenGuide,
   onTraceLifecycle,
 }: {
   step: InternalsStep
   artifactRoot: string
-  onOpenGuide: (anchor: string) => void
   onTraceLifecycle: () => void
 }) {
   return (
@@ -142,14 +190,13 @@ function StepDetails({
             <ArrowRight size={13} aria-hidden="true" />
             <span>Trace how this activity executes (Lifecycle track)</span>
           </button>
-          <GuideSectionAction link={step} onOpenGuide={onOpenGuide} />
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function WorkflowDetails({ workflow, onOpenGuide }: { workflow: InternalsWorkflow; onOpenGuide: (anchor: string) => void }) {
+function WorkflowDetails({ workflow }: { workflow: InternalsWorkflow }) {
   return (
     <Card>
       <CardHeader>
@@ -164,19 +211,12 @@ function WorkflowDetails({ workflow, onOpenGuide }: { workflow: InternalsWorkflo
           ))}
         </ul>
         <SourceRefLinks refs={workflow.refs} />
-        <GuideSectionAction link={workflow} onOpenGuide={onOpenGuide} />
       </CardContent>
     </Card>
   )
 }
 
-function ControlSurfaceDetails({
-  manifest,
-  onOpenGuide,
-}: {
-  manifest: KilvinInternalsManifest
-  onOpenGuide: (anchor: string) => void
-}) {
+function ControlSurfaceDetails({ manifest }: { manifest: KilvinInternalsManifest }) {
   return (
     <Card>
       <CardHeader>
@@ -211,7 +251,6 @@ function ControlSurfaceDetails({
           </dl>
         </div>
         <SourceRefLinks refs={manifest.control_refs} />
-        <GuideSectionAction link={manifest.control_guide} onOpenGuide={onOpenGuide} />
       </CardContent>
     </Card>
   )
@@ -224,10 +263,8 @@ function ControlSurfaceDetails({
  * the Python implementation cannot drift silently.
  */
 export default function KilvinInternals({
-  onOpenGuide,
   onTraceLifecycle,
 }: {
-  onOpenGuide: (anchor: string) => void
   onTraceLifecycle: () => void
 }) {
   const [manifest, setManifest] = useState<KilvinInternalsManifest | null>(null)
@@ -255,6 +292,7 @@ export default function KilvinInternals({
 
   return (
     <div className="kilvin-workspace">
+      <KilvinCompactSelector manifest={manifest} selection={selection} onSelect={setSelection} />
       <nav className="kilvin-rail" aria-label="Kilvin internals">
         <Card className="p-4">
           <div className="kilvin-rail-heading">Intent materialization</div>
@@ -311,13 +349,12 @@ export default function KilvinInternals({
           <StepDetails
             step={selectedStep}
             artifactRoot={manifest.artifact_root}
-            onOpenGuide={onOpenGuide}
             onTraceLifecycle={onTraceLifecycle}
           />
         ) : selection.type === 'controls' ? (
-          <ControlSurfaceDetails manifest={manifest} onOpenGuide={onOpenGuide} />
+          <ControlSurfaceDetails manifest={manifest} />
         ) : (
-          <WorkflowDetails workflow={manifest.workflow} onOpenGuide={onOpenGuide} />
+          <WorkflowDetails workflow={manifest.workflow} />
         )}
       </div>
     </div>

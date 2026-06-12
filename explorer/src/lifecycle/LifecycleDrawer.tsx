@@ -1,6 +1,5 @@
-import { BookOpen, ExternalLink, Terminal } from 'lucide-react'
+import { ExternalLink, Terminal } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { guideUrl } from '@/lib/assets'
 import type {
   ControlSelection,
   ControlStep,
@@ -12,29 +11,12 @@ import type {
   SourceRef,
 } from './types'
 
-function GuideHackPanel({
-  link,
-  onOpenGuide,
-}: {
-  link: GuideHackLink | null
-  onOpenGuide?: (anchor: string) => void
-}) {
+function GuideHackPanel({ link }: { link: GuideHackLink | null }) {
   if (!link) return null
 
   return (
     <div className="guide-hack-panel">
-      <h4 className="font-mono text-xs uppercase text-ink-muted">Read / Run / Inspect</h4>
-      {onOpenGuide ? (
-        <button type="button" className="guide-action" onClick={() => onOpenGuide(link.guide_anchor)}>
-          <BookOpen size={13} aria-hidden="true" />
-          <span>{link.guide_title}</span>
-        </button>
-      ) : (
-        <a className="guide-action" href={guideUrl(link.guide_anchor)} target="_blank" rel="noopener noreferrer">
-          <BookOpen size={13} aria-hidden="true" />
-          <span>{link.guide_title}</span>
-        </a>
-      )}
+      <h4 className="font-mono text-xs uppercase text-ink-muted">Probe / Inspect</h4>
       <div className="guide-command">
         <Terminal size={13} aria-hidden="true" />
         <code>python {link.hack_script}</code>
@@ -76,13 +58,11 @@ function CallDetails({
   phase,
   nodeLabels,
   phaseLabels,
-  onOpenGuide,
 }: {
   call: LifecycleCall
   phase: LifecyclePhase | null
   nodeLabels: Map<string, string>
   phaseLabels: Map<string, string>
-  onOpenGuide?: (anchor: string) => void
 }) {
   const from = nodeLabels.get(call.from) ?? call.from
   const to = nodeLabels.get(call.to) ?? call.to
@@ -118,7 +98,7 @@ function CallDetails({
           </div>
         )}
         <SourceRefs refs={call.refs} />
-        <GuideHackPanel link={phase} onOpenGuide={onOpenGuide} />
+        <GuideHackPanel link={phase} />
       </CardContent>
     </Card>
   )
@@ -128,12 +108,10 @@ function ControlStepDetails({
   step,
   guide,
   nodeLabels,
-  onOpenGuide,
 }: {
   step: ControlStep
   guide: GuideHackLink | null
   nodeLabels: Map<string, string>
-  onOpenGuide?: (anchor: string) => void
 }) {
   const from = step.from ? (nodeLabels.get(step.from) ?? step.from) : 'Control path'
   const to = step.to ? (nodeLabels.get(step.to) ?? step.to) : 'Control path'
@@ -157,7 +135,7 @@ function ControlStepDetails({
             <li key={detail}>{detail}</li>
           ))}
         </ul>
-        <GuideHackPanel link={guide} onOpenGuide={onOpenGuide} />
+        <GuideHackPanel link={guide} />
       </CardContent>
     </Card>
   )
@@ -170,7 +148,6 @@ export default function LifecycleDrawer({
   guide = null,
   nodeLabels = new Map<string, string>(),
   phaseLabels = new Map<string, string>(),
-  onOpenGuide,
 }: {
   selection?: LifecycleSelection | ControlSelection | null
   node?: LifecycleNode | null
@@ -178,7 +155,6 @@ export default function LifecycleDrawer({
   guide?: GuideHackLink | null
   nodeLabels?: Map<string, string>
   phaseLabels?: Map<string, string>
-  onOpenGuide?: (anchor: string) => void
 }) {
   const selected = selection ?? (node ? { type: 'node' as const, node } : null)
   const guideLink = phase ?? guide
@@ -192,8 +168,8 @@ export default function LifecycleDrawer({
         <CardContent className="text-sm text-ink-soft">
           <div className="space-y-4">
             <p>{phase?.summary ?? 'Choose a lifecycle node to inspect source-backed details.'}</p>
-            <p>Read the current phase, run its paired hack, then inspect a node for source refs.</p>
-            <GuideHackPanel link={guideLink} onOpenGuide={onOpenGuide} />
+            <p>Run the current phase&apos;s paired hack, then inspect a node for source refs.</p>
+            <GuideHackPanel link={guideLink} />
           </div>
         </CardContent>
       </Card>
@@ -201,7 +177,7 @@ export default function LifecycleDrawer({
   }
 
   if (selected.type === 'control-step') {
-    return <ControlStepDetails step={selected.step} guide={guide} nodeLabels={nodeLabels} onOpenGuide={onOpenGuide} />
+    return <ControlStepDetails step={selected.step} guide={guide} nodeLabels={nodeLabels} />
   }
 
   if (selected.type === 'call') {
@@ -211,7 +187,6 @@ export default function LifecycleDrawer({
         phase={phase}
         nodeLabels={nodeLabels}
         phaseLabels={phaseLabels}
-        onOpenGuide={onOpenGuide}
       />
     )
   }
@@ -229,7 +204,7 @@ export default function LifecycleDrawer({
       <CardContent className="space-y-4 text-sm">
         <p className="text-ink">{selectedNode.summary}</p>
         <p className="text-ink-soft">{selectedNode.notes}</p>
-        <GuideHackPanel link={guideLink} onOpenGuide={onOpenGuide} />
+        <GuideHackPanel link={guideLink} />
         <SourceRefs refs={selectedNode.refs} />
       </CardContent>
     </Card>

@@ -425,6 +425,11 @@ def test_kilvin_internals_manifest_is_grounded_in_source() -> None:
     assert internals["workflow"]["name"] == "KilvinTrainingWorkflow"
     assert internals["workflow"]["task_queue"] == "kilvin-training-task-queue"
     assert internals["workflow"]["details"]
+    workflow_copy = " ".join([internals["workflow"]["summary"], *internals["workflow"]["details"]])
+    assert "64 A100" in workflow_copy
+    assert "FineWeb" in workflow_copy
+    assert "laptop scale" in workflow_copy
+    assert "tiny CPU GPT-2" in workflow_copy
 
     assert [step["id"] for step in internals["steps"]] == [
         "interpret_intent",
@@ -435,6 +440,14 @@ def test_kilvin_internals_manifest_is_grounded_in_source() -> None:
         "monitor_training",
     ]
     assert [step["seq"] for step in internals["steps"]] == list(range(1, 7))
+    assert [step["label"] for step in internals["steps"]] == [
+        "Interpret training intent",
+        "Build image and deps",
+        "Find quota and reserve resources",
+        "Materialize job spec",
+        "Submit Kubernetes job",
+        "Monitor training",
+    ]
 
     anchors = explicit_guide_anchors()
     for step in internals["steps"]:

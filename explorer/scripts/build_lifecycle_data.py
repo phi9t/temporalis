@@ -1390,12 +1390,12 @@ def kilvin_internals(repo_root: Path, guide: dict[str, str]) -> dict[str, Any]:
         "workflow": {
             "name": "KilvinTrainingWorkflow",
             "task_queue": "kilvin-training-task-queue",
-            "summary": "One workflow materializes one training intent end to end: from a researcher's run config to a monitored Kubernetes job.",
+            "summary": "One workflow materializes the teaching request from Basics: train model X on FineWeb with 64 A100 GPUs, then run the same shape locally at laptop scale.",
             "details": [
-                "The workflow validates the run config, interprets the intent into a typed plan, concretizes dependencies once, then runs allocate -> materialize -> submit -> monitor for each enabled stage.",
+                "The workflow validates the run config, interprets the intent into a typed plan, builds the image and deps once, then runs quota -> materialize spec -> submit -> monitor for each enabled stage.",
                 "Every step goes through the same durable envelope (_run_step): check cancellation, honor pause gates, check replay-skip, persist the step input as in.yaml, execute the activity with a retry policy, persist the result as out.yaml, and append a typed step trace.",
                 "Because the trace and pause/replay state live in workflow state rebuilt from History, the run survives worker restarts and stays inspectable mid-flight through queries.",
-                "Locally everything is real at laptop scale: a tiny CPU GPT-2 trainer image, CPU quota from a local allocator, and a k3s cluster in docker compose.",
+                "Locally everything is real at laptop scale: a tiny CPU GPT-2 trainer image, CPU quota from a local allocator, and a Kubernetes Job on a k3s cluster in docker compose.",
             ],
             **_guide_section(guide, "running-example-kilvin-inspired-training-workflow"),
             "refs": [
@@ -1441,12 +1441,12 @@ def kilvin_internals(repo_root: Path, guide: dict[str, str]) -> dict[str, Any]:
             step(
                 "concretize_dependencies",
                 2,
-                "Concretize dependencies",
+                "Build image and deps",
                 "concretize_dependencies",
-                "Builds the training image and pins dependencies into a concrete code bundle.",
+                "Builds the training image, syncs Python dependencies, and pins the concrete code bundle.",
                 [
-                    "Runs `uv lock --check`, builds the trainer image with `docker build` (the Dockerfile runs `uv sync --frozen`), pushes it to the local registry, and returns the digest-pinned reference plus the lockfile SHA.",
-                    "Runs once per workflow, before the per-stage loop: every stage shares the same pinned code bundle.",
+                    "Runs `uv lock --check`, builds the trainer image with `docker build` (the Dockerfile runs `uv sync --frozen`), pushes it to the local registry, and records the immutable image digest plus the lockfile SHA.",
+                    "This is the runnable version of the Basics build/deps step: the real local trainer is tiny CPU GPT-2, but the durability problem is the same as a CUDA/Torch image for the 64-A100 story.",
                 ],
                 input_model="ConcretizeDependenciesInput",
                 output_model="ConcretizeDependenciesOutput",
@@ -1457,12 +1457,12 @@ def kilvin_internals(repo_root: Path, guide: dict[str, str]) -> dict[str, Any]:
             step(
                 "allocate_resources",
                 3,
-                "Allocate resources",
+                "Find quota and reserve resources",
                 "allocate_resources",
-                "Reserves CPU and memory from the local allocator service's finite ledger.",
+                "Finds available quota and reserves CPU and memory from the local allocator service's finite ledger.",
                 [
-                    "POSTs to the resource-allocator service, which holds a finite CPU/memory ledger for the local-k3s cluster; a 409 (pool exhausted) becomes a retryable error so Temporal's retry policy is the real backoff loop.",
-                    "The real quota decision is persisted as quota_decision.yaml so the reasoning is inspectable after the fact.",
+                    "POSTs to the resource-allocator service, which stands in for cluster quota and placement systems; a 409 (pool exhausted) becomes a retryable error so Temporal's retry policy is the real backoff loop.",
+                    "The quota decision is persisted as quota_decision.yaml, matching the Basics idea that the selected resources should be explainable after the fact.",
                 ],
                 input_model="AllocateResourcesInput",
                 output_model="ResourceAllocationOutput",
@@ -1477,12 +1477,12 @@ def kilvin_internals(repo_root: Path, guide: dict[str, str]) -> dict[str, Any]:
             step(
                 "materialize_training_bundle",
                 4,
-                "Materialize training bundle",
+                "Materialize job spec",
                 "materialize_training_bundle",
-                "Expands the intent plus the allocation into the concrete launch spec for this stage.",
+                "Expands the intent plus the reservation into the concrete Kubernetes launch spec.",
                 [
                     "Renders the Kubernetes Job manifest as the literal launch spec: digest-pinned trainer image, env vars, resource requests/limits, and backoffLimit 0 so Temporal owns retries.",
-                    "This is the 10-lines-of-intent to 1000-line-spec moment; env_vars.yaml is persisted separately because wrong env vars are the most common thing to debug.",
+                    "This is the Basics 10-lines-of-intent to 1000-line-spec moment; env_vars.yaml is persisted separately because wrong env vars are the most common thing to debug.",
                 ],
                 input_model="MaterializeTrainingBundleInput",
                 output_model="MaterializedBundleOutput",

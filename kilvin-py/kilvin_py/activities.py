@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import os
 import uuid
 
 from temporalio import activity
@@ -49,6 +50,10 @@ LAPTOP_MAX_STEPS = 200
 MONITOR_POLL_SECONDS = 5
 
 
+def laptop_max_steps() -> int:
+    return int(os.environ.get("KILVIN_LAPTOP_MAX_STEPS", str(LAPTOP_MAX_STEPS)))
+
+
 @activity.defn
 async def interpret_training_intent(input: InterpretIntentInput) -> TrainingIntent:
     """Turn the researcher's intent into the typed plan the workflow executes."""
@@ -65,7 +70,7 @@ async def interpret_training_intent(input: InterpretIntentInput) -> TrainingInte
             "RUN_ID": run_config.run_id,
             "MODEL_NAME": "model-x",
             "TRAIN_STAGE": stage.stage_id,
-            "MAX_STEPS": str(min(stage.runtime_profile.max_steps, LAPTOP_MAX_STEPS)),
+            "MAX_STEPS": str(min(stage.runtime_profile.max_steps, laptop_max_steps())),
         }
     )
 

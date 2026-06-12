@@ -9,10 +9,9 @@ import FlowDiagram, { FlowLegend, controlStepToFlowItem, lifecycleCallToFlowItem
 import LifecycleDrawer from '@/lifecycle/LifecycleDrawer'
 import { getSortedLifecycleCalls } from '@/lifecycle/manifestValidation'
 import type { ControlScenario, ControlStep, LifecycleCall, LifecycleManifest, LifecycleNode } from '@/lifecycle/types'
-import GuideExplorer from '@/guide/GuideExplorer'
 import KilvinInternals from './KilvinInternals'
 
-type DeepDiveTrack = 'lifecycle' | 'control' | 'kilvin' | 'guide'
+type DeepDiveTrack = 'lifecycle' | 'control' | 'kilvin'
 
 interface LifecycleEntry {
   slug: string
@@ -30,12 +29,120 @@ const TRACK_OPTIONS: Array<{ value: DeepDiveTrack; label: string }> = [
   { value: 'lifecycle', label: 'Lifecycle' },
   { value: 'control', label: 'Control Paths' },
   { value: 'kilvin', label: 'Kilvin Internals' },
-  { value: 'guide', label: "Hacker's Guide" },
 ]
+
+function MobileLifecycleSteps({
+  calls,
+  nodeLabels,
+  selectedCallId,
+  onSelect,
+}: {
+  calls: LifecycleCall[]
+  nodeLabels: Map<string, string>
+  selectedCallId: string | null
+  onSelect: (call: LifecycleCall) => void
+}) {
+  if (calls.length === 0) return null
+
+  return (
+    <nav className="mobile-flow-list" aria-label="Lifecycle steps for small screens">
+      {calls.map((call) => (
+        <button
+          key={call.id}
+          type="button"
+          className="mobile-flow-step"
+          aria-label={`Mobile lifecycle step ${String(call.seq).padStart(2, '0')} ${call.message}`}
+          aria-pressed={selectedCallId === call.id}
+          onClick={() => onSelect(call)}
+        >
+          <span className="mobile-flow-step-seq">{String(call.seq).padStart(2, '0')}</span>
+          <span className="mobile-flow-step-body">
+            <span className="mobile-flow-step-title">{call.message}</span>
+            <span className="mobile-flow-step-route">
+              {nodeLabels.get(call.from) ?? call.from} -&gt; {nodeLabels.get(call.to) ?? call.to}
+            </span>
+            <span className="mobile-flow-step-summary">{call.summary}</span>
+          </span>
+        </button>
+      ))}
+    </nav>
+  )
+}
+
+function MobileControlSteps({
+  steps,
+  nodeLabels,
+  selectedStepId,
+  onSelect,
+}: {
+  steps: ControlStep[]
+  nodeLabels: Map<string, string>
+  selectedStepId: string | null
+  onSelect: (step: ControlStep) => void
+}) {
+  if (steps.length === 0) return null
+
+  return (
+    <nav className="mobile-flow-list" aria-label="Control path steps for small screens">
+      {steps.map((step) => (
+        <button
+          key={step.id}
+          type="button"
+          className="mobile-flow-step"
+          aria-label={`Mobile control step ${String(step.seq).padStart(2, '0')} ${step.message}`}
+          aria-pressed={selectedStepId === step.id}
+          onClick={() => onSelect(step)}
+        >
+          <span className="mobile-flow-step-seq">{String(step.seq).padStart(2, '0')}</span>
+          <span className="mobile-flow-step-body">
+            <span className="mobile-flow-step-title">{step.message}</span>
+            {step.from && step.to ? (
+              <span className="mobile-flow-step-route">
+                {nodeLabels.get(step.from) ?? step.from} -&gt; {nodeLabels.get(step.to) ?? step.to}
+              </span>
+            ) : null}
+            <span className="mobile-flow-step-summary">{step.summary}</span>
+          </span>
+        </button>
+      ))}
+    </nav>
+  )
+}
+
+function MobileControlStepDetails({
+  step,
+  nodeLabels,
+}: {
+  step: ControlStep | null
+  nodeLabels: Map<string, string>
+}) {
+  if (!step) return null
+
+  return (
+    <section className="mobile-control-detail" aria-label="Selected control path step">
+      <div className="mobile-control-detail-kicker">
+        {String(step.seq).padStart(2, '0')} · {step.kind}
+      </div>
+      <h3>{step.message}</h3>
+      {step.from && step.to ? (
+        <p className="mobile-control-detail-route">
+          {nodeLabels.get(step.from) ?? step.from} -&gt; {nodeLabels.get(step.to) ?? step.to}
+        </p>
+      ) : null}
+      <p>{step.summary}</p>
+      {step.details.length > 0 ? (
+        <ul className="call-detail-list">
+          {step.details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  )
+}
 
 export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
   const [track, setTrack] = useState<DeepDiveTrack>(context?.deepDiveTrack ?? 'lifecycle')
-  const [guideAnchor, setGuideAnchor] = useState<string | null>(context?.guideAnchor ?? null)
 
   const [lifecycleIndex, setLifecycleIndex] = useState<LifecycleEntry[] | null>(null)
   const [lifecycleSlug, setLifecycleSlug] = useState<string>('')
@@ -56,12 +163,6 @@ export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
 
   const pendingPhaseIdRef = useRef<string | null>(context?.deepDivePhaseId ?? null)
   const pendingScenarioSlugRef = useRef<string | null>(context?.deepDiveScenarioSlug ?? null)
-
-  const openGuideSection = useCallback((anchor: string) => {
-    setGuideAnchor(anchor)
-    setTrack('guide')
-    window.scrollTo({ top: 0 })
-  }, [])
 
   const selectLifecycleCall = useCallback((call: LifecycleCall) => {
     setLifecyclePhaseId(call.phase_id)
@@ -160,7 +261,6 @@ export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
     if (!context) return
 
     if (context.deepDiveTrack) setTrack(context.deepDiveTrack)
-    if (context.guideAnchor) setGuideAnchor(context.guideAnchor)
 
     if (context.deepDivePhaseId) {
       const call = lifecycleCalls.find((item) => item.phase_id === context.deepDivePhaseId)
@@ -281,29 +381,26 @@ export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
     () => controlSteps.map(controlStepToFlowItem).filter((item): item is NonNullable<typeof item> => item !== null),
     [controlSteps],
   )
+  const controlNodeLabels = useMemo(
+    () => new Map((controlLifecycle?.nodes ?? []).map((node) => [node.id, node.label])),
+    [controlLifecycle],
+  )
   const trackSelector = (
-    <ViewTabs
-      ariaLabel="Deep dive track"
-      value={track}
-      onChange={(value) => setTrack(value as DeepDiveTrack)}
-      options={TRACK_OPTIONS}
-    />
+    <div className="deep-dive-track-tabs">
+      <ViewTabs
+        ariaLabel="Deep dive track"
+        value={track}
+        onChange={(value) => setTrack(value as DeepDiveTrack)}
+        options={TRACK_OPTIONS}
+      />
+    </div>
   )
 
   if (track === 'kilvin') {
     return (
       <div className="flex flex-col gap-5">
         <div className="deep-dive-controls">{trackSelector}</div>
-        <KilvinInternals onOpenGuide={openGuideSection} onTraceLifecycle={() => traceLifecyclePhase('execute-activity')} />
-      </div>
-    )
-  }
-
-  if (track === 'guide') {
-    return (
-      <div className="flex flex-col gap-5">
-        <div className="deep-dive-controls">{trackSelector}</div>
-        <GuideExplorer anchor={guideAnchor} />
+        <KilvinInternals onTraceLifecycle={() => traceLifecyclePhase('execute-activity')} />
       </div>
     )
   }
@@ -335,19 +432,27 @@ export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
       <div className="flex flex-col gap-5">
         <div className="deep-dive-controls">
           {trackSelector}
-          <SubjectSwitcher
-            label="Lifecycle"
-            ariaLabel="Lifecycle subject"
-            value={lifecycleSlug}
-            options={lifecycleIndex.map((item) => ({ value: item.slug, label: item.label }))}
-            onChange={handleLifecycleSlugChange}
-          />
-          <ViewTabs
-            ariaLabel="Lifecycle phase"
-            value={lifecyclePhase?.id ?? ''}
-            onChange={handleLifecyclePhaseChange}
-            options={lifecycleManifest.phases.map((item) => ({ value: item.id, label: item.label }))}
-          />
+          <div className="deep-dive-subcontrols">
+            {lifecycleIndex.length > 1 ? (
+              <div className="deep-dive-control-group">
+                <SubjectSwitcher
+                  label="Lifecycle"
+                  ariaLabel="Lifecycle subject"
+                  value={lifecycleSlug}
+                  options={lifecycleIndex.map((item) => ({ value: item.slug, label: item.label }))}
+                  onChange={handleLifecycleSlugChange}
+                />
+              </div>
+            ) : null}
+            <div className="deep-dive-control-group">
+              <ViewTabs
+                ariaLabel="Lifecycle phase"
+                value={lifecyclePhase?.id ?? ''}
+                onChange={handleLifecyclePhaseChange}
+                options={lifecycleManifest.phases.map((item) => ({ value: item.id, label: item.label }))}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="deep-dive-workspace lifecycle-workspace">
@@ -357,6 +462,12 @@ export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
               <p className="text-sm text-ink-soft">{lifecyclePhase?.summary}</p>
             </CardHeader>
             <CardContent>
+              <MobileLifecycleSteps
+                calls={activeLifecycleCalls}
+                nodeLabels={lifecycleNodeLabels}
+                selectedCallId={selectedLifecycleCall?.id ?? null}
+                onSelect={selectLifecycleCall}
+              />
               <div className="lifecycle-main lifecycle-main--diagram-only">
                 <div className="lifecycle-diagram">
                   <FlowDiagram
@@ -388,7 +499,6 @@ export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
               phase={lifecyclePhase}
               nodeLabels={lifecycleNodeLabels}
               phaseLabels={lifecyclePhaseLabels}
-              onOpenGuide={openGuideSection}
             />
           </div>
         </div>
@@ -411,13 +521,19 @@ export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
     <div className="flex flex-col gap-5">
       <div className="deep-dive-controls">
         {trackSelector}
-        <SubjectSwitcher
-          label="Control path"
-          ariaLabel="Control path"
-          value={controlSlug}
-          options={controlIndex.map((item) => ({ value: item.slug, label: item.label }))}
-          onChange={handleControlSlugChange}
-        />
+        {controlIndex.length > 1 ? (
+          <div className="deep-dive-subcontrols">
+            <div className="deep-dive-control-group">
+              <SubjectSwitcher
+                label="Control path"
+                ariaLabel="Control path"
+                value={controlSlug}
+                options={controlIndex.map((item) => ({ value: item.slug, label: item.label }))}
+                onChange={handleControlSlugChange}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="deep-dive-workspace lifecycle-workspace lifecycle-workspace--full">
@@ -432,6 +548,16 @@ export default function DeepDiveExplorer({ context }: ExplorerModeProps) {
             </p>
           </CardHeader>
           <CardContent>
+            <MobileControlSteps
+              steps={controlSteps}
+              nodeLabels={controlNodeLabels}
+              selectedStepId={selectedControlStep?.id ?? null}
+              onSelect={(step) => {
+                setSelectedControlStep(step)
+                setSelectedControlNode(null)
+              }}
+            />
+            <MobileControlStepDetails step={selectedControlStep} nodeLabels={controlNodeLabels} />
             <div className="lifecycle-main lifecycle-main--diagram-only">
               <div className="lifecycle-diagram">
                 <FlowDiagram

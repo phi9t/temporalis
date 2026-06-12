@@ -54,6 +54,22 @@ def test_interpret_intent_derives_the_laptop_scale_plan() -> None:
     assert intent.cpus == 2 and intent.memory_gb == 4
 
 
+def test_interpret_intent_respects_laptop_max_steps_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("KILVIN_LAPTOP_MAX_STEPS", "12")
+    config = start_workflow.sample_run_config()
+
+    intent = asyncio.run(
+        activities.interpret_training_intent(
+            models.InterpretIntentInput(
+                run_config=config,
+                job_params_uri=f"hdfs://params/{config.run_id}/params.yaml",
+            )
+        )
+    )
+
+    assert (intent.trainer_env or {})["MAX_STEPS"] == "12"
+
+
 def test_materialize_renders_the_literal_job_manifest() -> None:
     allocation = models.ResourceAllocationOutput(
         allocation_id="alloc-1",

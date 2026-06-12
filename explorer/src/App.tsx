@@ -17,14 +17,14 @@ const MODES: ExplorerMode[] = [
     id: 'deep-dive',
     label: 'Deep Dive',
     icon: Route,
-    subtitle: "Lifecycle, control paths, the kilvin workflow internals, and the code-first Hacker's Guide",
+    subtitle: 'Lifecycle, control paths, and the kilvin workflow internals with source-backed inspection',
     View: DeepDiveExplorer,
   },
 ]
 
 const LEARNING_PATH_HINTS: Record<string, string> = {
   basics: 'Start here: one training run told in plain language.',
-  'deep-dive': "Follow the same run through Temporal internals, the kilvin business logic, and the Hacker's Guide.",
+  'deep-dive': 'Follow the same run through Temporal internals, the kilvin business logic, and source-backed probes.',
 }
 
 export default function App() {

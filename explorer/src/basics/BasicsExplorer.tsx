@@ -495,14 +495,14 @@ export default function BasicsExplorer({ navigate }: ExplorerModeProps) {
             LLM training walkthrough
           </div>
           <h2 id="basics-title">Temporal remembers the process when your code cannot stay awake.</h2>
-          <p>
+          <p className="basics-hero-primary-copy">
             Imagine an ML researcher asking for one clean thing: train model X on FineWeb with 64 A100 GPUs. The pipeline
             has to turn that intent into a concrete launch plan: build the image, find quota, choose machines, locate
             the dataset, assemble env vars and flags, and submit a Kubernetes job. Temporal keeps that translation
             durable and inspectable, so it can retry fragile steps, resume after restarts, and expose override points
             without forcing researchers to hand-assemble every cluster detail.
           </p>
-          <p>
+          <p className="basics-hero-secondary-copy">
             In this repo the same workflow materializes that intent for real at laptop scale: a tiny CPU GPT-2, quota
             from a local allocator, and a Kubernetes job on k3s — all from one docker compose stack.
           </p>

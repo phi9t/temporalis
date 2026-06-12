@@ -119,8 +119,9 @@ const components: Components = {
 }
 
 /**
- * The Hacker's Guide rendered as a Deep Dive track panel. `anchor` names the
- * HACKERS_GUIDE.md section anchor to scroll into view once the markdown loads.
+ * Standalone Hacker's Guide renderer kept for source-provenance tooling.
+ * `anchor` names the HACKERS_GUIDE.md section anchor to scroll into view once
+ * the markdown loads.
  */
 export default function GuideExplorer({ anchor }: { anchor?: string | null }) {
   const [markdown, setMarkdown] = useState<string | null>(null)

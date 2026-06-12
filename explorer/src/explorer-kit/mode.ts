@@ -3,12 +3,10 @@ import type { LucideIcon } from 'lucide-react'
 
 /**
  * Optional context carried along a cross-view navigation, so one mode can
- * deep-link into a specific spot in another (Basics step → Deep Dive phase,
- * Deep Dive phase → Guide section).
+ * deep-link into a specific spot in another (Basics step → Deep Dive phase).
  */
 export interface NavigateOptions {
-  guideAnchor?: string
-  deepDiveTrack?: 'lifecycle' | 'control' | 'kilvin' | 'guide'
+  deepDiveTrack?: 'lifecycle' | 'control' | 'kilvin'
   deepDivePhaseId?: string
   deepDiveScenarioSlug?: string
 }

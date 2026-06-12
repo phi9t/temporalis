@@ -5,15 +5,6 @@ import type { ControlScenario, LifecycleManifest } from '@/lifecycle/types'
 
 vi.mock('@/lib/fetch', () => ({
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
-  fetchExplorerText: vi.fn(
-    async () => `# Temporal Hacker's Guide
-
-<a id="happy-path-start-workflow-to-first-activation"></a>
-## 4. Happy path: start workflow to first activation
-
-The start request crosses into Frontend.
-`,
-  ),
   fetchExplorerJson: vi.fn(async (path: string) => {
     const data: Record<string, unknown> = {
       'lifecycle/index.json': [
@@ -81,7 +72,16 @@ const kilvinInternals = {
       artifacts: ['{stage}/monitor_training/logs.yaml'],
       guide_anchor: 'happy-path-start-workflow-to-first-activation',
       guide_title: '4. Happy path: start workflow to first activation',
-      refs: [],
+      refs: [
+        {
+          repo: 'kilvin',
+          label: 'monitor_training activity',
+          path: 'kilvin-py/kilvin_py/activities.py',
+          line: 120,
+          symbol: 'monitor_training',
+          url: 'https://github.com/phi9t/temporalis/blob/abc123/kilvin-py/kilvin_py/activities.py',
+        },
+      ],
     },
   ],
   signals: [{ name: 'pause', summary: 'Park the run before the next step.' }],
@@ -248,7 +248,16 @@ const lifecycle: LifecycleManifest = {
       summary: 'Kilvin asks Temporal to start the training workflow.',
       details: ['The app submits workflow id, task queue, workflow type, and staged training input.'],
       payload: ['workflow_id'],
-      refs: [],
+      refs: [
+        {
+          repo: 'kilvin',
+          label: 'start_workflow.py',
+          path: 'kilvin-py/start_workflow.py',
+          line: 42,
+          symbol: 'start_workflow',
+          url: 'https://github.com/phi9t/temporalis/blob/abc123/kilvin-py/start_workflow.py',
+        },
+      ],
     },
     {
       id: 'call-poll-workflow-task',
@@ -334,6 +343,7 @@ describe('DeepDiveExplorer', () => {
     const diagram = await screen.findByRole('group', { name: 'Temporal swimlane flow diagram' })
 
     expect(screen.getByRole('button', { name: 'Lifecycle' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByRole('button', { name: "Hacker's Guide" })).toBeNull()
     expect(diagram.textContent).toContain('User app')
     expect(diagram.textContent).toContain('Worker')
     expect(diagram.textContent).toContain('Temporal server')
@@ -346,6 +356,22 @@ describe('DeepDiveExplorer', () => {
     expect(diagram.textContent).toContain('Matching')
     expect(screen.getByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ }))
       .toBeTruthy()
+  })
+
+  it('offers a compact lifecycle step list for narrow viewports', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('group', { name: 'Temporal swimlane flow diagram' })
+
+    const mobileList = screen.getByRole('navigation', { name: 'Lifecycle steps for small screens' })
+    expect(mobileList.textContent).toContain('StartWorkflowExecution')
+    expect(mobileList.textContent).not.toContain('PollWorkflowTaskQueue')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Poll workflow task' }))
+    expect(mobileList.textContent).toContain('PollWorkflowTaskQueue')
+
+    fireEvent.click(screen.getByRole('button', { name: /Mobile lifecycle step 02 PollWorkflowTaskQueue/ }))
+    expect(screen.getByRole('heading', { name: 'PollWorkflowTaskQueue' })).toBeTruthy()
   })
 
   it('switches to control paths in the same swimlane presentation', async () => {
@@ -365,6 +391,22 @@ describe('DeepDiveExplorer', () => {
     expect(diagram.textContent).toContain('RespondWorkflowTaskCompleted')
     expect(screen.getByRole('button', { name: /Flow step 02 History to Activation WorkflowActivation\(signal\)/ }))
       .toBeTruthy()
+  })
+
+  it('offers a compact control-path step list for narrow viewports', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Control Paths' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Control Paths' }).getAttribute('aria-pressed')).toBe('true')
+    })
+
+    const mobileList = screen.getByRole('navigation', { name: 'Control path steps for small screens' })
+    expect(mobileList.textContent).toContain('SignalWorkflowExecution')
+    expect(mobileList.textContent).toContain('WorkflowActivation(signal)')
+    expect(mobileList.textContent).toContain('RespondWorkflowTaskCompleted')
   })
 
   it('keeps control paths focused on the swimlane without a detail drawer', async () => {
@@ -392,21 +434,20 @@ describe('DeepDiveExplorer', () => {
     expect(coreWorker.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('shows the selected call in the detail drawer and opens the guide track in place', async () => {
+  it('shows the selected call with source and probe links without opening a guide track', async () => {
     render(<DeepDiveExplorer navigate={vi.fn()} />)
 
     await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
 
-    expect(screen.getByText('Read / Run / Inspect')).toBeTruthy()
+    expect(screen.getByText('Probe / Inspect')).toBeTruthy()
     expect(screen.getAllByText('Kilvin asks Temporal to start the training workflow.').length).toBeGreaterThan(1)
     expect(screen.getByText('python hacks/002_lifecycle_manifest.py')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /start_workflow.py/ }).getAttribute('href')).toBe(
+      'https://github.com/phi9t/temporalis/blob/abc123/kilvin-py/start_workflow.py#L42',
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: '4. Happy path: start workflow to first activation' }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: "Hacker's Guide" }).getAttribute('aria-pressed')).toBe('true')
-    })
-    await screen.findByRole('heading', { name: "Temporal Hacker's Guide" })
+    expect(screen.queryByRole('button', { name: '4. Happy path: start workflow to first activation' })).toBeNull()
+    expect(screen.queryByRole('button', { name: "Hacker's Guide" })).toBeNull()
   })
 
   it('renders the kilvin internals track from the generated manifest', async () => {
@@ -417,6 +458,7 @@ describe('DeepDiveExplorer', () => {
     })
 
     expect(await screen.findByRole('navigation', { name: 'Kilvin internals' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Kilvin compact selector' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'KilvinTrainingWorkflow' })).toBeTruthy()
     expect(screen.getByText('task queue: kilvin-training-task-queue')).toBeTruthy()
     expect(screen.getByText('Every step goes through the same durable envelope.')).toBeTruthy()
@@ -427,6 +469,10 @@ describe('DeepDiveExplorer', () => {
     expect(screen.getByText('3600s timeout')).toBeTruthy()
     expect(screen.getByText('heartbeats')).toBeTruthy()
     expect(screen.getByText('{stage}/monitor_training/logs.yaml')).toBeTruthy()
+    expect(screen.getByRole('link', { name: /monitor_training activity/ }).getAttribute('href')).toBe(
+      'https://github.com/phi9t/temporalis/blob/abc123/kilvin-py/kilvin_py/activities.py#L120',
+    )
+    expect(screen.queryByRole('button', { name: '4. Happy path: start workflow to first activation' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /SQ.*Signals & queries/ }))
     expect(screen.getByText('Park the run before the next step.')).toBeTruthy()
