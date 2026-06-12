@@ -6,6 +6,18 @@ from temporalio.client import Client
 from kilvin_py import models
 from kilvin_py.workflows import KilvinTrainingWorkflow
 
+TASK_QUEUE = "kilvin-training-task-queue"
+WORKFLOW_ID_PREFIX = "kilvin-training"
+INTENT_MODEL = "model-x"
+INTENT_DATASET_URI = "hdfs://datasets/fineweb"
+INTENT_GPU_COUNT = 64
+INTENT_NODE_COUNT = 8
+INTENT_GPUS_PER_NODE = 8
+
+
+def workflow_id_for_run(run_id: str) -> str:
+    return f"{WORKFLOW_ID_PREFIX}-{run_id}"
+
 
 def sample_run_config() -> models.RunConfig:
     """One clean request: train model X on FineWeb with 64 A100 GPUs.
@@ -37,7 +49,7 @@ def sample_run_config() -> models.RunConfig:
                 phase="train",
                 enabled=True,
                 dataset_profile=models.StageDatasetProfile(
-                    uri="hdfs://datasets/fineweb",
+                    uri=INTENT_DATASET_URI,
                     min_examples=1_000_000_000,
                     token_budget=15_000_000_000_000,
                     token_budget_tolerance_ratio=0.05,
@@ -68,8 +80,8 @@ async def main() -> None:
             run_config=run_config,
             job_params_uri=f"hdfs://params/{run_id}/params.yaml",
         ),
-        id=f"kilvin-training-{run_id}",
-        task_queue="kilvin-training-task-queue",
+        id=workflow_id_for_run(run_id),
+        task_queue=TASK_QUEUE,
     )
     print(f"Result: {result}")
 

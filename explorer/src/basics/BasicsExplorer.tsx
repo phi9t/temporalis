@@ -1,5 +1,4 @@
 import {
-  ArrowRight,
   Boxes,
   Cpu,
   Database,
@@ -504,27 +503,24 @@ export default function BasicsExplorer({ navigate }: ExplorerModeProps) {
             without forcing researchers to hand-assemble every cluster detail.
           </p>
         </div>
-        <div className="basics-flow" aria-label="Model training workflow overview">
-          <div>
+        <ol className="basics-flow" aria-label="Model training workflow overview">
+          <li className="basics-flow-step" aria-label="Hero overview step 1: Build deps">
             <Play size={18} aria-hidden="true" />
             <span>Build deps</span>
-          </div>
-          <ArrowRight size={16} aria-hidden="true" />
-          <div>
+          </li>
+          <li className="basics-flow-step" aria-label="Hero overview step 2: Find quota">
             <Boxes size={18} aria-hidden="true" />
             <span>Find quota</span>
-          </div>
-          <ArrowRight size={16} aria-hidden="true" />
-          <div>
+          </li>
+          <li className="basics-flow-step" aria-label="Hero overview step 3: Spec cluster">
             <ServerCog size={18} aria-hidden="true" />
             <span>Spec cluster</span>
-          </div>
-          <ArrowRight size={16} aria-hidden="true" />
-          <div>
+          </li>
+          <li className="basics-flow-step" aria-label="Hero overview step 4: Submit and monitor">
             <PackageCheck size={18} aria-hidden="true" />
             <span>Submit and monitor</span>
-          </div>
-        </div>
+          </li>
+        </ol>
       </section>
 
       <ConceptGrid />

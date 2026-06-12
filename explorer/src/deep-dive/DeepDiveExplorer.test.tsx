@@ -300,6 +300,22 @@ describe('DeepDiveExplorer', () => {
       .toBeTruthy()
   })
 
+  it('keeps control paths focused on the swimlane without a detail drawer', async () => {
+    render(<DeepDiveExplorer navigate={vi.fn()} />)
+
+    await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
+    fireEvent.click(screen.getByRole('button', { name: 'Control Paths' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Control Paths' }).getAttribute('aria-pressed')).toBe('true')
+    })
+
+    expect(screen.getByRole('group', { name: 'Temporal swimlane flow diagram' })).toBeTruthy()
+    expect(screen.getByText(/overlay on the happy-path swimlane/)).toBeTruthy()
+    expect(screen.queryByText('Read / Run / Inspect')).toBeNull()
+    expect(screen.queryByText('python hacks/005_control_paths.py')).toBeNull()
+  })
+
   it('keeps component selection inside the merged swimlane', async () => {
     render(<DeepDiveExplorer navigate={vi.fn()} />)
 
@@ -354,8 +370,8 @@ describe('DeepDiveExplorer', () => {
       name: /Flow step 01 Activation to History SignalWorkflowExecution/,
     })
     expect(signalStep.className).toContain('flow-step-card--overlay')
-    expect(screen.getAllByText('A pause request is recorded durably.').length).toBeGreaterThan(1)
-    expect(screen.getByText('python hacks/005_control_paths.py')).toBeTruthy()
+    expect(screen.getAllByText('A pause request is recorded durably.').length).toBeGreaterThan(0)
+    expect(screen.queryByText('python hacks/005_control_paths.py')).toBeNull()
   })
 
   it('opens directly on a control scenario from a navigation context', async () => {

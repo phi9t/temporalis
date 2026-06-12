@@ -260,11 +260,6 @@ export default function DeepDiveExplorer({ navigate, context }: ExplorerModeProp
     () => controlSteps.map(controlStepToFlowItem).filter((item): item is NonNullable<typeof item> => item !== null),
     [controlSteps],
   )
-  const controlNodeLabels = useMemo(
-    () => new Map((controlLifecycle?.nodes ?? []).map((node) => [node.id, node.label])),
-    [controlLifecycle],
-  )
-
   const trackSelector = (
     <ViewTabs
       ariaLabel="Deep dive track"
@@ -386,7 +381,7 @@ export default function DeepDiveExplorer({ navigate, context }: ExplorerModeProp
         />
       </div>
 
-      <div className="deep-dive-workspace lifecycle-workspace">
+      <div className="deep-dive-workspace lifecycle-workspace lifecycle-workspace--full">
         <Card>
           <CardHeader>
             <CardTitle>{controlScenario.label}</CardTitle>
@@ -420,21 +415,6 @@ export default function DeepDiveExplorer({ navigate, context }: ExplorerModeProp
             </div>
           </CardContent>
         </Card>
-        <div className="lifecycle-drawer-shell">
-          <LifecycleDrawer
-            selection={
-              selectedControlStep
-                ? { type: 'control-step', step: selectedControlStep }
-                : selectedControlNode
-                  ? { type: 'node', node: selectedControlNode }
-                  : null
-            }
-            phase={null}
-            guide={controlScenario}
-            nodeLabels={controlNodeLabels}
-            onOpenGuide={openGuideSection}
-          />
-        </div>
       </div>
     </div>
   )

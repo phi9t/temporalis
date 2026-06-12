@@ -4,13 +4,14 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from kilvin_py import activities, workflows
+from start_workflow import TASK_QUEUE
 
 
 async def main() -> None:
     client = await Client.connect("localhost:7233")
     worker = Worker(
         client,
-        task_queue="kilvin-training-task-queue",
+        task_queue=TASK_QUEUE,
         workflows=[workflows.KilvinTrainingWorkflow],
         activities=[
             activities.interpret_training_intent,

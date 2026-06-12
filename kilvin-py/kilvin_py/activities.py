@@ -30,7 +30,7 @@ async def interpret_training_intent(input: InterpretIntentInput) -> TrainingInte
 
     run_stages = input.run_config.stages
     stage_zero_dataset = run_stages[0].dataset_profile.uri if run_stages else "hdfs://datasets/fineweb"
-    stage_zero_checkpoint = run_stages[0].dataset_profile.uri if run_stages else "s3://checkpoints/model-x"
+    stage_zero_checkpoint = "s3://checkpoints/model-x/base"
 
     return TrainingIntent(
         model_output_tos_key=input.job_params_uri,
@@ -39,6 +39,7 @@ async def interpret_training_intent(input: InterpretIntentInput) -> TrainingInte
         stage_index=0,
         component_profile={
             "run_name": input.run_config.kilvin_run_name,
+            "model": "model-x",
             "dataset_root": stage_zero_dataset,
             "spec_version": input.run_config.workflow_spec,
         },
@@ -68,10 +69,10 @@ async def allocate_resources(input: AllocateResourcesInput) -> ReamAllocationOut
         node_pool=f"{input.machine_type}-{gpus_requested}",
         gpus_requested=gpus_requested,
         gpus_granted=gpus_requested,
-        data_locality=f"{input.dataset_uri} available on cluster-local storage",
+        data_locality=f"{input.dataset_uri} mirrored from s3://fineweb-us-east onto fsx://us-east-train-7/fineweb",
         reason=(
             f"{input.node_count}x{input.gpus_per_node} {input.machine_type} fit on two healthy "
-            "racks with RDMA networking and dataset-local storage"
+            "racks with NVMe, InfiniBand/RDMA networking, quota, and dataset-local storage"
         ),
     )
     return ReamAllocationOutput(
@@ -86,7 +87,7 @@ async def allocate_resources(input: AllocateResourcesInput) -> ReamAllocationOut
         rdma_enabled=True,
         nccl_profile="nccl",
         rendezvous={"control": "grpc://kilvin-controller:9001"},
-        dataset_mount=f"{input.dataset_uri}/mounts/{input.stage_id}",
+        dataset_mount=f"fsx://us-east-train-7/fineweb/{input.stage_id}",
         quota_decision=quota_decision,
     )
 

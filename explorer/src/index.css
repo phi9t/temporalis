@@ -502,23 +502,58 @@ body {
 .basics-flow {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 14px;
   align-self: center;
+  justify-self: end;
+  width: min(100%, 360px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.basics-flow > div {
+.basics-flow-step {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 10px 12px;
+  gap: 12px;
+  min-height: 54px;
+  padding: 12px 14px;
   border: 1px solid var(--amber-line);
   border-left-width: 3px;
   border-radius: var(--radius-btn);
   background: rgba(10, 10, 7, 0.55);
   color: var(--color-ink);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.basics-flow-step svg {
+  flex: 0 0 auto;
+  color: var(--color-primary);
+}
+
+.basics-flow-step span {
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.basics-flow-step:not(:last-child)::after {
+  content: '↓';
+  position: absolute;
+  left: 24px;
+  bottom: -18px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 193, 82, 0.35);
+  border-radius: 999px;
+  background: rgba(10, 10, 7, 0.92);
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
 }
 
 @keyframes flow-pulse {
@@ -529,21 +564,6 @@ body {
   50% {
     opacity: 1;
   }
-}
-
-.basics-flow > svg {
-  justify-self: center;
-  color: var(--color-primary);
-  transform: rotate(90deg);
-  animation: flow-pulse 2.4s ease-in-out infinite;
-}
-
-.basics-flow > svg:nth-of-type(2) {
-  animation-delay: 0.4s;
-}
-
-.basics-flow > svg:nth-of-type(3) {
-  animation-delay: 0.8s;
 }
 
 .basics-section {
@@ -829,12 +849,7 @@ body {
   }
 
   .basics-flow {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-  }
-
-  .basics-flow > svg {
-    transform: none;
+    align-self: center;
   }
 
   .basics-next {
@@ -1062,6 +1077,10 @@ body {
 @media (min-width: 1280px) {
   .lifecycle-workspace {
     grid-template-columns: minmax(0, 1fr) 390px;
+  }
+
+  .lifecycle-workspace--full {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .lifecycle-main--diagram-only {

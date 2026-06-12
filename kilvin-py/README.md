@@ -58,7 +58,8 @@ python start_workflow.py
 Then look under the hood:
 
 ```bash
-# The durable step trace, straight from the workflow's query handler
+# The durable step trace, straight from the workflow's query handler.
+# If the result printed run-abc12345, the workflow id is kilvin-training-run-abc12345.
 temporal workflow query -w kilvin-training-run-<id> --type run_step_trace
 
 # The stage plan and every artifact URI

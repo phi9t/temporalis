@@ -20,6 +20,13 @@ describe('BasicsExplorer', () => {
     expect(screen.getByText(/waiting for GPUs/)).toBeTruthy()
     expect(screen.getByText(/Signals can record a pause or override/)).toBeTruthy()
 
+    const heroFlow = screen.getByRole('list', { name: 'Model training workflow overview' })
+    expect(heroFlow.textContent).toContain('Build deps')
+    expect(heroFlow.textContent).toContain('Find quota')
+    expect(heroFlow.textContent).toContain('Spec cluster')
+    expect(heroFlow.textContent).toContain('Submit and monitor')
+    expect(screen.getAllByRole('listitem', { name: /hero overview step/i })).toHaveLength(4)
+
     const timeline = screen.getByRole('list', { name: 'Model training workflow timeline' })
     const timelineText = timeline.textContent ?? ''
     const timelineStepText = (label: string) => screen.getByText(label).closest('li')?.textContent ?? ''

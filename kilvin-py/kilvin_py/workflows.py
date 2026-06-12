@@ -521,9 +521,14 @@ class KilvinTrainingWorkflow:
             skip_result=TrainingIntent(
                 model_output_tos_key=input.job_params_uri,
                 workflow_config_uri=f"file://./.kilvin-cache/{input.run_config.run_id}/workflow.yaml",
-                checkpoint="s3://checkpoints/model-x",
+                checkpoint="s3://checkpoints/model-x/base",
                 stage_index=0,
-                component_profile={"run_name": input.run_config.kilvin_run_name},
+                component_profile={
+                    "run_name": input.run_config.kilvin_run_name,
+                    "model": "model-x",
+                    "dataset_root": stages[0].dataset_profile.uri,
+                    "spec_version": input.run_config.workflow_spec,
+                },
             ),
         )
 
@@ -540,7 +545,7 @@ class KilvinTrainingWorkflow:
             timeout_seconds=120,
             skip_result=ConcretizeDependenciesOutput(
                 auto_job_id=f"kilvin-replay-{self._run_attempt}",
-                code_tos_key=intent.checkpoint or "s3://checkpoints/model-x",
+                code_tos_key=intent.checkpoint or "s3://checkpoints/model-x/base",
             ),
         )
 
