@@ -25,8 +25,8 @@ from .models import (
     MonitorTrainingInput,
     PauseAtStepSignal,
     PauseSignal,
-    ReamAllocationOutput,
     ReplaySignal,
+    ResourceAllocationOutput,
     ResumeSignal,
     RunConfig,
     StageConfig,
@@ -529,6 +529,8 @@ class KilvinTrainingWorkflow:
                     "dataset_root": stages[0].dataset_profile.uri,
                     "spec_version": input.run_config.workflow_spec,
                 },
+                image_ref=f"localhost:5001/kilvin-trainer:{input.run_config.run_id}",
+                trainer_env={},
             ),
         )
 
@@ -541,15 +543,22 @@ class KilvinTrainingWorkflow:
             activity_input=ConcretizeDependenciesInput(
                 run_id=input.run_config.run_id,
                 checkpoint=intent.checkpoint,
+                image_ref=intent.image_ref,
             ),
-            timeout_seconds=120,
+            timeout_seconds=900,
             skip_result=ConcretizeDependenciesOutput(
-                auto_job_id=f"kilvin-replay-{self._run_attempt}",
-                code_tos_key=intent.checkpoint or "s3://checkpoints/model-x/base",
+                image_ref=intent.image_ref,
+                image_digest="sha256:replayed",
+                lockfile_sha256="replayed",
             ),
         )
 
-        checkpoint = intent.checkpoint or concretized.code_tos_key
+        checkpoint = intent.checkpoint or "scratch"
+        digest_ref = (
+            f"{concretized.image_ref}@{concretized.image_digest}"
+            if concretized.image_digest.startswith("sha256:")
+            else concretized.image_ref
+        )
         ir_name = f"kilvin-ir-{input.run_config.run_id}"
 
         for stage_index, stage in enumerate(stages):
@@ -567,17 +576,16 @@ class KilvinTrainingWorkflow:
                     stage_id=stage.stage_id,
                     stage_index=stage_index,
                     dataset_uri=stage.dataset_profile.uri,
+                    cpus=intent.cpus,
+                    memory_gb=intent.memory_gb,
                 ),
                 timeout_seconds=180,
-                skip_result=ReamAllocationOutput(
+                retry_attempts=6,
+                skip_result=ResourceAllocationOutput(
                     allocation_id=f"skip-allocation-{stage.stage_id}",
-                    resource_epoch=0,
-                    pools_reservation_id="skip",
-                    machine_type="a100-sxm",
-                    pool_name="foundation",
-                    node_count=1,
-                    gpus_per_node=1,
-                    rank_size=1,
+                    cluster="local-k3s",
+                    cpus=1,
+                    memory_gb=1,
                 ),
             )
 
@@ -604,22 +612,18 @@ class KilvinTrainingWorkflow:
                     stage_index=stage_index,
                     train_stage=stage.stage_id,
                     task_type="train",
-                    total_tokens_target=stage.runtime_profile.total_tokens_target,
-                    global_batch_tokens=stage.runtime_profile.global_batch_tokens,
-                    max_steps=stage.runtime_profile.max_steps,
-                    learning_rate=stage.runtime_profile.learning_rate,
+                    image_ref=digest_ref,
+                    trainer_env=dict(intent.trainer_env or {}),
                     model=intent.component_profile.get("model", "model-x"),
+                    run_id=input.run_config.run_id,
                 ),
-                timeout_seconds=180,
+                timeout_seconds=60,
                 skip_result=MaterializedBundleOutput(
                     bundle_id=f"skip-bundle-{stage.stage_id}",
                     bundle_path="skipped://bundle",
-                    bound_components=[],
-                    runtime_setup={},
+                    job_manifest={},
                     env_vars={},
-                    rendezvous={},
                     launch_plan=[],
-                    token_plan={},
                     health_checks=[],
                 ),
             )
@@ -644,11 +648,10 @@ class KilvinTrainingWorkflow:
                     bundle=bundle,
                     namespace="kilvin-training",
                 ),
-                timeout_seconds=180,
+                timeout_seconds=120,
                 skip_result=SubmitK8sOutput(
-                    auto_job_name=f"replay-skip-{stage.stage_id}",
-                    primus_job_id="skip-replay",
-                    primus_ui_url="skipped://monitor",
+                    job_name=f"replay-skip-{stage.stage_id}",
+                    job_uid="skip-replay",
                     k8s_namespace="kilvin-training",
                 ),
             )
@@ -660,10 +663,11 @@ class KilvinTrainingWorkflow:
                 step_name="monitor_training",
                 activity_fn=activities.monitor_training,
                 activity_input=MonitorTrainingInput(
-                    auto_job_name=submit_out.auto_job_name,
-                    primus_job_id=submit_out.primus_job_id,
+                    job_name=submit_out.job_name,
+                    job_uid=submit_out.job_uid,
                     ir_name=f"{ir_name}-{stage.stage_id}",
                     k8s_namespace=submit_out.k8s_namespace,
+                    allocation_id=allocation.allocation_id,
                 ),
                 timeout_seconds=3600,
                 skip_result=MonitorOutput(final_status="SUCCEEDED"),
@@ -686,7 +690,7 @@ class KilvinTrainingWorkflow:
 
             if _is_failed_status(monitor_out.final_status):
                 raise ApplicationError(
-                    f"stage {stage.stage_id} failed for {submit_out.auto_job_name}: {monitor_out.final_status}"
+                    f"stage {stage.stage_id} failed for {submit_out.job_name}: {monitor_out.final_status}"
                 )
 
             checkpoint = f"{checkpoint}/{stage.stage_id}"

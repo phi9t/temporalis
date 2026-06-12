@@ -4,11 +4,13 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from kilvin_py import activities, workflows
+from kilvin_py.config import KilvinSettings
 from start_workflow import TASK_QUEUE
 
 
 async def main() -> None:
-    client = await Client.connect("localhost:7233")
+    settings = KilvinSettings.load()
+    client = await Client.connect(settings.temporal_address)
     worker = Worker(
         client,
         task_queue=TASK_QUEUE,

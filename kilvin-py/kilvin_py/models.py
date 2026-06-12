@@ -102,13 +102,17 @@ class InterpretIntentInput:
 
 @dataclass(frozen=True)
 class TrainingIntent:
-    """The interpreted intent: what to train, from where, with which profile."""
+    """The interpreted intent: what to train, with which image and resources."""
 
     model_output_tos_key: str
     workflow_config_uri: str
     checkpoint: str | None
     stage_index: int
     component_profile: dict[str, Any]
+    image_ref: str = ""
+    trainer_env: dict[str, str] | None = None
+    cpus: int = 2
+    memory_gb: int = 4
 
 
 @dataclass(frozen=True)
@@ -122,56 +126,50 @@ class TrainingWorkflowInput:
 class ConcretizeDependenciesInput:
     run_id: str
     checkpoint: str | None
+    image_ref: str = ""
 
 
 @dataclass(frozen=True)
 class ConcretizeDependenciesOutput:
-    auto_job_id: str
-    code_tos_key: str
+    image_ref: str
+    image_digest: str
+    lockfile_sha256: str
 
 
 @dataclass(frozen=True)
 class AllocateResourcesInput:
-    """Gather quota/placement constraints and reserve resources for one stage."""
+    """Reserve real CPU/memory capacity from the allocator for one stage."""
 
     run_id: str
     stage_id: str
     stage_index: int
     dataset_uri: str
-    node_count: int = 8
-    gpus_per_node: int = 8
-    machine_type: str = "a100-sxm"
-    resource_pool: str = "foundation"
+    cpus: int = 2
+    memory_gb: int = 4
 
 
 @dataclass(frozen=True)
 class QuotaDecision:
-    """Why this placement was selected: cluster, racks, node pool, and data locality."""
+    """Why this placement was granted: capacity at decision time, on which cluster."""
 
     cluster: str
-    racks: list[str]
-    node_pool: str
-    gpus_requested: int
-    gpus_granted: int
-    data_locality: str
+    cpus_requested: int
+    cpus_granted: int
+    memory_gb_requested: int
+    memory_gb_granted: int
+    cpus_available_before: int
+    memory_gb_available_before: int
     reason: str
 
 
 @dataclass(frozen=True)
-class ReamAllocationOutput:
-    """The placement decision: cluster, pool, machines, and data locality."""
+class ResourceAllocationOutput:
+    """The allocator's grant: a real reservation against the finite ledger."""
 
     allocation_id: str
-    resource_epoch: int
-    pools_reservation_id: str
-    machine_type: str
-    pool_name: str
-    node_count: int
-    gpus_per_node: int
-    rank_size: int
-    rdma_enabled: bool = True
-    nccl_profile: str = "nccl"
-    rendezvous: dict[str, str] | None = None
+    cluster: str
+    cpus: int
+    memory_gb: int
     dataset_mount: str | None = None
     quota_decision: QuotaDecision | None = None
 
@@ -181,27 +179,24 @@ class MaterializeTrainingBundleInput:
     ir_name: str
     checkpoint: str
     config_snapshot: str
-    allocation: ReamAllocationOutput
+    allocation: ResourceAllocationOutput
     stage_index: int
     train_stage: str
     task_type: str
-    total_tokens_target: int
-    global_batch_tokens: int
-    max_steps: int
-    learning_rate: float
+    image_ref: str
+    trainer_env: dict[str, str]
     model: str
+    run_id: str = ""
+    namespace: str = "kilvin-training"
 
 
 @dataclass(frozen=True)
 class MaterializedBundleOutput:
     bundle_id: str
     bundle_path: str
-    bound_components: list[dict[str, Any]]
-    runtime_setup: dict[str, Any]
+    job_manifest: dict[str, Any]
     env_vars: dict[str, str]
-    rendezvous: dict[str, Any]
     launch_plan: list[dict[str, Any]]
-    token_plan: dict[str, int]
     health_checks: list[str]
 
 
@@ -214,18 +209,18 @@ class SubmitK8sInput:
 
 @dataclass(frozen=True)
 class SubmitK8sOutput:
-    auto_job_name: str
-    primus_job_id: str
-    primus_ui_url: str
+    job_name: str
+    job_uid: str
     k8s_namespace: str
 
 
 @dataclass(frozen=True)
 class MonitorTrainingInput:
-    auto_job_name: str
-    primus_job_id: str
+    job_name: str
+    job_uid: str
     ir_name: str
     k8s_namespace: str
+    allocation_id: str = ""
 
 
 @dataclass(frozen=True)

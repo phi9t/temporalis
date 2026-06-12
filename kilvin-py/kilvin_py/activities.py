@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import uuid
 
 from temporalio import activity
+from temporalio.exceptions import ApplicationError
 
+from .allocator_client import AllocatorClient, AllocatorUnavailable, QuotaExhausted
 from .artifacts import ArtifactStore
+from .config import KilvinSettings
+from .k8s_jobs import KubeconfigMissing, KubernetesJobs
+from .k8s_manifest import render_job_manifest
 from .models import (
     AllocateResourcesInput,
     ArtifactWriteInput,
@@ -16,33 +23,67 @@ from .models import (
     MonitorOutput,
     MonitorTrainingInput,
     QuotaDecision,
-    ReamAllocationOutput,
+    ResourceAllocationOutput,
     SubmitK8sInput,
     SubmitK8sOutput,
     StepIOArtifact,
     TrainingIntent,
 )
+from .proc import SubprocessFailed, run_logged
+
+# Two-scale mapping: the intent is production-shaped (FineWeb, 64 A100s); the
+# local materialization trains a tiny CPU GPT-2 with the same workflow.
+LAPTOP_TRAINER_DEFAULTS = {
+    "N_LAYER": "4",
+    "N_HEAD": "4",
+    "N_EMBD": "128",
+    "BLOCK_SIZE": "128",
+    "BATCH_SIZE": "8",
+    "LEARNING_RATE": "0.0003",
+    "SEED": "1337",
+    "LOG_EVERY": "10",
+    "DATA_PATH": "/app/data/input.txt",
+    "OUT_DIR": "/output",
+}
+LAPTOP_MAX_STEPS = 200
+MONITOR_POLL_SECONDS = 5
 
 
 @activity.defn
 async def interpret_training_intent(input: InterpretIntentInput) -> TrainingIntent:
     """Turn the researcher's intent into the typed plan the workflow executes."""
 
-    run_stages = input.run_config.stages
-    stage_zero_dataset = run_stages[0].dataset_profile.uri if run_stages else "hdfs://datasets/fineweb"
-    stage_zero_checkpoint = "s3://checkpoints/model-x/base"
+    settings = KilvinSettings.load()
+    run_config = input.run_config
+    run_stages = run_config.stages
+    stage = run_stages[0]
+    stage_zero_dataset = stage.dataset_profile.uri if run_stages else "hdfs://datasets/fineweb"
+
+    trainer_env = dict(LAPTOP_TRAINER_DEFAULTS)
+    trainer_env.update(
+        {
+            "RUN_ID": run_config.run_id,
+            "MODEL_NAME": "model-x",
+            "TRAIN_STAGE": stage.stage_id,
+            "MAX_STEPS": str(min(stage.runtime_profile.max_steps, LAPTOP_MAX_STEPS)),
+        }
+    )
 
     return TrainingIntent(
         model_output_tos_key=input.job_params_uri,
-        workflow_config_uri=f"file://./.kilvin-cache/{input.run_config.run_id}/workflow.yaml",
-        checkpoint=stage_zero_checkpoint,
+        workflow_config_uri=f"file://./.kilvin-cache/{run_config.run_id}/workflow.yaml",
+        checkpoint="s3://checkpoints/model-x/base",
         stage_index=0,
         component_profile={
-            "run_name": input.run_config.kilvin_run_name,
+            "run_name": run_config.kilvin_run_name,
             "model": "model-x",
             "dataset_root": stage_zero_dataset,
-            "spec_version": input.run_config.workflow_spec,
+            "spec_version": run_config.workflow_spec,
         },
+        image_ref=f"{settings.registry}/kilvin-trainer:{run_config.run_id}",
+        trainer_env=trainer_env,
+        cpus=2,
+        memory_gb=4,
     )
 
 
@@ -52,43 +93,70 @@ async def concretize_dependencies(
 ) -> ConcretizeDependenciesOutput:
     """Build the training image and pin dependencies into a concrete code bundle."""
 
+    settings = KilvinSettings.load()
+    trainer_dir = settings.trainer_dir
+    lockfile = trainer_dir / "uv.lock"
+    if not lockfile.exists():
+        raise ApplicationError(
+            f"trainer lockfile missing at {lockfile}; run `uv lock` in {trainer_dir}",
+            non_retryable=True,
+        )
+
+    try:
+        await run_logged(["uv", "lock", "--check"], cwd=trainer_dir, label="uv-lock-check")
+        await run_logged(
+            ["docker", "build", "-t", input.image_ref, "."],
+            cwd=trainer_dir,
+            label="docker-build",
+        )
+        await run_logged(["docker", "push", input.image_ref], cwd=trainer_dir, label="docker-push")
+        inspect = await run_logged(
+            ["docker", "inspect", "--format", "{{index .RepoDigests 0}}", input.image_ref],
+            label="docker-inspect",
+        )
+    except SubprocessFailed as err:
+        raise ApplicationError(str(err), type="BuildFailed") from err
+
+    repo_digest = inspect[-1].strip()
+    if "@sha256:" not in repo_digest:
+        raise ApplicationError(
+            f"could not resolve image digest from {repo_digest!r}",
+            type="BuildFailed",
+        )
+    digest = repo_digest.split("@", 1)[1]
+
     return ConcretizeDependenciesOutput(
-        auto_job_id=f"kilvin-job-{uuid.uuid4().hex[:10]}",
-        code_tos_key=f"{input.checkpoint or 'scratch'}/artifacts/code.tar.gz",
+        image_ref=input.image_ref,
+        image_digest=digest,
+        lockfile_sha256=hashlib.sha256(lockfile.read_bytes()).hexdigest(),
     )
 
 
 @activity.defn
-async def allocate_resources(input: AllocateResourcesInput) -> ReamAllocationOutput:
+async def allocate_resources(input: AllocateResourcesInput) -> ResourceAllocationOutput:
     """Gather quota/placement constraints, solve placement, and reserve resources."""
 
-    gpus_requested = input.node_count * input.gpus_per_node
-    quota_decision = QuotaDecision(
-        cluster="us-east-train-7",
-        racks=["rack-a3", "rack-b1"],
-        node_pool=f"{input.machine_type}-{gpus_requested}",
-        gpus_requested=gpus_requested,
-        gpus_granted=gpus_requested,
-        data_locality=f"{input.dataset_uri} mirrored from s3://fineweb-us-east onto fsx://us-east-train-7/fineweb",
-        reason=(
-            f"{input.node_count}x{input.gpus_per_node} {input.machine_type} fit on two healthy "
-            "racks with NVMe, InfiniBand/RDMA networking, quota, and dataset-local storage"
-        ),
-    )
-    return ReamAllocationOutput(
-        allocation_id=f"alloc-{uuid.uuid4().hex[:10]}",
-        resource_epoch=1,
-        pools_reservation_id=f"pool-{uuid.uuid4().hex[:8]}",
-        machine_type=input.machine_type,
-        pool_name=input.resource_pool,
-        node_count=input.node_count,
-        gpus_per_node=input.gpus_per_node,
-        rank_size=gpus_requested,
-        rdma_enabled=True,
-        nccl_profile="nccl",
-        rendezvous={"control": "grpc://kilvin-controller:9001"},
-        dataset_mount=f"fsx://us-east-train-7/fineweb/{input.stage_id}",
-        quota_decision=quota_decision,
+    settings = KilvinSettings.load()
+    client = AllocatorClient(settings.allocator_url)
+    try:
+        grant = await client.request_allocation(
+            run_id=input.run_id,
+            stage_id=input.stage_id,
+            cpus=input.cpus,
+            memory_gb=input.memory_gb,
+        )
+    except QuotaExhausted as err:
+        raise ApplicationError(str(err), type="QuotaExhausted") from err
+    except AllocatorUnavailable as err:
+        raise ApplicationError(str(err), non_retryable=True) from err
+
+    return ResourceAllocationOutput(
+        allocation_id=grant.allocation_id,
+        cluster=grant.cluster,
+        cpus=grant.cpus_granted,
+        memory_gb=grant.memory_gb_granted,
+        dataset_mount=input.dataset_uri,
+        quota_decision=QuotaDecision(**grant.quota_decision),
     )
 
 
@@ -98,103 +166,83 @@ async def materialize_training_bundle(
 ) -> MaterializedBundleOutput:
     """Expand training intent into the concrete launch spec for this stage."""
 
-    launch_budget = {
-        "total_tokens_target": input.total_tokens_target,
-        "global_batch_tokens": input.global_batch_tokens,
-        "max_steps": input.max_steps,
-        "token_margin": int(input.total_tokens_target * 0.05),
-        "learning_rate": int(input.learning_rate * 1e9),
-    }
+    job_name = f"kilvin-{input.train_stage}-{uuid.uuid4().hex[:6]}"
+    env_vars = dict(input.trainer_env)
+    env_vars.setdefault("CHECKPOINT_URI", input.checkpoint)
+    env_vars.setdefault("DATASET_MOUNT", input.allocation.dataset_mount or "")
 
-    runtime_setup = {
-        "checkpoint": input.checkpoint,
-        "task_type": input.task_type,
-        "train_stage": input.train_stage,
-        "model": input.model,
-        "nccl_profile": input.allocation.nccl_profile,
-        "rdma_enabled": input.allocation.rdma_enabled,
-        "dataset_mount": input.allocation.dataset_mount,
-    }
-
-    bound_components = [
-        {
-            "component": input.model,
-            "machine_type": input.allocation.machine_type,
-            "node_count": input.allocation.node_count,
-            "gpus_per_node": input.allocation.gpus_per_node,
-        }
-    ]
-
-    env_vars = {
-        "MODEL_NAME": input.model,
-        "TRAIN_STAGE": input.train_stage,
-        "CHECKPOINT_URI": input.checkpoint,
-        "DATASET_MOUNT": input.allocation.dataset_mount or "",
-        "WORLD_SIZE": str(input.allocation.rank_size),
-        "NCCL_PROFILE": input.allocation.nccl_profile,
-        "RDMA_ENABLED": "1" if input.allocation.rdma_enabled else "0",
-        "GLOBAL_BATCH_TOKENS": str(input.global_batch_tokens),
-        "LEARNING_RATE": str(input.learning_rate),
-    }
+    manifest = render_job_manifest(
+        job_name=job_name,
+        namespace=input.namespace,
+        image=input.image_ref,
+        env=env_vars,
+        cpus=input.allocation.cpus,
+        memory_gb=input.allocation.memory_gb,
+        run_id=input.run_id,
+        stage_id=input.train_stage,
+    )
 
     return MaterializedBundleOutput(
         bundle_id=f"bundle-{uuid.uuid4().hex[:10]}",
         bundle_path=f"{input.config_snapshot}/bundle/{input.train_stage}.yaml",
-        bound_components=bound_components,
-        runtime_setup=runtime_setup,
+        job_manifest=manifest,
         env_vars=env_vars,
-        rendezvous=dict(input.allocation.rendezvous or {}),
-        launch_plan=[
-            {
-                "entrypoint": "kilvin-train",
-                "args": ["--config", input.config_snapshot, "--stage", input.train_stage],
-            }
-        ],
-        token_plan=launch_budget,
-        health_checks=["nccl-rings", "kv-router", "data-loader", "rdma-topology"],
+        launch_plan=[{"entrypoint": "python trainer.py", "image": input.image_ref}],
+        health_checks=["job-conditions", "pod-logs"],
     )
 
 
 @activity.defn
 async def submit_k8s_job(input: SubmitK8sInput) -> SubmitK8sOutput:
-    namespace = input.namespace or "kilvin-training"
-    return SubmitK8sOutput(
-        auto_job_name=f"kilvin-{input.stage_id}-{uuid.uuid4().hex[:6]}",
-        primus_job_id=f"p-{uuid.uuid4().hex[:12]}",
-        primus_ui_url=f"https://primus.local/kilvin/{uuid.uuid4().hex[:12]}",
-        k8s_namespace=namespace,
-    )
+    """Create the rendered Job on the k3s cluster."""
+
+    settings = KilvinSettings.load()
+    try:
+        jobs = KubernetesJobs(settings.kubeconfig_path)
+        name, uid = await asyncio.to_thread(jobs.create_job, input.bundle.job_manifest)
+    except KubeconfigMissing as err:
+        raise ApplicationError(str(err), non_retryable=True) from err
+    return SubmitK8sOutput(job_name=name, job_uid=uid, k8s_namespace=input.namespace)
 
 
 @activity.defn
 async def monitor_training(input: MonitorTrainingInput) -> MonitorOutput:
-    # Deterministic one-shot status result for scaffold behavior.
-    # In production this function polls Primus/K8s and heartbeats every 30s.
-    activity.heartbeat(
-        {
-            "auto_job_name": input.auto_job_name,
-            "primus_job_id": input.primus_job_id,
-            "k8s_namespace": input.k8s_namespace,
-        }
-    )
-    logs_uri = f"k8s://{input.k8s_namespace}/jobs/{input.auto_job_name}/logs"
-    if input.auto_job_name.startswith("kilvin-fail"):
-        return MonitorOutput(
-            final_status="FAILED",
-            running_pods=0,
-            total_pods=0,
-            logs_uri=logs_uri,
-            log_tail=[f"{input.auto_job_name}: pod crash-looped, see {logs_uri}"],
+    """Watch the Job until completion, heartbeating; release the allocation."""
+
+    settings = KilvinSettings.load()
+    try:
+        jobs = KubernetesJobs(settings.kubeconfig_path)
+    except KubeconfigMissing as err:
+        raise ApplicationError(str(err), non_retryable=True) from err
+
+    status = "RUNNING"
+    while status == "RUNNING":
+        status = await asyncio.to_thread(jobs.job_status, input.job_name, input.k8s_namespace)
+        activity.heartbeat(
+            {
+                "job_name": input.job_name,
+                "namespace": input.k8s_namespace,
+                "status": status,
+            }
         )
+        if status == "RUNNING":
+            await asyncio.sleep(MONITOR_POLL_SECONDS)
+
+    log_tail = await asyncio.to_thread(jobs.pod_log_tail, input.job_name, input.k8s_namespace, 40)
+
+    if input.allocation_id and not input.allocation_id.startswith("skip-"):
+        try:
+            await AllocatorClient(settings.allocator_url).release(input.allocation_id)
+        except AllocatorUnavailable:
+            pass
+
+    logs_uri = f"k8s://{input.k8s_namespace}/jobs/{input.job_name}/logs"
     return MonitorOutput(
-        final_status="SUCCESS",
-        running_pods=1,
+        final_status="SUCCESS" if status == "SUCCEEDED" else "FAILED",
+        running_pods=0,
         total_pods=1,
         logs_uri=logs_uri,
-        log_tail=[
-            f"{input.auto_job_name}: all pods Running",
-            f"{input.auto_job_name}: training loop healthy, checkpoints flowing",
-        ],
+        log_tail=log_tail,
     )
 
 

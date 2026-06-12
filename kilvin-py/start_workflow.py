@@ -4,6 +4,7 @@ import uuid
 from temporalio.client import Client
 
 from kilvin_py import models
+from kilvin_py.config import KilvinSettings
 from kilvin_py.workflows import KilvinTrainingWorkflow
 
 TASK_QUEUE = "kilvin-training-task-queue"
@@ -23,9 +24,13 @@ def sample_run_config() -> models.RunConfig:
     """One clean request: train model X on FineWeb with 64 A100 GPUs.
 
     The single pretrain stage keeps the whole walkthrough inspectable: one
-    allocation (8 nodes x 8 A100s), one materialized bundle, one Kubernetes
-    job, and the hood-open artifacts the explorer points at (quota decision,
-    env vars, dataset path, job id, logs).
+    allocation, one materialized bundle, one Kubernetes job, and the hood-open
+    artifacts the explorer points at (quota decision, env vars, job id, logs).
+
+    Locally the same workflow materializes this intent for real at laptop
+    scale: interpret_intent derives a tiny CPU GPT-2 trainer config, the
+    allocator grants CPUs from a finite local ledger, and the job runs on the
+    k3s cluster from kilvin-py/infra/docker-compose.yml.
     """
 
     return models.RunConfig(
@@ -70,7 +75,7 @@ def sample_run_config() -> models.RunConfig:
 
 
 async def main() -> None:
-    client = await Client.connect("localhost:7233")
+    client = await Client.connect(KilvinSettings.load().temporal_address)
     run_config = sample_run_config()
     run_id = run_config.run_id
     result = await client.execute_workflow(
