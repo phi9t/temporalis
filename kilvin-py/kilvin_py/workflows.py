@@ -15,8 +15,8 @@ from .models import (
     AllocateResourcesInput,
     ArtifactWriteInput,
     CancelSignal,
-    DevPrepareInput,
-    DevPrepareOutput,
+    ConcretizeDependenciesInput,
+    ConcretizeDependenciesOutput,
     InterpretIntentInput,
     KilvinRunState,
     MaterializedBundleOutput,
@@ -527,24 +527,24 @@ class KilvinTrainingWorkflow:
             ),
         )
 
-        dev_prepare = await self._run_step(
+        concretized = await self._run_step(
             input=input,
             stage=stages[0],
             stage_index=0,
-            step_name="dev_prepare",
-            activity_fn=activities.dev_prepare,
-            activity_input=DevPrepareInput(
+            step_name="concretize_dependencies",
+            activity_fn=activities.concretize_dependencies,
+            activity_input=ConcretizeDependenciesInput(
                 run_id=input.run_config.run_id,
                 checkpoint=intent.checkpoint,
             ),
             timeout_seconds=120,
-            skip_result=DevPrepareOutput(
+            skip_result=ConcretizeDependenciesOutput(
                 auto_job_id=f"kilvin-replay-{self._run_attempt}",
                 code_tos_key=intent.checkpoint or "s3://checkpoints/model-x",
             ),
         )
 
-        checkpoint = intent.checkpoint or dev_prepare.code_tos_key
+        checkpoint = intent.checkpoint or concretized.code_tos_key
         ir_name = f"kilvin-ir-{input.run_config.run_id}"
 
         for stage_index, stage in enumerate(stages):

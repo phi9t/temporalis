@@ -119,13 +119,13 @@ class TrainingWorkflowInput:
 
 
 @dataclass(frozen=True)
-class DevPrepareInput:
+class ConcretizeDependenciesInput:
     run_id: str
     checkpoint: str | None
 
 
 @dataclass(frozen=True)
-class DevPrepareOutput:
+class ConcretizeDependenciesOutput:
     auto_job_id: str
     code_tos_key: str
 

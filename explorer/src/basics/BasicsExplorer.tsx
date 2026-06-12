@@ -406,7 +406,7 @@ const KILVIN_FACTS: KilvinFactGroup[] = [
     path: 'kilvin-py/kilvin_py/activities.py',
     items: [
       'interpret_training_intent',
-      'dev_prepare',
+      'concretize_dependencies',
       'allocate_resources',
       'materialize_training_bundle',
       'submit_k8s_job',

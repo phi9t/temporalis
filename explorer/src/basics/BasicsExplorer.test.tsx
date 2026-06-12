@@ -134,7 +134,7 @@ describe('BasicsExplorer', () => {
     expect(panelText).toContain('kilvin-training-task-queue')
     for (const activity of [
       'interpret_training_intent',
-      'dev_prepare',
+      'concretize_dependencies',
       'allocate_resources',
       'materialize_training_bundle',
       'submit_k8s_job',

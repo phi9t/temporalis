@@ -20,7 +20,7 @@ It includes a rendered Hacker's Guide alongside the Deep Dive view.
 Start with:
 
 - `explorer/`: Basics, Deep Dive (Lifecycle + Control Paths), and Hacker's Guide views.
-- `kilvin-py/`: the runnable Temporal Python implementation of the training launch.
+- `kilvin-py/`: the runnable Temporal Python implementation of the training launch; see `kilvin-py/README.md` to run it against a local `temporal server start-dev` and drive its signals and queries.
 - `HACKERS_GUIDE.md`: canonical narrative for the happy path, control paths, source refs, and paired hack scripts.
 - `hacks/001_source_map.py`: prints the source anchors used by the guide and explorer.
 - `hacks/002_lifecycle_manifest.py`: walks the Kilvin asyncio happy-path manifest in guide order.

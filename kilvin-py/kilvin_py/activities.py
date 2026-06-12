@@ -8,8 +8,8 @@ from .artifacts import ArtifactStore
 from .models import (
     AllocateResourcesInput,
     ArtifactWriteInput,
-    DevPrepareInput,
-    DevPrepareOutput,
+    ConcretizeDependenciesInput,
+    ConcretizeDependenciesOutput,
     InterpretIntentInput,
     MaterializedBundleOutput,
     MaterializeTrainingBundleInput,
@@ -46,10 +46,12 @@ async def interpret_training_intent(input: InterpretIntentInput) -> TrainingInte
 
 
 @activity.defn
-async def dev_prepare(input: DevPrepareInput) -> DevPrepareOutput:
-    """Build the training image and sync dependencies for the run."""
+async def concretize_dependencies(
+    input: ConcretizeDependenciesInput,
+) -> ConcretizeDependenciesOutput:
+    """Build the training image and pin dependencies into a concrete code bundle."""
 
-    return DevPrepareOutput(
+    return ConcretizeDependenciesOutput(
         auto_job_id=f"kilvin-job-{uuid.uuid4().hex[:10]}",
         code_tos_key=f"{input.checkpoint or 'scratch'}/artifacts/code.tar.gz",
     )

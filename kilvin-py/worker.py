@@ -14,7 +14,7 @@ async def main() -> None:
         workflows=[workflows.KilvinTrainingWorkflow],
         activities=[
             activities.interpret_training_intent,
-            activities.dev_prepare,
+            activities.concretize_dependencies,
             activities.allocate_resources,
             activities.materialize_training_bundle,
             activities.submit_k8s_job,
