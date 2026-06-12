@@ -1,43 +1,37 @@
-# Temporalis Control Repo
+# Temporalis
 
-This workspace contains a local Temporal learning explorer plus a lightweight control repo for the Temporal multi-repo workspace that sits beside the managed upstream repos.
+Temporalis is a teaching repo for durable machine-learning training with Temporal. It follows one production-shaped request -- train model X on FineWeb with 64 A100 GPUs -- from a high-level intent through workflow history, task queues, retries, replay, source-grounded Temporal internals, and a laptop-scale Kilvin implementation.
 
-## Temporal Explorer
+Start with the hosted explorer:
 
-`explorer/` is a local React app for learning Temporal from first principles, then following a Kilvin-inspired Python asyncio workflow through sdk-python, the Python bridge, sdk-core, and Temporal server.
+https://phi9t.github.io/temporalis/
 
-For newcomers, start the app and open the Basics tab:
+## Three Ways To Use This Repo
+
+### Tier 0: Hosted Explorer
+
+Open the hosted explorer when you want to learn the system without installing anything. Basics introduces workflows, activities, task queues, history, retry, replay, and hood-open ML training artifacts. Deep Dive then shows Lifecycle, Control Paths, and Kilvin Internals with source-code citations.
+
+### Tier 1: Lightweight Local Teaching Path
+
+Clone the repo, install the normal Python and Node prerequisites, and run:
 
 ```bash
+make quickstart
 make explorer-dev
 ```
 
-The Basics path explains workflows, activities, workers, task queues, history, retry, and replay through an MLsys training launch: start from the intent to train model X on FineWeb with 64 A100 GPUs, gather resource constraints, solve a concrete placement plan, reserve and pin resources, and keep hood-open artifacts such as the materialized job spec, env vars, quota decision, dataset path, Kubernetes job id, and logs available for debugging. From there, the Deep Dive view (Lifecycle and Control Paths tracks) maps the same ideas onto real Temporal internals. The same request is runnable code in `kilvin-py/`: `start_workflow.py` submits the model-X-on-FineWeb run and every step persists those hood-open artifacts under `.kilvin-artifacts/`, with real local materialization through uv+docker concretization, an allocator ledger, and a k3s job via docker compose.
+This path validates checked-in generated explorer data and deterministic teaching probes. It does not require docker, k3s, cloud credentials, or a live Temporal server.
 
-The explorer is backed by the root [HACKERS_GUIDE.md](HACKERS_GUIDE.md), generated manifests under `explorer/public/data/`, and deterministic teaching probes in `hacks/`.
-It includes a rendered Hacker's Guide alongside the Deep Dive view.
+### Tier 2: Full Runtime Proof
 
-Start with:
-
-- `explorer/`: Basics plus Deep Dive (Lifecycle, Control Paths, Kilvin Internals, and the Hacker's Guide).
-- `kilvin-py/`: the runnable Temporal Python implementation of the training launch; see `kilvin-py/README.md` for real local materialization with uv+docker concretization, an allocator ledger, and a k3s job via docker compose.
-- `HACKERS_GUIDE.md`: canonical narrative for the happy path, control paths, source refs, and paired hack scripts.
-- `hacks/001_source_map.py`: prints the source anchors used by the guide and explorer.
-- `hacks/002_lifecycle_manifest.py`: walks the Kilvin asyncio happy-path manifest in guide order.
-
-The remaining default hacks cover task queue polling, history/replay, and control-path overlays. `hacks/006_optional_local_run.py` is explicitly opt-in and is not part of the default verification path because it may require local Temporal runtime prerequisites.
-
-Common explorer commands:
+When you want the real local workflow, run:
 
 ```bash
-make explorer-gen-data
-make explorer-build
-make explorer-dev
+make runtime-proof
 ```
 
-`make explorer-gen-data` regenerates the static guide, lifecycle, control-path, and repo manifests from the initialized workspace. `make explorer-build` runs the explorer production build workflow, and `make explorer-dev` starts the local Vite development server.
-
-The generator reads the initialized managed repos and writes static JSON under `explorer/public/data/`. Run `make monorepo-init` and confirm `make monorepo-doctor` passes before regenerating explorer data.
+This optional path uses the Kilvin runtime: Temporal, a Python worker, uv+docker image materialization, a local allocator ledger, a local registry, k3s Job submission, monitoring, and artifacts. It proves the teaching model at laptop scale with a tiny CPU GPT trainer rather than a real 64-A100 cluster.
 
 ## Workspace Control Layer
 
