@@ -10,6 +10,8 @@ docs/*
 !docs/.monorepo/**
 !docs/inspectl/
 !docs/inspectl/**
+!docs/kilvin/
+!docs/kilvin/**
 !docs/superpowers/
 !docs/superpowers/**
 local-temporal-tooling/
