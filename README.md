@@ -26,9 +26,11 @@ This path validates checked-in generated explorer data and deterministic teachin
 
 ### Tier 2: Full Runtime Proof
 
-When you want the real local workflow, run:
+When you want the real local workflow, make sure the infra stack is running first:
 
 ```bash
+make kilvin-doctor
+kilvin-py/infra/up.sh
 make runtime-proof
 ```
 

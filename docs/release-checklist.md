@@ -12,6 +12,7 @@ When local docker/Colima/k3s prerequisites are available, also run:
 
 ```bash
 make kilvin-doctor
+kilvin-py/infra/up.sh
 make runtime-proof
 ```
 
