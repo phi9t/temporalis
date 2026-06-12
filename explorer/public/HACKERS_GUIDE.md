@@ -15,7 +15,7 @@ Temporal has four boundaries that matter for this guide: the Python client/worke
 <a id="running-example-kilvin-inspired-training-workflow"></a>
 ## 3. Running example: Kilvin-inspired training workflow
 
-The running example is one clean request: train model X on FineWeb with 64 A100 GPUs. `ParentKilvinCmdWorkflow` extracts the command config and starts a child `KilvinTrainingWorkflow` on the `kilvin-training-task-queue`. The child prepares the dev image once, then for the pretrain stage allocates resources (gather quota and placement constraints, solve placement, reserve and pin 8 nodes x 8 A100s), materializes the training bundle (the concrete job spec plus env vars), submits the Kubernetes job, and monitors it through a heartbeating activity. Every step persists hood-open YAML artifacts under `.kilvin-artifacts/` — the materialized job spec, quota decision, env vars, dataset mount, Kubernetes job id, and log pointers — so the run stays inspectable while it executes and after it fails. It is intentionally richer than a greeting workflow because it exposes task queues, child workflows, retries, heartbeats, cancellation, pause/resume, and replay.
+The running example is one clean request: train model X on FineWeb with 64 A100 GPUs. A single `KilvinTrainingWorkflow` on the `kilvin-training-task-queue` materializes that intent end to end: it interprets the training intent into a typed plan, prepares the dev image, allocates resources (gather quota and placement constraints, solve placement, reserve and pin 8 nodes x 8 A100s), materializes the training bundle (the concrete job spec plus env vars), submits the Kubernetes job, and monitors it through a heartbeating activity. Every step persists hood-open YAML artifacts under `.kilvin-artifacts/` — the materialized job spec, quota decision, env vars, dataset mount, Kubernetes job id, and log pointers — so the run stays inspectable while it executes and after it fails. It is intentionally richer than a greeting workflow because one workflow exposes task queues, activities, retries, heartbeats, cancellation, pause/resume, and replay.
 
 <a id="happy-path-start-workflow-to-first-activation"></a>
 ## 4. Happy path: start workflow to first activation
@@ -75,7 +75,7 @@ Try it: `python hacks/002_lifecycle_manifest.py`
 <a id="pause-resume-as-signalupdate-driven-coordination"></a>
 ## 9. Pause/resume as signal/update-driven coordination
 
-- User-level event: an operator pauses or resumes a training run while the workflow is waiting on activities, timers, or child work. The workflow changes durable coordination state, not just a Python boolean in memory.
+- User-level event: an operator pauses or resumes a training run while the workflow is waiting on activities or timers. The workflow changes durable coordination state, not just a Python boolean in memory.
 - Temporal boundary: signal or update requests enter Frontend/History and appear in workflow activations as signal or update jobs. The workflow completion returns commands that reflect the new pause state.
 - sdk-core ownership: core replays the signal/update event into workflow state machines, delivers activation jobs to sdk-python, orders those jobs with any other history events, and reports the resulting commands or failure.
 - Server ownership: History records the signal or update event, stores accepted update protocol messages where relevant, schedules a workflow task, and keeps the event available for replay after restarts.

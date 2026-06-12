@@ -4,7 +4,7 @@ import uuid
 from temporalio.client import Client
 
 from kilvin_py import models
-from kilvin_py.workflows import ParentKilvinCmdWorkflow
+from kilvin_py.workflows import KilvinTrainingWorkflow
 
 
 def sample_run_config() -> models.RunConfig:
@@ -62,13 +62,13 @@ async def main() -> None:
     run_config = sample_run_config()
     run_id = run_config.run_id
     result = await client.execute_workflow(
-        ParentKilvinCmdWorkflow.run,
-        models.StartKilvinCommandInput(
+        KilvinTrainingWorkflow.run,
+        models.TrainingWorkflowInput(
+            run_id=run_id,
             run_config=run_config,
-            cmd_name="train-model-x",
             job_params_uri=f"hdfs://params/{run_id}/params.yaml",
         ),
-        id=f"kilvin-parent-{run_id}",
+        id=f"kilvin-training-{run_id}",
         task_queue="kilvin-training-task-queue",
     )
     print(f"Result: {result}")

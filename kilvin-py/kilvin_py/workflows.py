@@ -17,13 +17,12 @@ from .models import (
     CancelSignal,
     DevPrepareInput,
     DevPrepareOutput,
-    ExtractCmdConfigInput,
+    InterpretIntentInput,
     KilvinRunState,
     MaterializedBundleOutput,
     MaterializeTrainingBundleInput,
     MonitorOutput,
     MonitorTrainingInput,
-    ParentRunOutput,
     PauseAtStepSignal,
     PauseSignal,
     ReamAllocationOutput,
@@ -32,10 +31,10 @@ from .models import (
     RunConfig,
     StageConfig,
     StageExecutionFailure,
-    StartKilvinCommandInput,
     StepExecutionEnvelope,
     SubmitK8sInput,
     SubmitK8sOutput,
+    TrainingIntent,
     TrainingWorkflowInput,
 )
 
@@ -104,85 +103,6 @@ def _to_dict(value: Any) -> dict[str, Any]:
 def _is_failed_status(status: str) -> bool:
     normalized = status.upper()
     return normalized not in {"SUCCESS", "SUCCEEDED", "OK"}
-
-
-@workflow.defn
-class ParentKilvinCmdWorkflow:
-    def __init__(self) -> None:
-        self._state = "PENDING"
-        self._cancelled = False
-
-    @workflow.signal
-    def cancel(self, _input: CancelSignal | None = None) -> None:
-        self._state = "CANCELLED"
-        self._cancelled = True
-
-    @workflow.run
-    async def run(self, input: StartKilvinCommandInput) -> ParentRunOutput:
-        ir_name = f"kilvin-ir-{input.run_config.run_id}"
-        try:
-            extracted = await workflow.execute_activity(
-                activities.extract_cmd_config,
-                ExtractCmdConfigInput(
-                    run_config=input.run_config,
-                    cmd_name=input.cmd_name,
-                    job_params_uri=input.job_params_uri,
-                ),
-                start_to_close_timeout=timedelta(seconds=30),
-            )
-
-            child_input = TrainingWorkflowInput(
-                run_id=input.run_config.run_id,
-                run_config=input.run_config,
-                extracted=extracted,
-            )
-
-            await workflow.execute_child_workflow(
-                KilvinTrainingWorkflow.run,
-                child_input,
-                id=f"kilvin-training-{input.run_config.run_id}",
-                task_queue="kilvin-training-task-queue",
-                retry_policy=RetryPolicy(maximum_attempts=2),
-            )
-
-            if self._cancelled:
-                await workflow.execute_activity(
-                    activities.update_cmd_state,
-                    {
-                        "run_id": input.run_config.run_id,
-                        "final_state": "KILVIN_CANCELLED",
-                    },
-                    start_to_close_timeout=timedelta(seconds=30),
-                )
-                raise ApplicationError("parent workflow cancelled", non_retryable=True)
-
-            await workflow.execute_activity(
-                activities.update_cmd_state,
-                {
-                    "run_id": input.run_config.run_id,
-                    "final_state": "KILVIN_SUCCESS",
-                    "ir_name": ir_name,
-                },
-                start_to_close_timeout=timedelta(seconds=30),
-            )
-            self._state = "SUCCEEDED"
-            return ParentRunOutput(
-                run_id=input.run_config.run_id,
-                final_state="KILVIN_SUCCESS",
-                ir_name=ir_name,
-            )
-        except Exception as err:  # pragma: no cover - orchestration path
-            self._state = "FAILED"
-            await workflow.execute_activity(
-                activities.update_cmd_state,
-                {
-                    "run_id": input.run_config.run_id,
-                    "final_state": "KILVIN_FAILED",
-                    "error": str(err),
-                },
-                start_to_close_timeout=timedelta(seconds=30),
-            )
-            raise
 
 
 @workflow.defn
@@ -587,6 +507,26 @@ class KilvinTrainingWorkflow:
                 f"No enabled stages configured for {self._run_id}", non_retryable=True
             )
 
+        intent = await self._run_step(
+            input=input,
+            stage=stages[0],
+            stage_index=0,
+            step_name="interpret_intent",
+            activity_fn=activities.interpret_training_intent,
+            activity_input=InterpretIntentInput(
+                run_config=input.run_config,
+                job_params_uri=input.job_params_uri,
+            ),
+            timeout_seconds=30,
+            skip_result=TrainingIntent(
+                model_output_tos_key=input.job_params_uri,
+                workflow_config_uri=f"file://./.kilvin-cache/{input.run_config.run_id}/workflow.yaml",
+                checkpoint="s3://checkpoints/model-x",
+                stage_index=0,
+                component_profile={"run_name": input.run_config.kilvin_run_name},
+            ),
+        )
+
         dev_prepare = await self._run_step(
             input=input,
             stage=stages[0],
@@ -595,16 +535,16 @@ class KilvinTrainingWorkflow:
             activity_fn=activities.dev_prepare,
             activity_input=DevPrepareInput(
                 run_id=input.run_config.run_id,
-                checkpoint=input.extracted.checkpoint,
+                checkpoint=intent.checkpoint,
             ),
             timeout_seconds=120,
             skip_result=DevPrepareOutput(
                 auto_job_id=f"kilvin-replay-{self._run_attempt}",
-                code_tos_key=input.extracted.checkpoint or "s3://checkpoints/model-x",
+                code_tos_key=intent.checkpoint or "s3://checkpoints/model-x",
             ),
         )
 
-        checkpoint = input.extracted.checkpoint or dev_prepare.code_tos_key
+        checkpoint = intent.checkpoint or dev_prepare.code_tos_key
         ir_name = f"kilvin-ir-{input.run_config.run_id}"
 
         for stage_index, stage in enumerate(stages):
@@ -654,7 +594,7 @@ class KilvinTrainingWorkflow:
                 activity_input=MaterializeTrainingBundleInput(
                     ir_name=f"{ir_name}-{stage.stage_id}",
                     checkpoint=checkpoint,
-                    config_snapshot=input.extracted.workflow_config_uri,
+                    config_snapshot=intent.workflow_config_uri,
                     allocation=allocation,
                     stage_index=stage_index,
                     train_stage=stage.stage_id,
@@ -663,7 +603,7 @@ class KilvinTrainingWorkflow:
                     global_batch_tokens=stage.runtime_profile.global_batch_tokens,
                     max_steps=stage.runtime_profile.max_steps,
                     learning_rate=stage.runtime_profile.learning_rate,
-                    model=input.extracted.component_profile.get("model", "model-x"),
+                    model=intent.component_profile.get("model", "model-x"),
                 ),
                 timeout_seconds=180,
                 skip_result=MaterializedBundleOutput(

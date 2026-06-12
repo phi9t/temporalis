@@ -129,17 +129,16 @@ describe('BasicsExplorer', () => {
     const panel = screen.getByRole('region', { name: 'The same run as runnable code' })
     const panelText = panel.textContent ?? ''
 
-    expect(panelText).toContain('ParentKilvinCmdWorkflow')
-    expect(panelText).toContain('KilvinTrainingWorkflow (child)')
+    expect(panelText).toContain('KilvinTrainingWorkflow — one workflow, intent to running job')
+    expect(panelText).not.toContain('ParentKilvinCmdWorkflow')
     expect(panelText).toContain('kilvin-training-task-queue')
     for (const activity of [
-      'extract_cmd_config',
+      'interpret_training_intent',
       'dev_prepare',
       'allocate_resources',
       'materialize_training_bundle',
       'submit_k8s_job',
       'monitor_training',
-      'update_cmd_state',
       'persist_yaml_artifact',
     ]) {
       expect(panelText).toContain(activity)

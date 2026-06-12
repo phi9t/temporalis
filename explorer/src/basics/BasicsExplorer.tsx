@@ -392,9 +392,9 @@ interface KilvinFactGroup {
 
 const KILVIN_FACTS: KilvinFactGroup[] = [
   {
-    label: 'Workflows',
+    label: 'Workflow',
     path: 'kilvin-py/kilvin_py/workflows.py',
-    items: ['ParentKilvinCmdWorkflow', 'KilvinTrainingWorkflow (child)'],
+    items: ['KilvinTrainingWorkflow — one workflow, intent to running job'],
   },
   {
     label: 'Task queue',
@@ -405,13 +405,12 @@ const KILVIN_FACTS: KilvinFactGroup[] = [
     label: 'Activities',
     path: 'kilvin-py/kilvin_py/activities.py',
     items: [
-      'extract_cmd_config',
+      'interpret_training_intent',
       'dev_prepare',
       'allocate_resources',
       'materialize_training_bundle',
       'submit_k8s_job',
       'monitor_training',
-      'update_cmd_state',
       'persist_yaml_artifact',
     ],
   },

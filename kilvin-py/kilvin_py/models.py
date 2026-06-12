@@ -93,29 +93,17 @@ class RunConfig:
 
 
 @dataclass(frozen=True)
-class StartKilvinCommandInput:
+class InterpretIntentInput:
+    """The researcher's intent plus where to find run parameters."""
+
     run_config: RunConfig
-    cmd_name: str
     job_params_uri: str
 
 
 @dataclass(frozen=True)
-class ParentRunOutput:
-    run_id: str
-    final_state: str
-    ir_name: str | None
-    error: str | None = None
+class TrainingIntent:
+    """The interpreted intent: what to train, from where, with which profile."""
 
-
-@dataclass(frozen=True)
-class ExtractWorkflowConfigInput:
-    run_config: RunConfig
-    cmd_name: str
-    job_params_uri: str
-
-
-@dataclass(frozen=True)
-class ExtractWorkflowConfigOutput:
     model_output_tos_key: str
     workflow_config_uri: str
     checkpoint: str | None
@@ -123,15 +111,11 @@ class ExtractWorkflowConfigOutput:
     component_profile: dict[str, Any]
 
 
-ExtractCmdConfigInput = ExtractWorkflowConfigInput
-ExtractCmdConfigOutput = ExtractWorkflowConfigOutput
-
-
 @dataclass(frozen=True)
 class TrainingWorkflowInput:
     run_id: str
     run_config: RunConfig
-    extracted: ExtractWorkflowConfigOutput
+    job_params_uri: str = ""
 
 
 @dataclass(frozen=True)

@@ -10,8 +10,7 @@ from .models import (
     ArtifactWriteInput,
     DevPrepareInput,
     DevPrepareOutput,
-    ExtractWorkflowConfigInput,
-    ExtractWorkflowConfigOutput,
+    InterpretIntentInput,
     MaterializedBundleOutput,
     MaterializeTrainingBundleInput,
     MonitorOutput,
@@ -21,33 +20,29 @@ from .models import (
     SubmitK8sInput,
     SubmitK8sOutput,
     StepIOArtifact,
+    TrainingIntent,
 )
 
 
 @activity.defn
-async def extract_workflow_config(
-    input: ExtractWorkflowConfigInput,
-) -> ExtractWorkflowConfigOutput:
-    """Load workflow-level config and return the canonical typed extract output."""
+async def interpret_training_intent(input: InterpretIntentInput) -> TrainingIntent:
+    """Turn the researcher's intent into the typed plan the workflow executes."""
 
     run_stages = input.run_config.stages
     stage_zero_dataset = run_stages[0].dataset_profile.uri if run_stages else "hdfs://datasets/fineweb"
     stage_zero_checkpoint = run_stages[0].dataset_profile.uri if run_stages else "s3://checkpoints/model-x"
 
-    return ExtractWorkflowConfigOutput(
+    return TrainingIntent(
         model_output_tos_key=input.job_params_uri,
         workflow_config_uri=f"file://./.kilvin-cache/{input.run_config.run_id}/workflow.yaml",
         checkpoint=stage_zero_checkpoint,
         stage_index=0,
         component_profile={
-            "command": input.cmd_name,
+            "run_name": input.run_config.kilvin_run_name,
             "dataset_root": stage_zero_dataset,
             "spec_version": input.run_config.workflow_spec,
         },
     )
-
-
-extract_cmd_config = extract_workflow_config
 
 
 @activity.defn
@@ -58,14 +53,6 @@ async def dev_prepare(input: DevPrepareInput) -> DevPrepareOutput:
         auto_job_id=f"kilvin-job-{uuid.uuid4().hex[:10]}",
         code_tos_key=f"{input.checkpoint or 'scratch'}/artifacts/code.tar.gz",
     )
-
-
-@activity.defn
-async def update_cmd_state(input: dict | object) -> None:
-    """Persist command-level status for control-plane observability."""
-
-    # Intentionally explicit placeholder. In production this writes to the state catalog.
-    return None
 
 
 @activity.defn

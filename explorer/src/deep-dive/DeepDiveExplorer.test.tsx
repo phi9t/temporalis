@@ -178,7 +178,7 @@ const lifecycle: LifecycleManifest = {
       edge_id: 'start-rpc',
       kind: 'rpc',
       message: 'StartWorkflowExecution',
-      summary: 'Kilvin asks Temporal to start the command workflow.',
+      summary: 'Kilvin asks Temporal to start the training workflow.',
       details: ['The app submits workflow id, task queue, workflow type, and staged training input.'],
       payload: ['workflow_id'],
       refs: [],
@@ -316,7 +316,7 @@ describe('DeepDiveExplorer', () => {
     await screen.findByRole('button', { name: /Flow step 01 Kilvin client to Frontend StartWorkflowExecution/ })
 
     expect(screen.getByText('Read / Run / Inspect')).toBeTruthy()
-    expect(screen.getAllByText('Kilvin asks Temporal to start the command workflow.').length).toBeGreaterThan(1)
+    expect(screen.getAllByText('Kilvin asks Temporal to start the training workflow.').length).toBeGreaterThan(1)
     expect(screen.getByText('python hacks/002_lifecycle_manifest.py')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: '4. Happy path: start workflow to first activation' }))

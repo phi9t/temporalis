@@ -279,8 +279,8 @@ def build(repo_root: Path) -> dict[str, Any]:
             "label": "Kilvin client",
             "layer": "kilvin",
             "kind": "client",
-            "summary": "Starts the parent command workflow with the model X on FineWeb training config.",
-            "notes": "The sample config asks for one clean thing: train model X on FineWeb with 64 A100 GPUs. That single pretrain run still exposes task queues, child workflows, activities, retries, heartbeats, and hood-open artifacts.",
+            "summary": "Starts the single training workflow with the model X on FineWeb training config.",
+            "notes": "The sample config asks for one clean thing: train model X on FineWeb with 64 A100 GPUs. One KilvinTrainingWorkflow materializes that intent end to end and exposes task queues, activities, retries, heartbeats, and hood-open artifacts.",
             "refs": [
                 local_ref(
                     repo_root,
@@ -402,7 +402,7 @@ def build(repo_root: Path) -> dict[str, Any]:
             "layer": "sdk-python",
             "kind": "workflow",
             "summary": "Python receives a WorkflowActivation and resumes deterministic workflow code.",
-            "notes": "For the Kilvin-inspired flow, activation drives the parent workflow and child training workflow until they block on commands.",
+            "notes": "For the Kilvin-inspired flow, activation drives the training workflow deterministically until it blocks on its next command.",
             "refs": [
                 ref(
                     repo_root,
@@ -499,7 +499,7 @@ def build(repo_root: Path) -> dict[str, Any]:
             "start-rpc",
             "rpc",
             "StartWorkflowExecution",
-            "Kilvin asks Temporal Frontend to create the command workflow run.",
+            "Kilvin asks Temporal Frontend to create the training workflow run.",
             [
                 "The client sends the workflow type, workflow id, task queue, and the model X training config to the public Temporal API.",
                 "Frontend is the first server boundary for the workflow start request.",
