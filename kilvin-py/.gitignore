@@ -1,1 +1,4 @@
 .kilvin-artifacts/
+trainer/.venv/
+trainer/out/
+infra/.kubeconfig/
