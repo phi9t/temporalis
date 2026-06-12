@@ -17,13 +17,13 @@ export function SubjectSwitcher<T extends string>({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {label && <span className="text-xs text-ink-muted">{label}</span>}
+      {label && <span className="subject-switcher-label">{label}</span>}
       {useSelect ? (
         <select
           value={value}
           onChange={(e) => onChange(e.target.value as T)}
           aria-label={ariaLabel}
-          className="rounded-lg border border-panelborder bg-panel px-2 py-1.5 text-xs text-ink focus:outline-none focus:border-panelborder-active"
+          className="subject-select"
         >
           {options.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -39,12 +39,7 @@ export function SubjectSwitcher<T extends string>({
               type="button"
               aria-pressed={value === opt.value}
               onClick={() => onChange(opt.value)}
-              className={cn(
-                'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
-                value === opt.value
-                  ? 'border-panelborder-active bg-panel-hover text-ink'
-                  : 'border-panelborder bg-panel text-ink-soft hover:text-ink',
-              )}
+              className={cn('view-tab', value === opt.value && 'view-tab--active')}
             >
               {opt.label}
             </button>

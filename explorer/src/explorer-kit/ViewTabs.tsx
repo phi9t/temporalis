@@ -19,12 +19,7 @@ export function ViewTabs<T extends string>({
           type="button"
           aria-pressed={value === v}
           onClick={() => onChange(v)}
-          className={cn(
-            'rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
-            value === v
-              ? 'border-panelborder-active bg-panel-hover text-ink'
-              : 'border-panelborder bg-panel text-ink-soft hover:text-ink',
-          )}
+          className={cn('view-tab', value === v && 'view-tab--active')}
         >
           {label}
         </button>
