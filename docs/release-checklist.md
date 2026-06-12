@@ -2,6 +2,8 @@
 
 Run this before publishing a release branch or verifying GitHub Pages.
 
+CI runs fresh-clone-safe checks. Maintainers run `make verify-release` when the managed upstream Temporal checkouts are present and source-grounded data needs regeneration.
+
 ```bash
 make quickstart
 make verify-release
