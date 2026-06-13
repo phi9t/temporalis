@@ -47,6 +47,7 @@ def files_under(path: str) -> list[str]:
 def test_public_docs_exist() -> None:
     for path in [
         "docs/concept-map.md",
+        "docs/exercises.md",
         "docs/learning-path.md",
         "docs/quickstart.md",
         "docs/model-training-systems.md",
@@ -71,7 +72,34 @@ def test_public_readme_leads_with_three_layer_release_story() -> None:
     assert "laptop" in body.lower()
     assert "Learning Path" in body
     assert "Concept Map" in body
+    assert "Exercises" in body
     assert "Durable Model Training Systems" in body
+
+
+def test_exercises_turn_hacks_and_runtime_into_learning_labs() -> None:
+    body = read("docs/exercises.md")
+    for phrase in [
+        "make quickstart",
+        "python3 hacks/001_source_map.py",
+        "python3 hacks/002_lifecycle_manifest.py",
+        "python3 hacks/003_task_queue_polling.py",
+        "python3 hacks/004_history_replay.py",
+        "python3 hacks/005_control_paths.py",
+        "make kilvin-doctor",
+        "make runtime-proof",
+        "concretize_dependencies/out.yaml",
+        "allocate_resources/quota_decision.yaml",
+        "materialize_training_bundle/env_vars.yaml",
+        "monitor_training/logs.yaml",
+        "temporal workflow show",
+        "temporal workflow signal",
+        "activity side effects",
+        "workflow decisions",
+    ]:
+        assert phrase in body
+
+    assert "Exercises" in read("README.md")
+    assert "Exercises" in read("docs/learning-path.md")
 
 
 def test_concept_map_is_a_source_backed_short_reference() -> None:

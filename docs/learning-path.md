@@ -10,7 +10,8 @@ Use this path when you want to understand both Temporal internals and modern
 model-training orchestration without losing the thread.
 
 For a quick lookup table while reading, keep the [Concept Map](concept-map.md)
-open beside this page.
+open beside this page. When you want to verify the ideas by doing, follow the
+[Exercises](exercises.md).
 
 ## 1. Start With The Explorer
 
@@ -109,6 +110,8 @@ make runtime-proof
 The first path proves the learning materials and generated source-grounded data.
 The second path proves the local Temporal workflow, allocator, registry, k3s
 Job, monitor, and artifacts.
+
+For guided observations after each command, use [Exercises](exercises.md).
 
 ## 6. What You Should Be Able To Explain
 
