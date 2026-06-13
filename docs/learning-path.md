@@ -9,6 +9,9 @@ Temporalis is easiest to read as one story with three layers:
 Use this path when you want to understand both Temporal internals and modern
 model-training orchestration without losing the thread.
 
+For a quick lookup table while reading, keep the [Concept Map](concept-map.md)
+open beside this page.
+
 ## 1. Start With The Explorer
 
 Open <https://phi9t.github.io/temporalis/> and read **Basics** first.

@@ -15,6 +15,8 @@ https://phi9t.github.io/temporalis/
 For a guided route through the materials, use the
 [Learning Path](docs/learning-path.md). It maps each Temporal concept and
 training-system concern to the explorer, generated source refs, and Kilvin code.
+Keep the [Concept Map](docs/concept-map.md) nearby when you want the short
+lookup table from term -> training role -> source location.
 
 ## Three Ways To Use This Repo
 

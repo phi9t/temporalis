@@ -46,6 +46,7 @@ def files_under(path: str) -> list[str]:
 
 def test_public_docs_exist() -> None:
     for path in [
+        "docs/concept-map.md",
         "docs/learning-path.md",
         "docs/quickstart.md",
         "docs/model-training-systems.md",
@@ -69,7 +70,41 @@ def test_public_readme_leads_with_three_layer_release_story() -> None:
     assert "FineWeb" in body
     assert "laptop" in body.lower()
     assert "Learning Path" in body
+    assert "Concept Map" in body
     assert "Durable Model Training Systems" in body
+
+
+def test_concept_map_is_a_source_backed_short_reference() -> None:
+    body = read("docs/concept-map.md")
+    for phrase in [
+        "Workflow",
+        "Activity",
+        "Task queue",
+        "History",
+        "Replay",
+        "Signal",
+        "Query",
+        "Heartbeat",
+        "Dependency concretization",
+        "Quota and allocation",
+        "Launch-spec materialization",
+        "Kubernetes submission",
+        "Monitoring",
+        "Operator control",
+        "kilvin-py/kilvin_py/workflows.py",
+        "kilvin-py/kilvin_py/activities.py",
+        "kilvin-py/worker.py",
+        "interpret_training_intent",
+        "concretize_dependencies",
+        "allocate_resources",
+        "materialize_training_bundle",
+        "submit_k8s_job",
+        "monitor_training",
+    ]:
+        assert phrase in body
+
+    assert "Concept Map" in read("README.md")
+    assert "Concept Map" in read("docs/learning-path.md")
 
 
 def test_learning_path_maps_temporal_and_training_concepts_to_code() -> None:

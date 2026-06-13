@@ -7,6 +7,7 @@ __pycache__/
 *.pyc
 cli/
 docs/*
+!docs/concept-map.md
 !docs/learning-path.md
 !docs/model-training-systems.md
 !docs/.monorepo/
