@@ -112,6 +112,35 @@ describe('BasicsExplorer', () => {
       expect(timelineText.indexOf(timelineLabels[index])).toBeGreaterThan(timelineText.indexOf(timelineLabels[index - 1]))
     }
 
+    const scaleBridge = screen.getByRole('region', { name: 'Why the small demo has a production-shaped request' })
+    const scaleBridgeText = scaleBridge.textContent ?? ''
+    expect(scaleBridgeText).toContain('Kilvin stays small')
+    expect(scaleBridgeText).toContain('Real training platforms')
+    for (const pressure of [
+      'Many phases',
+      'Base pretraining',
+      'continued pretraining',
+      'supervised tuning',
+      'QAT',
+      'Data curriculum',
+      'Huge token budgets',
+      'long-context windows',
+      'Runtime compatibility',
+      'CUDA',
+      'NCCL',
+      'Torch',
+      'Scarce capacity',
+      'GPU quota',
+      'Materialized launch state',
+      'image digest',
+      'Operator control',
+      'targeted replay',
+      'heartbeat recovery',
+    ]) {
+      expect(scaleBridgeText).toContain(pressure)
+    }
+    expect(scaleBridge.querySelector('a[href$="docs/model-training-systems.md"]')).toBeTruthy()
+
     const artifacts = screen.getByRole('region', { name: 'What to inspect when debugging' })
     const artifactText = artifacts.textContent ?? ''
     expect(artifactText).toContain('saves researchers from manually assembling')

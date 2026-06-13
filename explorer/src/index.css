@@ -773,6 +773,56 @@ body {
   line-height: 1.45;
 }
 
+.basics-scale-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.basics-scale-pressure {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--teal-line);
+  border-radius: var(--radius-btn);
+  background: rgba(10, 10, 7, 0.42);
+}
+
+.basics-scale-pressure > div {
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.basics-scale-pressure p {
+  margin: 6px 0 0;
+  color: var(--color-ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.basics-doc-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-btn);
+  background: rgba(18, 17, 13, 0.56);
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.basics-doc-link:hover {
+  border-color: var(--teal-line);
+  color: var(--color-ink);
+  transform: translateY(-1px);
+}
+
 .basics-artifact-grid {
   display: grid;
   gap: 10px;

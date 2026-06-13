@@ -50,6 +50,11 @@ interface HoodOpenArtifact {
   detail: string
 }
 
+interface ScalePressure {
+  label: string
+  detail: string
+}
+
 interface CueMeta {
   label: string
   description: string
@@ -275,6 +280,33 @@ const HOOD_OPEN_ARTIFACTS: HoodOpenArtifact[] = [
   },
 ]
 
+const SCALE_PRESSURES: ScalePressure[] = [
+  {
+    label: 'Many phases',
+    detail: 'Base pretraining, continued pretraining, supervised tuning, preference stages, and QAT need explicit dependencies.',
+  },
+  {
+    label: 'Data curriculum',
+    detail: 'Huge token budgets, mixture targets, long-context windows, and dataset locality change the concrete plan.',
+  },
+  {
+    label: 'Runtime compatibility',
+    detail: 'CUDA, driver, NCCL, Torch, kernels, tokenizer assets, and checkpoint formats must line up with placement.',
+  },
+  {
+    label: 'Scarce capacity',
+    detail: 'GPU quota, racks, fabric health, storage reachability, and reservation queues turn launch into a durable wait.',
+  },
+  {
+    label: 'Materialized launch state',
+    detail: 'The spec must record the image digest, env vars, mounts, cluster choice, trainer roles, and monitor handles.',
+  },
+  {
+    label: 'Operator control',
+    detail: 'Pause, resume, cancel, targeted replay, and heartbeat recovery need an auditable place in workflow history.',
+  },
+]
+
 function ConceptGrid() {
   return (
     <section aria-labelledby="basics-concepts-title" className="basics-section">
@@ -336,6 +368,37 @@ function CueLegend() {
         ))}
       </div>
     </div>
+  )
+}
+
+function TrainingScaleBridge() {
+  return (
+    <section aria-labelledby="basics-scale-title" className="basics-section">
+      <div className="basics-section-heading">
+        <h2 id="basics-scale-title">Why the small demo has a production-shaped request</h2>
+        <p>
+          Kilvin stays small so you can inspect the foundation. Real training platforms grow by adding more constraints
+          around the same durable core: intent, dependencies, quota, materialized launch state, monitoring, and control.
+        </p>
+      </div>
+      <div className="basics-scale-grid">
+        {SCALE_PRESSURES.map((pressure) => (
+          <div key={pressure.label} className="basics-scale-pressure">
+            <div>{pressure.label}</div>
+            <p>{pressure.detail}</p>
+          </div>
+        ))}
+      </div>
+      <a
+        className="basics-doc-link"
+        href={repoFileUrl('docs/model-training-systems.md')}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <FileSearch size={14} aria-hidden="true" />
+        <span>Read the model-training systems bridge</span>
+      </a>
+    </section>
   )
 }
 
@@ -529,6 +592,7 @@ export default function BasicsExplorer({ navigate }: ExplorerModeProps) {
 
       <ConceptGrid />
       <TrainingTimeline navigate={navigate} />
+      <TrainingScaleBridge />
       <HoodOpenArtifacts />
       <KilvinRunPanel />
 
