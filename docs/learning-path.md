@@ -34,6 +34,10 @@ quota, materialized launch specs, and operator controls.
 
 ## 2. Follow The Temporal Internals
 
+Read [Temporal Internals](temporal-internals.md) before or beside the diagrams.
+It gives the server, Matching, History, SDK Core, SDK Python, and Temporal UI
+story in one pass, using the training run as the thread.
+
 Switch to **Deep Dive / Lifecycle**.
 
 Read it as the path of one workflow task:

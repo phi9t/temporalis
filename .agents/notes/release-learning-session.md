@@ -200,3 +200,29 @@ real at laptop scale while preserving the production-shaped teaching story.
   activity retry policy?
 - Which parts of the real-infra run are workflow state, and which are activity
   side effects that replay must not re-execute?
+
+---
+
+## 2026-06-13 Temporal Internals Teaching Guide
+
+## Task
+
+Strengthen the public Temporal learning path with a standalone guide that
+connects Temporal server, Matching, History, SDK Core, SDK Python, Temporal UI,
+and Kilvin to the same model-X/FineWeb training run.
+
+## Decision
+
+Add `docs/temporal-internals.md` as the conceptual bridge between Basics and the
+source-grounded Deep Dive diagrams. Keep source-code provenance in the generated
+Deep Dive data and `docs/source-grounding.md`; use the new guide for the plain
+control-plane story.
+
+## Validation Commands And Results
+
+- `PYTHONPATH=. .venv/bin/pytest -q tests/test_public_release_readiness.py`
+  - Result: `16 passed`.
+- `git diff --check`
+  - Result: passed with no output.
+- `make quickstart`
+  - Result: quickstart check passed.

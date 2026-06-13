@@ -56,6 +56,7 @@ def test_public_docs_exist() -> None:
         "docs/runtime-proof.md",
         "docs/release-checklist.md",
         "docs/source-grounding.md",
+        "docs/temporal-internals.md",
     ]:
         assert (ROOT / path).is_file(), path
 
@@ -76,6 +77,7 @@ def test_public_readme_leads_with_three_layer_release_story() -> None:
     assert "Learning Path" in body
     assert "Concept Map" in body
     assert "Exercises" in body
+    assert "Temporal Internals" in body
     assert "Reading Kilvin Artifacts" in body
     assert "Durable Model Training Systems" in body
 
@@ -91,6 +93,7 @@ def test_docs_index_is_the_learning_map() -> None:
         "Reading Kilvin Artifacts",
         "Exercises",
         "Source Grounding",
+        "Temporal Internals",
         "Runtime Proof",
         "Kilvin runbook",
         "Kilvin proof checklist",
@@ -101,6 +104,41 @@ def test_docs_index_is_the_learning_map() -> None:
         assert phrase in body
 
     assert "docs index" in read("README.md")
+
+
+def test_temporal_internals_doc_maps_server_sdk_ui_to_training_run() -> None:
+    body = read("docs/temporal-internals.md")
+    for phrase in [
+        "train model X on FineWeb with 64 A100 GPUs",
+        "StartWorkflowExecution",
+        "Frontend",
+        "History",
+        "Matching",
+        "SDK Core",
+        "SDK Python",
+        "Temporal UI",
+        "workflow task",
+        "activity task",
+        "activation",
+        "completion",
+        "sticky cache",
+        "replay",
+        "activity heartbeat",
+        "dependency concretization",
+        "intent materialization",
+        "quota",
+        "materialized launch spec",
+        "monitoring",
+        "signals",
+        "queries",
+        "Deep Dive / Lifecycle",
+        "Deep Dive / Control Paths",
+        "Deep Dive / Kilvin Internals",
+    ]:
+        assert phrase in body
+
+    assert "Temporal Internals" in read("docs/README.md")
+    assert "Temporal Internals" in read("docs/learning-path.md")
 
 
 def test_artifact_guide_explains_training_evidence_files() -> None:

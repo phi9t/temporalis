@@ -18,6 +18,8 @@ For a guided route through the materials, use the
 training-system concern to the explorer, generated source refs, and Kilvin code.
 Keep the [Concept Map](docs/concept-map.md) nearby when you want the short
 lookup table from term -> training role -> source location.
+Read [Temporal Internals](docs/temporal-internals.md) when you want the server,
+Matching, History, SDK Core, SDK Python, and UI path in one narrative.
 Use the [Exercises](docs/exercises.md) when you want to turn the explorer,
 hacks, and optional runtime proof into hands-on checks.
 Use [Reading Kilvin Artifacts](docs/artifacts.md) when you want to inspect the

@@ -25,6 +25,9 @@ reading order, quick reference, hands-on labs, or runtime proof.
 
 ## Temporal Internals
 
+- [Temporal Internals](temporal-internals.md): a plain-English pass through
+  Frontend, History, Matching, SDK Core, SDK Python, Temporal UI, and how those
+  pieces execute the training request.
 - [Source Grounding](source-grounding.md): how generated explorer data cites
   pinned Temporal server, SDK Core, SDK Python, Temporal UI, and Kilvin source
   refs.
@@ -50,5 +53,5 @@ reading order, quick reference, hands-on labs, or runtime proof.
 | I want to understand larger training systems. | [Durable Model Training Systems](model-training-systems.md) |
 | I want to inspect run evidence. | [Reading Kilvin Artifacts](artifacts.md) |
 | I want hands-on labs. | [Exercises](exercises.md) |
-| I want source-backed Temporal internals. | [Source Grounding](source-grounding.md) and Deep Dive |
+| I want source-backed Temporal internals. | [Temporal Internals](temporal-internals.md), [Source Grounding](source-grounding.md), and Deep Dive |
 | I want to run the live proof. | [Runtime Proof](runtime-proof.md) |
