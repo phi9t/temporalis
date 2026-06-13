@@ -126,7 +126,8 @@ def test_public_theme_uses_kilvin_shaping_narrative_and_logo() -> None:
         "Kilvin",
         "The Name of the Wind",
         "master artificer",
-        "It's the questions we can't answer that teach",
+        "sygaldry",
+        "artificing",
         "foundation block",
         "durable craft",
     ]:

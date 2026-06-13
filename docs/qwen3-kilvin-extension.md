@@ -9,11 +9,10 @@ repeated across a richer stage graph.
 This is the most literal version of the repo's theme: **shaping the foundation
 model**. Kilvin is named after the master artificer from *The Name of the Wind*,
 and the metaphor works because these recipes are craft problems as much as
-compute problems. Kvothe's line, "It's the questions we can't answer that teach
-us the most" (*The Name of the Wind*), fits the training recipe too: the unknowns
-become useful only when Kilvin turns them into inspectable constraints. A
-foundation block of model weights is shaped by data mixtures, context windows,
-verifiers, distillation teachers, reward configs, and operator control.
+compute problems. In the novel's world, sygaldry and artificing turn materials,
+constraints, and careful bindings into durable tools. Kilvin plays the same role
+here: a foundation block of model weights is shaped by data mixtures, context
+windows, verifiers, distillation teachers, reward configs, and operator control.
 
 Important caveat: the Qwen3 and Qwen3-VL reports disclose curriculum shape,
 stage budgets, domains, filtering logic, and some mixture ratios. They do not
