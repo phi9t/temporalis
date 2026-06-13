@@ -46,6 +46,7 @@ def files_under(path: str) -> list[str]:
 
 def test_public_docs_exist() -> None:
     for path in [
+        "docs/README.md",
         "docs/artifacts.md",
         "docs/concept-map.md",
         "docs/exercises.md",
@@ -71,11 +72,35 @@ def test_public_readme_leads_with_three_layer_release_story() -> None:
     assert "64 A100" in body
     assert "FineWeb" in body
     assert "laptop" in body.lower()
+    assert "docs index" in body
     assert "Learning Path" in body
     assert "Concept Map" in body
     assert "Exercises" in body
     assert "Reading Kilvin Artifacts" in body
     assert "Durable Model Training Systems" in body
+
+
+def test_docs_index_is_the_learning_map() -> None:
+    body = read("docs/README.md")
+    for phrase in [
+        "Temporalis Docs",
+        "Quickstart",
+        "Learning Path",
+        "Concept Map",
+        "Durable Model Training Systems",
+        "Reading Kilvin Artifacts",
+        "Exercises",
+        "Source Grounding",
+        "Runtime Proof",
+        "Kilvin runbook",
+        "Kilvin proof checklist",
+        "Release checklist",
+        "Temporal server, SDK Core, SDK Python, Temporal UI, and Kilvin",
+        "intent, dependencies, quota, materialized launch specs, and monitoring",
+    ]:
+        assert phrase in body
+
+    assert "docs index" in read("README.md")
 
 
 def test_artifact_guide_explains_training_evidence_files() -> None:

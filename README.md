@@ -12,6 +12,7 @@ Start with the hosted explorer:
 
 https://phi9t.github.io/temporalis/
 
+Browse the [docs index](docs/README.md) for the full learning map.
 For a guided route through the materials, use the
 [Learning Path](docs/learning-path.md). It maps each Temporal concept and
 training-system concern to the explorer, generated source refs, and Kilvin code.
