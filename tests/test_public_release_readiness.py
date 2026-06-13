@@ -53,6 +53,7 @@ def test_public_docs_exist() -> None:
         "docs/learning-path.md",
         "docs/quickstart.md",
         "docs/model-training-systems.md",
+        "docs/qwen3-kilvin-extension.md",
         "docs/runtime-proof.md",
         "docs/release-checklist.md",
         "docs/source-grounding.md",
@@ -80,6 +81,9 @@ def test_public_readme_leads_with_three_layer_release_story() -> None:
     assert "Temporal Internals" in body
     assert "Reading Kilvin Artifacts" in body
     assert "Durable Model Training Systems" in body
+    assert "Qwen3" in body
+    assert "shaping the foundation model" in body
+    assert "The Name of the Wind" in body
 
 
 def test_docs_index_is_the_learning_map() -> None:
@@ -90,6 +94,7 @@ def test_docs_index_is_the_learning_map() -> None:
         "Learning Path",
         "Concept Map",
         "Durable Model Training Systems",
+        "Qwen3 / Qwen3-VL Extension",
         "Reading Kilvin Artifacts",
         "Exercises",
         "Source Grounding",
@@ -104,6 +109,110 @@ def test_docs_index_is_the_learning_map() -> None:
         assert phrase in body
 
     assert "docs index" in read("README.md")
+
+
+def test_public_theme_uses_kilvin_shaping_narrative_and_logo() -> None:
+    combined = "\n".join(
+        [
+            read("README.md"),
+            read("docs/README.md"),
+            read("docs/learning-path.md"),
+            read("docs/model-training-systems.md"),
+            read("docs/qwen3-kilvin-extension.md"),
+        ]
+    )
+    for phrase in [
+        "shaping the foundation model",
+        "Kilvin",
+        "The Name of the Wind",
+        "master artificer",
+        "It's the questions we can't answer that teach",
+        "foundation block",
+        "durable craft",
+    ]:
+        assert phrase in combined
+
+    logo = read("explorer/public/logo-mark.svg")
+    for phrase in [
+        "Temporalis Kilvin logo",
+        "foundation model",
+        "anvil",
+        "hammer",
+        "smooth",
+        "workflow loop",
+        "#f5b642",
+        "#67d4e8",
+    ]:
+        assert phrase in logo
+    assert logo.count("<path") <= 6
+    assert logo.count("<circle") <= 1
+
+
+def test_qwen3_kilvin_extension_maps_recipe_to_kilvin_primitives() -> None:
+    body = read("docs/qwen3-kilvin-extension.md")
+    for phrase in [
+        "Qwen3-style",
+        "Qwen3-VL-style",
+        "exact source-level sampler weights",
+        "full training hyperparameters",
+        "qwen3-text-foundation",
+        "qwen3-vl-foundation",
+        "StageConfig",
+        "dependency concretization",
+        "quota/allocation",
+        "materialize_training_bundle",
+        "submit_k8s_job",
+        "monitor_training",
+        "signals",
+        "queries",
+        "replay",
+        "recipe manifest",
+        "stage id",
+        "modality",
+        "context window",
+        "token/sample budget",
+        "data buckets",
+        "verifier requirements",
+        "trainable parameter scope",
+        "monitoring goals",
+        "mixture_manifest.yaml",
+        "sampler_snapshot.yaml",
+        "verifier_set.yaml",
+        "reward_config.yaml",
+        "distillation_teacher.yaml",
+        "modality_manifest.yaml",
+    ]:
+        assert phrase in body
+
+    qwen3_stages = [
+        "General pretraining",
+        "Reasoning continued pretraining",
+        "Long-context pretraining",
+        "Long-CoT cold start",
+        "Reasoning RL",
+        "Mode-fusion SFT",
+        "General RL",
+        "Strong-to-weak distillation",
+    ]
+    for phrase in qwen3_stages:
+        assert phrase in body
+
+    qwen3_vl_stages = [
+        "Vision-language alignment",
+        "Multimodal pretraining",
+        "Long-context multimodal pretraining",
+        "Ultra-long adaptation",
+        "SFT",
+        "Long-CoT cold start",
+        "Reasoning/general RL",
+        "Visual-agent branch",
+    ]
+    for phrase in qwen3_vl_stages:
+        assert phrase in body
+
+    assert "Qwen3 / Qwen3-VL Extension" in read("docs/README.md")
+    assert "Qwen3 / Qwen3-VL Extension" in read("docs/learning-path.md")
+    assert "Qwen3 / Qwen3-VL Extension" in read("README.md")
 
 
 def test_temporal_internals_doc_maps_server_sdk_ui_to_training_run() -> None:
@@ -266,6 +375,8 @@ def test_model_training_systems_doc_bridges_simple_kilvin_to_real_training() -> 
         "Kilvin stays deliberately small",
         "production-shaped request",
         "multiple training phases",
+        "Qwen3",
+        "Qwen3-VL",
         "huge token budgets",
         "CUDA, driver, NCCL, Torch",
         "scarce GPU quota",

@@ -4,6 +4,11 @@ This directory is the learning map for Temporalis. Start with the hosted
 explorer when you want the visual path; use these docs when you want a guided
 reading order, quick reference, hands-on labs, or runtime proof.
 
+The shared theme is **shaping the foundation model**. Kilvin, named after the
+master artificer from *The Name of the Wind*, is the workshop metaphor: raw
+research intent becomes durable craft through Temporal history, materialized
+artifacts, quota decisions, and monitorable launch specs.
+
 ## Start Here
 
 - [Quickstart](quickstart.md): hosted and lightweight local path.
@@ -16,6 +21,9 @@ reading order, quick reference, hands-on labs, or runtime proof.
 
 - [Durable Model Training Systems](model-training-systems.md): why the small
   Kilvin workflow is shaped like a real foundation-model training control plane.
+- [Qwen3 / Qwen3-VL Extension](qwen3-kilvin-extension.md): how Qwen-style text
+  and multimodal curricula map onto Kilvin stages, artifacts, and Temporal
+  controls without changing the runnable demo.
 - [Reading Kilvin Artifacts](artifacts.md): how to inspect intent,
   dependencies, quota, materialized launch specs, and monitoring evidence from
   `.kilvin-artifacts/`.
@@ -51,6 +59,7 @@ reading order, quick reference, hands-on labs, or runtime proof.
 | I want a full guided lesson. | [Learning Path](learning-path.md) |
 | I forgot what a term means. | [Concept Map](concept-map.md) |
 | I want to understand larger training systems. | [Durable Model Training Systems](model-training-systems.md) |
+| I want a concrete Qwen-style curriculum mapping. | [Qwen3 / Qwen3-VL Extension](qwen3-kilvin-extension.md) |
 | I want to inspect run evidence. | [Reading Kilvin Artifacts](artifacts.md) |
 | I want hands-on labs. | [Exercises](exercises.md) |
 | I want source-backed Temporal internals. | [Temporal Internals](temporal-internals.md), [Source Grounding](source-grounding.md), and Deep Dive |

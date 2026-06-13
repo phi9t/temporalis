@@ -375,10 +375,11 @@ function TrainingScaleBridge() {
   return (
     <section aria-labelledby="basics-scale-title" className="basics-section">
       <div className="basics-section-heading">
-        <h2 id="basics-scale-title">Why the small demo has a production-shaped request</h2>
+        <h2 id="basics-scale-title">Shaping the foundation model from a small demo</h2>
         <p>
-          Kilvin stays small so you can inspect the foundation. Real training platforms grow by adding more constraints
-          around the same durable core: intent, dependencies, quota, materialized launch state, monitoring, and control.
+          Kilvin stays small so you can inspect the foundation. Its name nods to the master artificer from The Name of
+          the Wind: the workflow is a workshop where raw intent becomes durable craft. Real training platforms grow
+          from that same foundation by adding dependencies, quota, materialized launch state, monitoring, and control.
         </p>
       </div>
       <div className="basics-scale-grid">

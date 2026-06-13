@@ -16,7 +16,7 @@ describe('App', () => {
     expect(nav.textContent).not.toContain('Lifecycle Deep Dive')
     expect(nav.textContent).not.toContain('Control Paths')
     expect(nav.textContent).not.toContain("Hacker's Guide")
-    expect(screen.getByText(/Workflows, activities, task queues, history, workers, retry, and replay/)).toBeTruthy()
+    expect(screen.getByText(/Shaping the foundation model with workflows, activities, task queues/)).toBeTruthy()
   })
 
   it('walks the learning path with next and previous controls', () => {
@@ -24,7 +24,7 @@ describe('App', () => {
 
     const footer = screen.getByRole('contentinfo', { name: 'Learning path' })
 
-    expect(footer.textContent).toContain('Start here: one training run told in plain language.')
+    expect(footer.textContent).toContain('Start here: shaping the foundation model in plain language.')
     expect(footer.textContent).toContain('Deep Dive')
     expect(footer.textContent).not.toContain('Basics')
 

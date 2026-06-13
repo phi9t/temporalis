@@ -9,6 +9,11 @@ Temporalis is easiest to read as one story with three layers:
 Use this path when you want to understand both Temporal internals and modern
 model-training orchestration without losing the thread.
 
+The narrative theme is **shaping the foundation model**. Kilvin takes its name
+from the master artificer in *The Name of the Wind*, which is apt here: the
+workflow is a workshop where raw intent is shaped into durable craft, one
+inspectable decision and artifact at a time.
+
 For a quick lookup table while reading, keep the [Concept Map](concept-map.md)
 open beside this page. When you want to verify the ideas by doing, follow the
 [Exercises](exercises.md).
@@ -93,6 +98,12 @@ Basics page. Keep these correspondences in mind:
 | Long-running monitoring | `monitor_training` | activity heartbeats and retry recovery |
 | Operator changes | `pause`, `resume`, `cancel`, `replay_step` | signals recorded as history events |
 | Debugging and inspection | YAML artifacts plus Temporal UI/history | durable evidence instead of implicit process memory |
+
+Then read [Qwen3 / Qwen3-VL Extension](qwen3-kilvin-extension.md) to see the
+same foundation stretched into Qwen-style text and multimodal curricula:
+pretraining, continued reasoning pretraining, long-context adaptation, SFT, RL,
+distillation, visual-language alignment, multimodal data mixtures, and
+tool-integrated visual-agent training.
 
 ## 5. Run The Proofs
 

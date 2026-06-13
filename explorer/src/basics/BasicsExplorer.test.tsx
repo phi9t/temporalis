@@ -112,9 +112,11 @@ describe('BasicsExplorer', () => {
       expect(timelineText.indexOf(timelineLabels[index])).toBeGreaterThan(timelineText.indexOf(timelineLabels[index - 1]))
     }
 
-    const scaleBridge = screen.getByRole('region', { name: 'Why the small demo has a production-shaped request' })
+    const scaleBridge = screen.getByRole('region', { name: 'Shaping the foundation model from a small demo' })
     const scaleBridgeText = scaleBridge.textContent ?? ''
     expect(scaleBridgeText).toContain('Kilvin stays small')
+    expect(scaleBridgeText).toContain('master artificer')
+    expect(scaleBridgeText).toContain('durable craft')
     expect(scaleBridgeText).toContain('Real training platforms')
     for (const pressure of [
       'Many phases',

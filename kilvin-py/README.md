@@ -7,6 +7,11 @@ runnable counterpart to the [explorer](../explorer/) and
 here against a real Temporal server, and every step leaves an inspectable YAML
 artifact behind.
 
+Kilvin is named after the master artificer from *The Name of the Wind*. The name
+fits this repo's theme of **shaping the foundation model**: raw intent becomes a
+durable craft object through dependencies, quota, launch specs, monitoring, and
+Temporal history.
+
 Kilvin is intentionally not a full foundation-model platform. It is the
 smallest real slice that preserves the platform shape: intent, dependency
 materialization, quota, launch-spec materialization, Kubernetes submission,

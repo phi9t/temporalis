@@ -7,6 +7,11 @@ production-shaped request anyway -- train model X on FineWeb with 64 A100 GPUs
 -- is that the simple slice only makes sense when you can see what it grows
 into.
 
+The project theme is **shaping the foundation model**. Kilvin's name points at
+the master artificer from *The Name of the Wind*: a builder who cares about
+materials, constraints, evidence, and durable craft. In this repo, the raw
+material is research intent; the shaped object is an auditable training run.
+
 ## The Simple Slice
 
 The runnable path in `kilvin-py/` teaches the invariant that matters most:
@@ -44,6 +49,17 @@ first token is processed. A real foundation-model launch may need to coordinate:
   evaluators, data loaders, and monitoring sidecars;
 - long-running monitoring, stuck-job detection, checkpoint promotion, rollback,
   pause/resume, and hotfix controls.
+
+Qwen3 and Qwen3-VL are useful concrete examples of this shape. A Qwen3-style
+text recipe moves from broad general pretraining into reasoning-heavy continued
+pretraining, long-context adaptation, cold-start SFT, verifier-driven RL,
+thinking/non-thinking mode fusion, general RL, and strong-to-weak distillation.
+A Qwen3-VL-style recipe adds vision-language alignment, multimodal pretraining,
+ultra-long document/video adaptation, multimodal SFT, visual reasoning RL, and
+tool-integrated visual-agent training. The exact source-level sampler weights
+are not public, but the stage graph makes the orchestration problem visible.
+See [Qwen3 / Qwen3-VL Extension](qwen3-kilvin-extension.md) for the recipe-level
+mapping onto Kilvin stages and Temporal controls.
 
 The difficult part is that these concerns are coupled. A data decision can
 change placement. A placement decision can change the launch spec. A dependency
@@ -99,4 +115,5 @@ Then run the local paths:
 
 The repo should leave you with one mental model: complex training platforms are
 not made reliable by hiding complexity. They become learnable when every
-important decision is materialized, durable, source-grounded, and inspectable.
+important decision is shaped into materialized, durable, source-grounded, and
+inspectable evidence.

@@ -1,12 +1,20 @@
 # Temporalis
 
-Temporalis is a teaching repo for durable machine-learning training with Temporal. It follows one production-shaped request -- train model X on FineWeb with 64 A100 GPUs -- from a high-level intent through workflow history, task queues, retries, replay, source-grounded Temporal internals, and a laptop-scale Kilvin implementation.
+Temporalis is a teaching repo for durable machine-learning training with Temporal. Its theme is **shaping the foundation model**: one production-shaped request -- train model X on FineWeb with 64 A100 GPUs -- is shaped from high-level intent into workflow history, task queues, retries, replay, source-grounded Temporal internals, and a laptop-scale Kilvin implementation.
+
+Kilvin is named for the master artificer from *The Name of the Wind*. That name
+fits the project: Kilvin is the workshop layer where raw intent, dependencies,
+quota, launch specs, and monitoring are forged into durable craft. The logo uses
+a foundation block, an anvil-like silhouette, and a workflow loop to carry that
+shaping narrative without depicting the character.
 
 The repo keeps the runnable Kilvin path intentionally small while using that
 path to motivate larger training systems: dependency materialization, scarce
 quota, placement, launch-spec generation, monitoring, and operator control. See
 [Durable Model Training Systems](docs/model-training-systems.md) for the bridge
-from this laptop-scale slice to modern multi-phase training programs.
+from this laptop-scale slice to modern multi-phase training programs, and
+[Qwen3 / Qwen3-VL Extension](docs/qwen3-kilvin-extension.md) for a concrete
+recipe-shaped example.
 
 Start with the hosted explorer:
 

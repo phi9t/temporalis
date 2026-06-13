@@ -226,3 +226,49 @@ control-plane story.
   - Result: passed with no output.
 - `make quickstart`
   - Result: quickstart check passed.
+
+---
+
+## 2026-06-13 Qwen3 / Qwen3-VL Kilvin Extension Guide
+
+## Task
+
+Show how Kilvin's simple one-stage foundation can teach Qwen3-style text and
+Qwen3-VL-style multimodal foundation-model curricula without turning the local
+runtime into a real Qwen trainer.
+
+## Decision
+
+Add `docs/qwen3-kilvin-extension.md` as a docs-only extension. The guide maps
+the disclosed Qwen3 and Qwen3-VL recipe shapes onto existing Kilvin primitives:
+`StageConfig`, dependency concretization, quota/allocation, bundle
+materialization, Kubernetes submission, monitoring, signals, queries, replay,
+and inspectable YAML artifacts. It explicitly avoids claiming exact reproduction
+because exact source-level sampler weights and full training hyperparameters are
+not disclosed.
+
+## Validation Commands And Results
+
+- `PYTHONPATH=. .venv/bin/pytest -q tests/test_public_release_readiness.py`
+  - Result: `18 passed`.
+
+---
+
+## 2026-06-13 Shaping The Foundation Model Theme
+
+## Task
+
+Make "shaping the foundation model" the consistent public theme, explain why the
+Kilvin name fits that theme, and create a project logo.
+
+## Decision
+
+Use Kilvin's naming reference to the master artificer from *The Name of the
+Wind* as a workshop metaphor, not as a character depiction. The public copy now
+frames Kilvin as the layer where raw research intent is shaped into durable
+craft: dependency builds, quota, launch specs, monitoring, Temporal history, and
+inspectable artifacts. The logo stays at `explorer/public/logo-mark.svg` and is
+a smooth, premium-feeling foundation block/anvil/hammer/workflow-loop mark. A
+bitmap visual reference was generated at
+`/Users/bytedance/.codex/generated_images/019ebba3-6965-7063-a09f-854e875946a1/ig_0c59084c491c6843016a2d3485e8bc8191bed5564c1048aabb.png`,
+but the repo uses the SVG for the product asset.

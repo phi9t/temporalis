@@ -13,6 +13,7 @@ docs/*
 !docs/exercises.md
 !docs/learning-path.md
 !docs/model-training-systems.md
+!docs/qwen3-kilvin-extension.md
 !docs/temporal-internals.md
 !docs/.monorepo/
 !docs/.monorepo/**

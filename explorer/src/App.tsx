@@ -10,7 +10,7 @@ const MODES: ExplorerMode[] = [
     id: 'basics',
     label: 'Basics',
     icon: Workflow,
-    subtitle: 'Workflows, activities, task queues, history, workers, retry, and replay in plain language',
+    subtitle: 'Shaping the foundation model with workflows, activities, task queues, history, workers, retry, and replay',
     View: BasicsExplorer,
   },
   {
@@ -23,7 +23,7 @@ const MODES: ExplorerMode[] = [
 ]
 
 const LEARNING_PATH_HINTS: Record<string, string> = {
-  basics: 'Start here: one training run told in plain language.',
+  basics: 'Start here: shaping the foundation model in plain language.',
   'deep-dive': 'Follow the same run through Temporal internals, the kilvin business logic, and source-backed probes.',
 }
 
