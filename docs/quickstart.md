@@ -6,6 +6,9 @@ Use this path to learn Temporalis without running the live Kilvin stack.
 
 Open https://phi9t.github.io/temporalis/ and start in Basics. Then switch to Deep Dive for Lifecycle, Control Paths, and Kilvin Internals.
 
+Use the [Learning Path](learning-path.md) when you want the full guided route
+from Temporal vocabulary to Kilvin code and model-training operations.
+
 For the model-training motivation, read
 [Durable Model Training Systems](model-training-systems.md). It explains how the
 simple Kilvin path generalizes to multi-phase training, dependency pinning,

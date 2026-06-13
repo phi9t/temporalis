@@ -12,6 +12,10 @@ Start with the hosted explorer:
 
 https://phi9t.github.io/temporalis/
 
+For a guided route through the materials, use the
+[Learning Path](docs/learning-path.md). It maps each Temporal concept and
+training-system concern to the explorer, generated source refs, and Kilvin code.
+
 ## Three Ways To Use This Repo
 
 ### Tier 0: Hosted Explorer
@@ -21,7 +25,8 @@ Open the hosted explorer when you want to learn the system without installing an
 If you are here for the model-training side first, read
 [Durable Model Training Systems](docs/model-training-systems.md) after Basics;
 it explains why the small Kilvin workflow is shaped like a real training
-control plane.
+control plane. If you want a step-by-step route through both Temporal and
+training concepts, follow the [Learning Path](docs/learning-path.md).
 
 ### Tier 1: Lightweight Local Teaching Path
 

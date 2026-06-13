@@ -46,6 +46,7 @@ def files_under(path: str) -> list[str]:
 
 def test_public_docs_exist() -> None:
     for path in [
+        "docs/learning-path.md",
         "docs/quickstart.md",
         "docs/model-training-systems.md",
         "docs/runtime-proof.md",
@@ -67,7 +68,36 @@ def test_public_readme_leads_with_three_layer_release_story() -> None:
     assert "64 A100" in body
     assert "FineWeb" in body
     assert "laptop" in body.lower()
+    assert "Learning Path" in body
     assert "Durable Model Training Systems" in body
+
+
+def test_learning_path_maps_temporal_and_training_concepts_to_code() -> None:
+    body = read("docs/learning-path.md")
+    for phrase in [
+        "train model X on FineWeb with 64 A100 GPUs",
+        "Deep Dive / Lifecycle",
+        "Deep Dive / Control Paths",
+        "Deep Dive / Kilvin Internals",
+        "workflow: the durable decision process",
+        "activity: retryable side effects",
+        "history: the durable source of truth",
+        "replay: how Temporal reconstructs state",
+        "CUDA/NCCL/Torch compatibility",
+        "kilvin-py/kilvin_py/workflows.py",
+        "kilvin-py/kilvin_py/activities.py",
+        "concretize_dependencies",
+        "interpret_training_intent",
+        "monitor_training",
+        "activity heartbeats",
+        "signals recorded as history events",
+        "make quickstart",
+        "make runtime-proof",
+    ]:
+        assert phrase in body
+
+    assert "Learning Path" in read("README.md")
+    assert "Learning Path" in read("docs/quickstart.md")
 
 
 def test_model_training_systems_doc_bridges_simple_kilvin_to_real_training() -> None:
