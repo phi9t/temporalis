@@ -6,6 +6,11 @@ Use this path to learn Temporalis without running the live Kilvin stack.
 
 Open https://phi9t.github.io/temporalis/ and start in Basics. Then switch to Deep Dive for Lifecycle, Control Paths, and Kilvin Internals.
 
+For the model-training motivation, read
+[Durable Model Training Systems](model-training-systems.md). It explains how the
+simple Kilvin path generalizes to multi-phase training, dependency pinning,
+quota, placement, materialized launch specs, and monitoring.
+
 ## Local
 
 ```bash
@@ -24,3 +29,4 @@ make explorer-dev
 - why Temporal history is the source of truth;
 - how task queues, workers, activations, activity heartbeats, retries, replay, and sticky caches fit together;
 - how the Kilvin implementation maps a 64-A100/FineWeb teaching intent onto a laptop-scale tiny CPU GPT trainer.
+- why the same orchestration shape helps with modern multi-phase training programs without making the demo itself complicated.

@@ -47,6 +47,7 @@ def files_under(path: str) -> list[str]:
 def test_public_docs_exist() -> None:
     for path in [
         "docs/quickstart.md",
+        "docs/model-training-systems.md",
         "docs/runtime-proof.md",
         "docs/release-checklist.md",
         "docs/source-grounding.md",
@@ -66,6 +67,32 @@ def test_public_readme_leads_with_three_layer_release_story() -> None:
     assert "64 A100" in body
     assert "FineWeb" in body
     assert "laptop" in body.lower()
+    assert "Durable Model Training Systems" in body
+
+
+def test_model_training_systems_doc_bridges_simple_kilvin_to_real_training() -> None:
+    body = read("docs/model-training-systems.md")
+    for phrase in [
+        "Kilvin stays deliberately small",
+        "production-shaped request",
+        "multiple training phases",
+        "huge token budgets",
+        "CUDA, driver, NCCL, Torch",
+        "scarce GPU quota",
+        "activity heartbeats",
+        "signals can pause, resume, cancel",
+        "Deep Dive / Lifecycle",
+        "Deep Dive / Kilvin Internals",
+    ]:
+        assert phrase in body
+
+    quickstart = read("docs/quickstart.md")
+    assert "Durable Model Training Systems" in quickstart
+    assert "multi-phase training" in quickstart
+
+    kilvin_readme = read("kilvin-py/README.md")
+    assert "intentionally not a full foundation-model platform" in kilvin_readme
+    assert "smallest real slice" in kilvin_readme
 
 
 def test_public_docs_do_not_advertise_hidden_hackers_guide_ui() -> None:

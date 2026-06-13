@@ -7,6 +7,7 @@ __pycache__/
 *.pyc
 cli/
 docs/*
+!docs/model-training-systems.md
 !docs/.monorepo/
 !docs/.monorepo/**
 !docs/inspectl/

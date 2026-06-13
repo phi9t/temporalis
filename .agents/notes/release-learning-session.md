@@ -64,6 +64,35 @@ The explorer should introduce the story, then use the same story to enter Tempor
 
 ---
 
+## 2026-06-13 Teaching Bridge Update
+
+## Task
+
+Improve Temporalis as public learning material for both Temporal internals and
+modern model training, using the captured Fable planning transcripts to motivate
+the complex training regime while keeping Kilvin simple.
+
+## Decision
+
+Keep `kilvin-py/` as the smallest real slice of the control plane: one workflow,
+six activities, one local allocator, one k3s Job, and inspectable YAML artifacts.
+Use docs and explorer copy to explain how that slice grows into multi-phase
+training programs with dependency pinning, scarce GPU quota, placement, launch
+spec materialization, long-running monitoring, pause/resume, and targeted replay.
+
+## Files Updated
+
+- `docs/model-training-systems.md`: public bridge from the laptop-scale Kilvin
+  proof to real foundation-model training systems.
+- `README.md`: links the bridge from the top-level teaching story.
+- `docs/quickstart.md`: tells hosted and local learners when to read the bridge.
+- `kilvin-py/README.md`: clarifies that Kilvin is intentionally not a full
+  foundation-model platform.
+- `tests/test_public_release_readiness.py`: regression coverage for the public
+  teaching bridge.
+
+---
+
 ## 2026-06-12 Real-Infra Execution Update
 
 ## Task

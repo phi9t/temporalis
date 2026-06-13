@@ -2,6 +2,12 @@
 
 Temporalis is a teaching repo for durable machine-learning training with Temporal. It follows one production-shaped request -- train model X on FineWeb with 64 A100 GPUs -- from a high-level intent through workflow history, task queues, retries, replay, source-grounded Temporal internals, and a laptop-scale Kilvin implementation.
 
+The repo keeps the runnable Kilvin path intentionally small while using that
+path to motivate larger training systems: dependency materialization, scarce
+quota, placement, launch-spec generation, monitoring, and operator control. See
+[Durable Model Training Systems](docs/model-training-systems.md) for the bridge
+from this laptop-scale slice to modern multi-phase training programs.
+
 Start with the hosted explorer:
 
 https://phi9t.github.io/temporalis/
@@ -11,6 +17,11 @@ https://phi9t.github.io/temporalis/
 ### Tier 0: Hosted Explorer
 
 Open the hosted explorer when you want to learn the system without installing anything. Basics introduces workflows, activities, task queues, history, retry, replay, and hood-open ML training artifacts. Deep Dive then shows Lifecycle, Control Paths, and Kilvin Internals with source-code citations.
+
+If you are here for the model-training side first, read
+[Durable Model Training Systems](docs/model-training-systems.md) after Basics;
+it explains why the small Kilvin workflow is shaped like a real training
+control plane.
 
 ### Tier 1: Lightweight Local Teaching Path
 

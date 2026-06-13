@@ -7,6 +7,12 @@ runnable counterpart to the [explorer](../explorer/) and
 here against a real Temporal server, and every step leaves an inspectable YAML
 artifact behind.
 
+Kilvin is intentionally not a full foundation-model platform. It is the
+smallest real slice that preserves the platform shape: intent, dependency
+materialization, quota, launch-spec materialization, Kubernetes submission,
+monitoring, and operator control. For the larger training-system motivation, see
+[Durable Model Training Systems](../docs/model-training-systems.md).
+
 ## The workflow
 
 `KilvinTrainingWorkflow` (task queue `kilvin-training-task-queue`) runs six steps:
