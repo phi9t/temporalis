@@ -4,6 +4,9 @@ Use this as the short desk reference while reading the explorer or the Kilvin
 code. It ties each idea to the training-run story, the Temporal concept, and the
 place to inspect it.
 
+For a field-by-field guide to the YAML evidence produced by a live run, see
+[Reading Kilvin Artifacts](artifacts.md).
+
 ## Temporal Concepts
 
 | Concept | Plain meaning | Training-run role | Where to inspect |

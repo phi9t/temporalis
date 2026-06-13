@@ -46,6 +46,7 @@ def files_under(path: str) -> list[str]:
 
 def test_public_docs_exist() -> None:
     for path in [
+        "docs/artifacts.md",
         "docs/concept-map.md",
         "docs/exercises.md",
         "docs/learning-path.md",
@@ -73,7 +74,40 @@ def test_public_readme_leads_with_three_layer_release_story() -> None:
     assert "Learning Path" in body
     assert "Concept Map" in body
     assert "Exercises" in body
+    assert "Reading Kilvin Artifacts" in body
     assert "Durable Model Training Systems" in body
+
+
+def test_artifact_guide_explains_training_evidence_files() -> None:
+    body = read("docs/artifacts.md")
+    for phrase in [
+        ".kilvin-artifacts/<run-id>/<attempt>/artifacts/pretrain/",
+        "interpret_intent",
+        "concretize_dependencies",
+        "allocate_resources",
+        "materialize_training_bundle",
+        "submit_k8s_job",
+        "monitor_training",
+        "quota_decision.yaml",
+        "env_vars.yaml",
+        "logs.yaml",
+        "image_digest",
+        "lockfile_sha256",
+        "job_manifest",
+        "RUN_ID",
+        "MODEL_NAME",
+        "MAX_STEPS",
+        "DATASET_MOUNT",
+        "CHECKPOINT_URI",
+        "checksum_sha256",
+        "size_bytes",
+        "heartbeating activity",
+    ]:
+        assert phrase in body
+
+    assert "Reading Kilvin Artifacts" in read("README.md")
+    assert "Reading Kilvin Artifacts" in read("docs/exercises.md")
+    assert "Reading Kilvin Artifacts" in read("docs/concept-map.md")
 
 
 def test_exercises_turn_hacks_and_runtime_into_learning_labs() -> None:

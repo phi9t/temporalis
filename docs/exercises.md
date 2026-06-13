@@ -137,6 +137,8 @@ make runtime-proof
 
 Goal: verify that intent becomes evidence on disk.
 
+Keep [Reading Kilvin Artifacts](artifacts.md) open for the field-by-field guide.
+
 Inspect:
 
 ```bash

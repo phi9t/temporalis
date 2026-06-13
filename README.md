@@ -19,6 +19,8 @@ Keep the [Concept Map](docs/concept-map.md) nearby when you want the short
 lookup table from term -> training role -> source location.
 Use the [Exercises](docs/exercises.md) when you want to turn the explorer,
 hacks, and optional runtime proof into hands-on checks.
+Use [Reading Kilvin Artifacts](docs/artifacts.md) when you want to inspect the
+YAML evidence for intent, dependencies, quota, launch specs, and monitoring.
 
 ## Three Ways To Use This Repo
 
