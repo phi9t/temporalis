@@ -139,13 +139,16 @@ def test_public_theme_uses_kilvin_shaping_narrative_and_logo() -> None:
         "foundation model",
         "anvil",
         "hammer",
-        "smooth",
-        "workflow loop",
+        "node",
+        "premium",
+        "concise",
+        "orbit",
         "#f5b642",
         "#67d4e8",
     ]:
         assert phrase in logo
-    assert logo.count("<path") <= 6
+    assert "network graph" not in logo
+    assert logo.count("<path") <= 4
     assert logo.count("<circle") <= 1
 
 
