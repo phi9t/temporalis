@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import os
+import socket
 import uuid
 
 from temporalio import activity
@@ -48,10 +49,30 @@ LAPTOP_TRAINER_DEFAULTS = {
 }
 LAPTOP_MAX_STEPS = 200
 MONITOR_POLL_SECONDS = 5
+DOCKER_BUILD_HOSTS = (
+    "files.pythonhosted.org",
+    "download.pytorch.org",
+    "download-r2.pytorch.org",
+    "pypi.org",
+)
 
 
 def laptop_max_steps() -> int:
     return int(os.environ.get("KILVIN_LAPTOP_MAX_STEPS", str(LAPTOP_MAX_STEPS)))
+
+
+def docker_build_command(image_ref: str) -> list[str]:
+    """Build command with host-resolved package domains for Colima DNS failures."""
+
+    command = ["docker", "build"]
+    for host in DOCKER_BUILD_HOSTS:
+        try:
+            address = socket.gethostbyname(host)
+        except OSError:
+            continue
+        command.extend(["--add-host", f"{host}:{address}"])
+    command.extend(["-t", image_ref, "."])
+    return command
 
 
 @activity.defn
@@ -110,7 +131,7 @@ async def concretize_dependencies(
     try:
         await run_logged(["uv", "lock", "--check"], cwd=trainer_dir, label="uv-lock-check")
         await run_logged(
-            ["docker", "build", "-t", input.image_ref, "."],
+            docker_build_command(input.image_ref),
             cwd=trainer_dir,
             label="docker-build",
         )

@@ -147,6 +147,35 @@ def check_kubectl_namespace() -> CheckResult:
     return CheckResult("PASS", "kubectl namespace", "kilvin-training exists")
 
 
+def check_k3s_disk_pressure() -> CheckResult:
+    if not KUBECONFIG.exists():
+        return CheckResult("WARN", "k3s disk pressure", f"missing {KUBECONFIG}; run kilvin-py/infra/up.sh", False)
+    if not command_exists("kubectl"):
+        return CheckResult("WARN", "k3s disk pressure", "kubectl not found; skipping node check", False)
+    result = run_command(
+        [
+            "kubectl",
+            "--kubeconfig",
+            str(KUBECONFIG),
+            "describe",
+            "node",
+        ],
+        timeout=20,
+    )
+    if result.returncode != 0:
+        return CheckResult("WARN", "k3s disk pressure", result.stderr.strip() or "node check failed", False)
+    disk_pressure_condition = any(
+        line.split()[:2] == ["DiskPressure", "True"] for line in result.stdout.splitlines()
+    )
+    if "node.kubernetes.io/disk-pressure" in result.stdout or disk_pressure_condition:
+        return CheckResult(
+            "FAIL",
+            "k3s disk pressure",
+            "node has disk-pressure; run `docker system df`, then free Colima/Docker disk before smoke",
+        )
+    return CheckResult("PASS", "k3s disk pressure", "node schedulable")
+
+
 def collect_checks() -> list[CheckResult]:
     results = [
         check_tool("docker"),
@@ -180,6 +209,7 @@ def collect_checks() -> list[CheckResult]:
                 False,
             ),
             check_kubectl_namespace(),
+            check_k3s_disk_pressure(),
         ]
     )
     return results

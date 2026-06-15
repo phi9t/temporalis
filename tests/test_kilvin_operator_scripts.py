@@ -41,6 +41,33 @@ def test_doctor_exit_code_only_fails_required_failures() -> None:
     assert doctor.result_exit_code(results) == 1
 
 
+def test_doctor_fails_when_k3s_node_has_disk_pressure(monkeypatch, tmp_path: Path) -> None:
+    doctor = load_script("kilvin_doctor.py")
+    kubeconfig = tmp_path / "kubeconfig.yaml"
+    kubeconfig.write_text("apiVersion: v1\n", encoding="utf-8")
+
+    monkeypatch.setattr(doctor, "command_exists", lambda name: name == "kubectl")
+    monkeypatch.setattr(doctor, "KUBECONFIG", kubeconfig)
+
+    def fake_run_command(cmd: list[str], *, timeout: int = 30):
+        assert "describe" in cmd
+        return doctor.subprocess.CompletedProcess(
+            cmd,
+            0,
+            stdout="Conditions:\n  DiskPressure True KubeletHasDiskPressure kubelet has disk pressure\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(doctor, "run_command", fake_run_command)
+
+    result = doctor.check_k3s_disk_pressure()
+
+    assert result.status == "FAIL"
+    assert result.required is True
+    assert "disk-pressure" in result.detail
+    assert "docker system df" in result.detail
+
+
 def test_smoke_extracts_completed_run_id() -> None:
     smoke = load_script("kilvin_real_smoke.py")
 
@@ -75,3 +102,17 @@ def test_smoke_artifact_proof_detection(tmp_path: Path) -> None:
     assert "monitor_training/logs.yaml lacks 'TRAINING_DONE'" in smoke.missing_artifact_proofs(
         stage_dir
     )
+
+
+def test_trainer_dockerignore_excludes_local_virtualenv_and_caches() -> None:
+    dockerignore = (REPO_ROOT / "kilvin-py" / "trainer" / ".dockerignore").read_text(
+        encoding="utf-8"
+    )
+
+    for pattern in [
+        ".venv/",
+        "__pycache__/",
+        "*.pyc",
+        "out/",
+    ]:
+        assert pattern in dockerignore

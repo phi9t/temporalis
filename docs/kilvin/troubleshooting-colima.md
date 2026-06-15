@@ -113,3 +113,44 @@ make kilvin-doctor
 ```
 
 Fix the first `FAIL` row before chasing deeper symptoms.
+
+## k3s Disk Pressure
+
+If `make kilvin-doctor` reports:
+
+```text
+FAIL k3s disk pressure
+```
+
+the trainer Job will not schedule. Kubernetes taints the single local k3s node
+with `node.kubernetes.io/disk-pressure:NoSchedule`, so the Temporal workflow can
+successfully build, allocate, materialize, and submit the Job, then appear to
+stall in `monitor_training` while the pod remains `Pending`.
+
+Confirm the state:
+
+```bash
+docker system df
+docker exec kilvin-infra-k3s-1 df -h / /var/lib/rancher/k3s
+kubectl --kubeconfig kilvin-py/infra/.kubeconfig/kubeconfig.yaml describe node | grep -E 'Taints|DiskPressure'
+kubectl --kubeconfig kilvin-py/infra/.kubeconfig/kubeconfig.yaml -n kilvin-training get jobs,pods
+```
+
+Prefer targeted cleanup before broad pruning:
+
+```bash
+# Regenerable build cache.
+docker builder prune -af
+
+# Old Kilvin trainer demo images, keeping the current run image if one is active.
+docker images 'localhost:5001/kilvin-trainer'
+docker rmi localhost:5001/kilvin-trainer:<old-run-id>
+
+# Stopped containers with large writable layers.
+docker ps -a --size
+docker rm <stopped-container-id>
+```
+
+Avoid deleting unrelated large images unless the owner explicitly approves it;
+they may be expensive to re-pull. After cleanup, rerun `make kilvin-doctor`
+before starting another smoke proof.

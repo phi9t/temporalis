@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "kilvin-py"))
 
 from kilvin_py.config import KilvinSettings  # noqa: E402
 from kilvin_py.proc import SubprocessFailed, run_logged  # noqa: E402
+from kilvin_py.activities import docker_build_command  # noqa: E402
 from kilvin_py.allocator_client import (  # noqa: E402
     AllocatorClient,
     AllocatorUnavailable,
@@ -46,6 +47,25 @@ def test_run_logged_captures_output_and_raises_with_tail() -> None:
         )
     assert "boom-detail" in str(err.value)
     assert "exit 3" in str(err.value)
+
+
+def test_docker_build_command_adds_host_resolved_package_domains(monkeypatch: pytest.MonkeyPatch) -> None:
+    addresses = {
+        "files.pythonhosted.org": "167.82.0.223",
+        "download.pytorch.org": "99.84.141.46",
+        "download-r2.pytorch.org": "104.18.8.52",
+        "pypi.org": "151.101.0.223",
+    }
+    monkeypatch.setattr("kilvin_py.activities.socket.gethostbyname", addresses.__getitem__)
+
+    command = docker_build_command("localhost:5001/kilvin-trainer:run-a")
+
+    assert command[:2] == ["docker", "build"]
+    for host, address in addresses.items():
+        assert ["--add-host", f"{host}:{address}"] == command[
+            command.index(f"{host}:{address}") - 1 : command.index(f"{host}:{address}") + 1
+        ]
+    assert command[-3:] == ["-t", "localhost:5001/kilvin-trainer:run-a", "."]
 
 
 def _client_with(handler) -> AllocatorClient:
