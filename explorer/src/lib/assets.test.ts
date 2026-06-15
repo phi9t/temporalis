@@ -18,9 +18,9 @@ describe('asset URLs', () => {
     const dataUrlWithBase = dataUrl as (path: string, base: string) => string
     const guideUrlWithBase = guideUrl as (anchor: string, base: string) => string
 
-    expect(dataUrlWithBase('/logo-mark.svg', '/')).toBe('/logo-mark.svg')
-    expect(dataUrlWithBase('logo-mark.svg', '/temporalis-explorer/')).toBe(
-      '/temporalis-explorer/logo-mark.svg',
+    expect(dataUrlWithBase('/data/lifecycle/index.json', '/')).toBe('/data/lifecycle/index.json')
+    expect(dataUrlWithBase('data/lifecycle/index.json', '/temporalis-explorer/')).toBe(
+      '/temporalis-explorer/data/lifecycle/index.json',
     )
     expect(guideUrlWithBase('retry-and-failure-handling', '/temporalis-explorer/')).toBe(
       '/temporalis-explorer/HACKERS_GUIDE.md#retry-and-failure-handling',

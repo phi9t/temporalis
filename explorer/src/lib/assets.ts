@@ -6,10 +6,6 @@ export function dataUrl(path: string, base = import.meta.env.BASE_URL): string {
   return `${prefix}${clean}`
 }
 
-export function logoMarkUrl(): string {
-  return dataUrl('logo-mark.svg')
-}
-
 export function guideUrl(anchor: string, base = import.meta.env.BASE_URL): string {
   return `${dataUrl('HACKERS_GUIDE.md', base)}#${anchor}`
 }

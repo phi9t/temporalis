@@ -133,23 +133,8 @@ def test_public_theme_uses_kilvin_shaping_narrative_and_logo() -> None:
     ]:
         assert phrase in combined
 
-    logo = read("explorer/public/logo-mark.svg")
-    for phrase in [
-        "Temporalis Kilvin logo",
-        "foundation model",
-        "anvil",
-        "hammer",
-        "node",
-        "premium",
-        "concise",
-        "orbit",
-        "#f5b642",
-        "#67d4e8",
-    ]:
-        assert phrase in logo
-    assert "network graph" not in logo
-    assert logo.count("<path") <= 4
-    assert logo.count("<circle") <= 1
+    assert not (ROOT / "explorer/public/logo-mark.svg").exists()
+    assert "logo-mark" not in read("explorer/src/App.tsx")
 
 
 def test_qwen3_kilvin_extension_maps_recipe_to_kilvin_primitives() -> None:

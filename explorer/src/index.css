@@ -207,10 +207,6 @@ body {
   gap: 12px;
 }
 
-.header-logo {
-  filter: drop-shadow(0 0 10px rgba(244, 180, 66, 0.35));
-}
-
 .explorer-header h1 {
   margin: 0;
   font-size: 30px;

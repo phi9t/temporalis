@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { ArrowLeft, ArrowRight, Route, Workflow } from 'lucide-react'
-import { REPO_HOME, logoMarkUrl } from './lib/assets'
+import { REPO_HOME } from './lib/assets'
 import type { ExplorerMode, NavigateOptions } from './explorer-kit/mode'
 import BasicsExplorer from './basics/BasicsExplorer'
 import DeepDiveExplorer from './deep-dive/DeepDiveExplorer'
@@ -59,7 +59,6 @@ export default function App() {
               <span>phi9t/temporalis</span>
             </a>
             <div className="header-title-row">
-              <img src={logoMarkUrl()} alt="" className="header-logo" width={32} height={32} />
               <h1>Temporal Explorer</h1>
             </div>
             <p>{active.subtitle}</p>
