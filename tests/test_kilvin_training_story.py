@@ -70,6 +70,33 @@ def test_interpret_intent_respects_laptop_max_steps_override(monkeypatch: pytest
     assert (intent.trainer_env or {})["MAX_STEPS"] == "12"
 
 
+def test_interpret_intent_respects_laptop_trainer_shape_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KILVIN_LAPTOP_N_LAYER", "1")
+    monkeypatch.setenv("KILVIN_LAPTOP_N_HEAD", "1")
+    monkeypatch.setenv("KILVIN_LAPTOP_N_EMBD", "32")
+    monkeypatch.setenv("KILVIN_LAPTOP_BLOCK_SIZE", "32")
+    monkeypatch.setenv("KILVIN_LAPTOP_BATCH_SIZE", "2")
+    config = start_workflow.sample_run_config()
+
+    intent = asyncio.run(
+        activities.interpret_training_intent(
+            models.InterpretIntentInput(
+                run_config=config,
+                job_params_uri=f"hdfs://params/{config.run_id}/params.yaml",
+            )
+        )
+    )
+
+    env = intent.trainer_env or {}
+    assert env["N_LAYER"] == "1"
+    assert env["N_HEAD"] == "1"
+    assert env["N_EMBD"] == "32"
+    assert env["BLOCK_SIZE"] == "32"
+    assert env["BATCH_SIZE"] == "2"
+
+
 def test_materialize_renders_the_literal_job_manifest() -> None:
     allocation = models.ResourceAllocationOutput(
         allocation_id="alloc-1",

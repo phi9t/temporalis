@@ -155,6 +155,12 @@ def run_smoke(*, start_infra: bool) -> int:
     env = os.environ.copy()
     env.setdefault("PYTHONUNBUFFERED", "1")
     env.setdefault("KILVIN_LAPTOP_MAX_STEPS", "10")
+    env.setdefault("KILVIN_LAPTOP_N_LAYER", "1")
+    env.setdefault("KILVIN_LAPTOP_N_HEAD", "1")
+    env.setdefault("KILVIN_LAPTOP_N_EMBD", "32")
+    env.setdefault("KILVIN_LAPTOP_BLOCK_SIZE", "32")
+    env.setdefault("KILVIN_LAPTOP_BATCH_SIZE", "2")
+    env.setdefault("KILVIN_LAPTOP_LOG_EVERY", "1")
     worker = subprocess.Popen(
         resolve_command(["uv", "run", "python", "worker.py"]),
         cwd=KILVIN_ROOT,

@@ -1,6 +1,6 @@
 export PATH := /opt/homebrew/bin:$(CURDIR)/.venv/bin:$(PATH)
 
-.PHONY: monorepo-init monorepo-list monorepo-status monorepo-doctor monorepo-snapshot test explorer-gen-data explorer-build explorer-dev kilvin-doctor kilvin-real-smoke kilvin-pages-check quickstart quickstart-check verify-release runtime-proof
+.PHONY: monorepo-init monorepo-list monorepo-status monorepo-doctor monorepo-snapshot test explorer-gen-data explorer-build explorer-dev kilvin-doctor kilvin-up kilvin-down kilvin-clean kilvin-real-smoke kilvin-pages-check quickstart quickstart-check verify-release runtime-proof
 
 monorepo-init:
 	./.monorepo/monoctl init
@@ -32,6 +32,15 @@ explorer-dev:
 kilvin-doctor:
 	python3 scripts/kilvin_doctor.py
 
+kilvin-up:
+	cd kilvin-py && ./infra/up.sh
+
+kilvin-down:
+	cd kilvin-py && ./infra/down.sh
+
+kilvin-clean:
+	python3 scripts/kilvin_clean.py $(KILVIN_CLEAN_ARGS)
+
 kilvin-real-smoke:
 	python3 scripts/kilvin_real_smoke.py
 
@@ -55,4 +64,5 @@ verify-release:
 	$(MAKE) explorer-build
 
 runtime-proof:
+	$(MAKE) kilvin-up
 	$(MAKE) kilvin-real-smoke

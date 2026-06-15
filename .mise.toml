@@ -3,3 +3,18 @@ node = "20.20.2"
 npm = "10.8.2"
 pnpm = "10.34.3"
 yarn = "4.16.0"
+
+[tasks."kilvin:doctor"]
+run = "make kilvin-doctor"
+
+[tasks."kilvin:up"]
+run = "make kilvin-up"
+
+[tasks."kilvin:down"]
+run = "make kilvin-down"
+
+[tasks."kilvin:clean"]
+run = "make kilvin-clean"
+
+[tasks."kilvin:smoke"]
+run = "make kilvin-real-smoke"

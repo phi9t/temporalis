@@ -116,3 +116,70 @@ def test_trainer_dockerignore_excludes_local_virtualenv_and_caches() -> None:
         "out/",
     ]:
         assert pattern in dockerignore
+
+
+def test_infra_up_bootstraps_homebrew_tool_path() -> None:
+    up_script = (REPO_ROOT / "kilvin-py" / "infra" / "up.sh").read_text(encoding="utf-8")
+
+    assert "export PATH=\"/opt/homebrew/bin:$PATH\"" in up_script
+
+
+def test_infra_up_builds_allocator_with_host_resolved_package_domains() -> None:
+    up_script = (REPO_ROOT / "kilvin-py" / "infra" / "up.sh").read_text(encoding="utf-8")
+
+    assert "files.pythonhosted.org" in up_script
+    assert "download.pytorch.org" in up_script
+    assert "--add-host" in up_script
+    assert "docker build" in up_script
+    assert "docker compose up -d --no-build" in up_script
+
+
+def test_root_makefile_exposes_kilvin_runtime_commands() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+
+    for target in [
+        "kilvin-doctor:",
+        "kilvin-up:",
+        "kilvin-down:",
+        "kilvin-clean:",
+        "kilvin-real-smoke:",
+    ]:
+        assert target in makefile
+
+    assert "$(MAKE) kilvin-up" in makefile
+    assert "python3 scripts/kilvin_clean.py" in makefile
+
+
+def test_mise_exposes_root_kilvin_tasks() -> None:
+    mise = (REPO_ROOT / ".mise.toml").read_text(encoding="utf-8")
+
+    for task in [
+        '[tasks."kilvin:doctor"]',
+        '[tasks."kilvin:up"]',
+        '[tasks."kilvin:down"]',
+        '[tasks."kilvin:clean"]',
+        '[tasks."kilvin:smoke"]',
+    ]:
+        assert task in mise
+
+    assert "make kilvin-up" in mise
+    assert "make kilvin-clean" in mise
+
+
+def test_kilvin_clean_keeps_active_and_recent_trainer_images() -> None:
+    clean = load_script("kilvin_clean.py")
+
+    images = [
+        clean.DockerImage("localhost:5001/kilvin-trainer", "run-active", "img-active"),
+        clean.DockerImage("localhost:5001/kilvin-trainer", "run-new", "img-new"),
+        clean.DockerImage("localhost:5001/kilvin-trainer", "run-old", "img-old"),
+        clean.DockerImage("ubuntu", "24.04", "img-ubuntu"),
+    ]
+
+    selected = clean.select_trainer_images_to_remove(
+        images,
+        active_run_ids={"run-active"},
+        keep_recent=1,
+    )
+
+    assert selected == [images[2]]

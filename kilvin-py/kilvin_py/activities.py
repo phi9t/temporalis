@@ -55,10 +55,26 @@ DOCKER_BUILD_HOSTS = (
     "download-r2.pytorch.org",
     "pypi.org",
 )
+LAPTOP_TRAINER_ENV_OVERRIDES = {
+    "N_LAYER": "KILVIN_LAPTOP_N_LAYER",
+    "N_HEAD": "KILVIN_LAPTOP_N_HEAD",
+    "N_EMBD": "KILVIN_LAPTOP_N_EMBD",
+    "BLOCK_SIZE": "KILVIN_LAPTOP_BLOCK_SIZE",
+    "BATCH_SIZE": "KILVIN_LAPTOP_BATCH_SIZE",
+    "LOG_EVERY": "KILVIN_LAPTOP_LOG_EVERY",
+}
 
 
 def laptop_max_steps() -> int:
     return int(os.environ.get("KILVIN_LAPTOP_MAX_STEPS", str(LAPTOP_MAX_STEPS)))
+
+
+def laptop_trainer_defaults() -> dict[str, str]:
+    defaults = dict(LAPTOP_TRAINER_DEFAULTS)
+    for trainer_key, env_key in LAPTOP_TRAINER_ENV_OVERRIDES.items():
+        if env_key in os.environ:
+            defaults[trainer_key] = os.environ[env_key]
+    return defaults
 
 
 def docker_build_command(image_ref: str) -> list[str]:
@@ -85,7 +101,7 @@ async def interpret_training_intent(input: InterpretIntentInput) -> TrainingInte
     stage = run_stages[0]
     stage_zero_dataset = stage.dataset_profile.uri if run_stages else "hdfs://datasets/fineweb"
 
-    trainer_env = dict(LAPTOP_TRAINER_DEFAULTS)
+    trainer_env = laptop_trainer_defaults()
     trainer_env.update(
         {
             "RUN_ID": run_config.run_id,

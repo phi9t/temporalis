@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Bring up the kilvin control plane: temporal + allocator + registry + k3s.
 set -euo pipefail
+export PATH="/opt/homebrew/bin:$PATH"
 cd "$(dirname "$0")"
 
 if ! docker info >/dev/null 2>&1; then
@@ -8,8 +9,22 @@ if ! docker info >/dev/null 2>&1; then
   colima start --cpu 4 --memory 8
 fi
 
+allocator_build_hosts=(
+  "files.pythonhosted.org"
+  "download.pytorch.org"
+  "download-r2.pytorch.org"
+  "pypi.org"
+)
+allocator_add_hosts=()
+for host in "${allocator_build_hosts[@]}"; do
+  if address="$(python3 -c 'import socket, sys; print(socket.gethostbyname(sys.argv[1]))' "$host" 2>/dev/null)"; then
+    allocator_add_hosts+=(--add-host "$host:$address")
+  fi
+done
+
 mkdir -p .kubeconfig
-docker compose up -d --build
+docker build "${allocator_add_hosts[@]}" -t kilvin-infra-allocator ./allocator
+docker compose up -d --no-build
 
 echo -n "waiting for temporal :7233 "
 for _ in $(seq 1 60); do nc -z localhost 7233 && break; echo -n .; sleep 2; done; echo
