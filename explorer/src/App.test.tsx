@@ -1,8 +1,17 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
-afterEach(() => cleanup())
+const originalScrollTo = window.scrollTo
+
+beforeEach(() => {
+  window.scrollTo = vi.fn()
+})
+
+afterEach(() => {
+  cleanup()
+  window.scrollTo = originalScrollTo
+})
 
 describe('App', () => {
   it('opens on Basics and keeps the merged explorer modes available', () => {

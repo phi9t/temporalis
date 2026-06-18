@@ -1,7 +1,18 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DeepDiveExplorer from './DeepDiveExplorer'
 import type { ControlScenario, LifecycleManifest } from '@/lifecycle/types'
+
+const originalScrollTo = window.scrollTo
+
+beforeEach(() => {
+  window.scrollTo = vi.fn()
+})
+
+afterEach(() => {
+  cleanup()
+  window.scrollTo = originalScrollTo
+})
 
 vi.mock('@/lib/fetch', () => ({
   errorMessage: (error: unknown) => (error instanceof Error ? error.message : String(error)),
@@ -345,8 +356,6 @@ const controlScenario: ControlScenario = {
     },
   ],
 }
-
-afterEach(() => cleanup())
 
 describe('DeepDiveExplorer', () => {
   it('renders lifecycle as the default swimlane track', async () => {

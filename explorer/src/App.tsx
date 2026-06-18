@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Route, Workflow } from 'lucide-react'
 import { REPO_HOME } from './lib/assets'
 import type { ExplorerMode, NavigateOptions } from './explorer-kit/mode'
@@ -27,13 +27,27 @@ const LEARNING_PATH_HINTS: Record<string, string> = {
   'deep-dive': 'Follow the same run through Temporal internals, the kilvin business logic, and source-backed probes.',
 }
 
+function scrollToExplorerTop() {
+  window.scrollTo({ top: 0, left: 0 })
+}
+
 export default function App() {
   const [activeId, setActiveId] = useState<string>(MODES[0].id)
   const [navContext, setNavContext] = useState<NavigateOptions | null>(null)
   const navigate = useCallback((id: string, options?: NavigateOptions) => {
     setNavContext(options ?? null)
     setActiveId(id)
-    window.scrollTo({ top: 0 })
+    scrollToExplorerTop()
+  }, [])
+
+  useEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    scrollToExplorerTop()
+
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration
+    }
   }, [])
 
   const activeIndex = Math.max(
