@@ -4,11 +4,11 @@ from dataclasses import asdict
 from datetime import timedelta
 from typing import Any
 
-from temporalio import workflow
-from temporalio.common import RetryPolicy
-from temporalio.exceptions import ApplicationError
+import temporalio.common
+import temporalio.exceptions
+import temporalio.workflow
 
-with workflow.unsafe.imports_passed_through():
+with temporalio.workflow.unsafe.imports_passed_through():
     from . import activities
 
 from .models import (
@@ -105,7 +105,7 @@ def _is_failed_status(status: str) -> bool:
     return normalized not in {"SUCCESS", "SUCCEEDED", "OK"}
 
 
-@workflow.defn
+@temporalio.workflow.defn
 class KilvinTrainingWorkflow:
     def __init__(self) -> None:
         self.state = "RUNNING"
@@ -122,7 +122,7 @@ class KilvinTrainingWorkflow:
         self._run_config: RunConfig | None = None
         self._named_artifact_uris: list[str] = []
 
-    @workflow.query
+    @temporalio.workflow.query
     def run_status(self) -> KilvinRunState:
         current_stage = self._current_step[0] if self._current_step else ""
         current_step = self._current_step[1] if self._current_step else None
@@ -137,11 +137,11 @@ class KilvinTrainingWorkflow:
             failures=self._failures,
         )
 
-    @workflow.query
+    @temporalio.workflow.query
     def run_step_trace(self) -> list[StepExecutionEnvelope]:
         return list(self._step_traces)
 
-    @workflow.query
+    @temporalio.workflow.query
     def run_artifacts(self) -> list[str]:
         uris: list[str] = []
         for entry in self._step_traces:
@@ -151,28 +151,28 @@ class KilvinTrainingWorkflow:
         uris.extend(self._named_artifact_uris)
         return uris
 
-    @workflow.query
+    @temporalio.workflow.query
     def run_plan(self) -> list[str]:
         if self._run_config is None:
             return []
         return [stage.stage_id for stage in _ordered_stages(self._run_config)]
 
-    @workflow.signal
+    @temporalio.workflow.signal
     def pause(self, _input: PauseSignal | None = None) -> None:
         self._paused = True
         self.state = "PAUSED"
 
-    @workflow.signal
+    @temporalio.workflow.signal
     def resume(self, _input: ResumeSignal | None = None) -> None:
         self._paused = False
         if self.state == "PAUSED":
             self.state = "RUNNING"
 
-    @workflow.signal
+    @temporalio.workflow.signal
     def pause_at_step(self, signal: PauseAtStepSignal) -> None:
         self._pause_filter = signal
 
-    @workflow.signal
+    @temporalio.workflow.signal
     def replay_step(self, signal: ReplaySignal) -> None:
         self._run_attempt += 1
         self._replay_target = signal
@@ -180,14 +180,16 @@ class KilvinTrainingWorkflow:
         self._paused = False
         self.state = "RUNNING"
 
-    @workflow.signal
+    @temporalio.workflow.signal
     def cancel(self, _input: CancelSignal | None = None) -> None:
         self._cancelled = True
         self._paused = False
         self._pause_filter = None
         self.state = "CANCELLED"
 
-    def _should_pause_at(self, stage: StageConfig, step_name: str, when: str) -> bool:
+    def _matches_pause_at_step_filter(
+        self, stage: StageConfig, step_name: str, when: str
+    ) -> bool:
         if self._pause_filter is None:
             return False
         return (
@@ -196,16 +198,18 @@ class KilvinTrainingWorkflow:
             and self._pause_filter.step_name == step_name
         )
 
-    async def _wait_while_paused(self) -> None:
+    async def _await_resume_from_pause(self) -> None:
         if not self._paused:
             return
         self.state = "PAUSED"
-        await workflow.wait_condition(lambda: not self._paused)
+        await temporalio.workflow.wait_condition(lambda: not self._paused)
         if self._cancelled:
-            raise ApplicationError("training workflow cancelled", non_retryable=True)
+            raise temporalio.exceptions.ApplicationError(
+                "training workflow cancelled", non_retryable=True
+            )
         self.state = "RUNNING"
 
-    def _lookup_replay_stage_index(self, stages: list[StageConfig]) -> int | None:
+    def _find_replay_target_stage_index(self, stages: list[StageConfig]) -> int | None:
         if not self._replay_target:
             return None
         for idx, stage in enumerate(stages):
@@ -213,7 +217,7 @@ class KilvinTrainingWorkflow:
                 return idx
         return None
 
-    def _should_skip_for_replay(
+    def _should_skip_step_during_replay(
         self,
         stages: list[StageConfig],
         stage_index: int,
@@ -222,7 +226,7 @@ class KilvinTrainingWorkflow:
         if not self._replay_target:
             return False
         target = self._replay_target
-        target_stage_index = self._lookup_replay_stage_index(stages)
+        target_stage_index = self._find_replay_target_stage_index(stages)
         if target_stage_index is None:
             return False
         if stage_index > target_stage_index:
@@ -243,7 +247,7 @@ class KilvinTrainingWorkflow:
         self._replay_target = None
         return False
 
-    def _append_step_trace(
+    def _record_step_trace_entry(
         self,
         run_id: str,
         stage: StageConfig,
@@ -276,7 +280,7 @@ class KilvinTrainingWorkflow:
             )
         )
 
-    async def _persist_step_artifact(
+    async def _persist_step_input_artifact(
         self,
         input: TrainingWorkflowInput,
         stage: StageConfig,
@@ -284,7 +288,7 @@ class KilvinTrainingWorkflow:
         step_name: str,
         payload: Any,
     ) -> StepExecutionEnvelope:
-        artifact = await workflow.execute_activity(
+        artifact = await temporalio.workflow.execute_activity(
             activities.persist_yaml_artifact,
             ArtifactWriteInput(
                 run_id=input.run_config.run_id,
@@ -293,7 +297,7 @@ class KilvinTrainingWorkflow:
                 payload=_to_dict(payload),
             ),
             start_to_close_timeout=timedelta(seconds=20),
-            retry_policy=RetryPolicy(maximum_attempts=3),
+            retry_policy=temporalio.common.RetryPolicy(maximum_attempts=3),
         )
 
         return StepExecutionEnvelope(
@@ -306,10 +310,10 @@ class KilvinTrainingWorkflow:
             retry_attempt=0,
             input_artifact=artifact,
             input_checksum=artifact.checksum_sha256,
-            started_at_ms=int(workflow.now().timestamp() * 1000),
+            started_at_ms=int(temporalio.workflow.now().timestamp() * 1000),
         )
 
-    async def _persist_named_artifact(
+    async def _persist_supplementary_step_artifact(
         self,
         input: TrainingWorkflowInput,
         stage: StageConfig,
@@ -319,7 +323,7 @@ class KilvinTrainingWorkflow:
     ) -> None:
         """Persist a hood-open artifact (quota decision, env vars, logs) beside the step record."""
 
-        artifact = await workflow.execute_activity(
+        artifact = await temporalio.workflow.execute_activity(
             activities.persist_yaml_artifact,
             ArtifactWriteInput(
                 run_id=input.run_config.run_id,
@@ -328,11 +332,11 @@ class KilvinTrainingWorkflow:
                 payload=_to_dict(payload),
             ),
             start_to_close_timeout=timedelta(seconds=20),
-            retry_policy=RetryPolicy(maximum_attempts=3),
+            retry_policy=temporalio.common.RetryPolicy(maximum_attempts=3),
         )
         self._named_artifact_uris.append(artifact.uri)
 
-    async def _record_skipped_step(
+    async def _record_replay_skipped_step(
         self,
         input: TrainingWorkflowInput,
         stage: StageConfig,
@@ -341,7 +345,7 @@ class KilvinTrainingWorkflow:
         payload: Any,
         reason: str,
     ) -> None:
-        envelope = await self._persist_step_artifact(
+        envelope = await self._persist_step_input_artifact(
             input=input,
             stage=stage,
             stage_index=stage_index,
@@ -358,7 +362,7 @@ class KilvinTrainingWorkflow:
                 }
             ),
         )
-        self._append_step_trace(
+        self._record_step_trace_entry(
             run_id=input.run_config.run_id,
             stage=stage,
             stage_index=stage_index,
@@ -368,10 +372,10 @@ class KilvinTrainingWorkflow:
             input_checksum=envelope.input_checksum,
             error=reason,
             started_at_ms=envelope.started_at_ms,
-            completed_at_ms=int(workflow.now().timestamp() * 1000),
+            completed_at_ms=int(temporalio.workflow.now().timestamp() * 1000),
         )
 
-    async def _run_step(
+    async def _execute_tracked_training_step(
         self,
         input: TrainingWorkflowInput,
         stage: StageConfig,
@@ -384,31 +388,36 @@ class KilvinTrainingWorkflow:
         skip_result: Any | None = None,
     ) -> Any:
         if self._cancelled:
-            raise ApplicationError("training workflow cancelled", non_retryable=True)
+            raise temporalio.exceptions.ApplicationError(
+                "training workflow cancelled", non_retryable=True
+            )
 
-        if self._should_pause_at(stage, step_name, "pre"):
+        if self._matches_pause_at_step_filter(stage, step_name, "pre"):
             self._paused = True
             self._pause_filter = None
 
-        await self._wait_while_paused()
+        await self._await_resume_from_pause()
 
         stages = _ordered_stages(input.run_config)
-        if self._should_skip_for_replay(
+        if self._should_skip_step_during_replay(
             stages=stages,
             stage_index=stage_index,
             step_name=step_name,
         ):
-            await self._record_skipped_step(
+            await self._record_replay_skipped_step(
                 input=input,
                 stage=stage,
                 stage_index=stage_index,
                 step_name=step_name,
                 payload=activity_input,
-                reason=f"skipped for replay scope={self._replay_target.scope if self._replay_target else 'none'}",
+                reason=(
+                    "skipped for replay scope="
+                    f"{self._replay_target.scope if self._replay_target else 'none'}"
+                ),
             )
             return skip_result
 
-        envelope = await self._persist_step_artifact(input, stage, stage_index, step_name, {
+        envelope = await self._persist_step_input_artifact(input, stage, stage_index, step_name, {
             "step_name": step_name,
             "stage_id": stage.stage_id,
             "run_id": input.run_config.run_id,
@@ -416,7 +425,7 @@ class KilvinTrainingWorkflow:
             "payload": _to_dict(activity_input),
         })
         self._current_step = (stage.stage_id, step_name)
-        self._append_step_trace(
+        self._record_step_trace_entry(
             run_id=input.run_config.run_id,
             stage=stage,
             stage_index=stage_index,
@@ -428,17 +437,17 @@ class KilvinTrainingWorkflow:
         )
 
         try:
-            output = await workflow.execute_activity(
+            output = await temporalio.workflow.execute_activity(
                 activity_fn,
                 activity_input,
                 start_to_close_timeout=timedelta(seconds=timeout_seconds),
-                retry_policy=RetryPolicy(
+                retry_policy=temporalio.common.RetryPolicy(
                     maximum_attempts=retry_attempts or 3,
                     initial_interval=timedelta(seconds=5),
                 ),
             )
 
-            output_artifact = await workflow.execute_activity(
+            output_artifact = await temporalio.workflow.execute_activity(
                 activities.persist_yaml_artifact,
                 ArtifactWriteInput(
                     run_id=input.run_config.run_id,
@@ -447,9 +456,9 @@ class KilvinTrainingWorkflow:
                     payload=_to_dict(output),
                 ),
                 start_to_close_timeout=timedelta(seconds=20),
-                retry_policy=RetryPolicy(maximum_attempts=3),
+                retry_policy=temporalio.common.RetryPolicy(maximum_attempts=3),
             )
-            self._append_step_trace(
+            self._record_step_trace_entry(
                 run_id=input.run_config.run_id,
                 stage=stage,
                 stage_index=stage_index,
@@ -460,12 +469,12 @@ class KilvinTrainingWorkflow:
                 input_checksum=envelope.input_checksum,
                 error=None,
                 started_at_ms=envelope.started_at_ms,
-                completed_at_ms=int(workflow.now().timestamp() * 1000),
+                completed_at_ms=int(temporalio.workflow.now().timestamp() * 1000),
             )
-            if self._should_pause_at(stage, step_name, "post"):
+            if self._matches_pause_at_step_filter(stage, step_name, "post"):
                 self._paused = True
                 self._pause_filter = None
-            await self._wait_while_paused()
+            await self._await_resume_from_pause()
             return output
 
         except Exception as err:
@@ -477,7 +486,7 @@ class KilvinTrainingWorkflow:
                     error=str(err),
                 )
             )
-            self._append_step_trace(
+            self._record_step_trace_entry(
                 run_id=input.run_config.run_id,
                 stage=stage,
                 stage_index=stage_index,
@@ -487,12 +496,11 @@ class KilvinTrainingWorkflow:
                 input_checksum=envelope.input_checksum,
                 error=str(err),
                 started_at_ms=envelope.started_at_ms,
-                completed_at_ms=int(workflow.now().timestamp() * 1000),
+                completed_at_ms=int(temporalio.workflow.now().timestamp() * 1000),
             )
             raise
 
-    @workflow.run
-    async def run(self, input: TrainingWorkflowInput) -> str:
+    def _prepare_training_run(self, input: TrainingWorkflowInput) -> list[StageConfig]:
         self._run_id = input.run_config.run_id
         self._run_config = input.run_config
         self._run_attempt += 1
@@ -500,14 +508,21 @@ class KilvinTrainingWorkflow:
         try:
             _validate_run_config(input.run_config)
         except ValueError as err:
-            raise ApplicationError(str(err), non_retryable=True) from err
+            raise temporalio.exceptions.ApplicationError(str(err), non_retryable=True) from err
+
         stages = _ordered_stages(input.run_config)
         if not stages:
-            raise ApplicationError(
+            raise temporalio.exceptions.ApplicationError(
                 f"No enabled stages configured for {self._run_id}", non_retryable=True
             )
+        return stages
 
-        intent = await self._run_step(
+    async def _interpret_training_intent(
+        self,
+        input: TrainingWorkflowInput,
+        stages: list[StageConfig],
+    ) -> TrainingIntent:
+        return await self._execute_tracked_training_step(
             input=input,
             stage=stages[0],
             stage_index=0,
@@ -520,7 +535,9 @@ class KilvinTrainingWorkflow:
             timeout_seconds=30,
             skip_result=TrainingIntent(
                 model_output_tos_key=input.job_params_uri,
-                workflow_config_uri=f"file://./.kilvin-cache/{input.run_config.run_id}/workflow.yaml",
+                workflow_config_uri=(
+                    f"file://./.kilvin-cache/{input.run_config.run_id}/workflow.yaml"
+                ),
                 checkpoint="s3://checkpoints/model-x/base",
                 stage_index=0,
                 component_profile={
@@ -534,7 +551,13 @@ class KilvinTrainingWorkflow:
             ),
         )
 
-        concretized = await self._run_step(
+    async def _concretize_training_dependencies(
+        self,
+        input: TrainingWorkflowInput,
+        stages: list[StageConfig],
+        training_intent: TrainingIntent,
+    ) -> ConcretizeDependenciesOutput:
+        return await self._execute_tracked_training_step(
             input=input,
             stage=stages[0],
             stage_index=0,
@@ -542,161 +565,197 @@ class KilvinTrainingWorkflow:
             activity_fn=activities.concretize_dependencies,
             activity_input=ConcretizeDependenciesInput(
                 run_id=input.run_config.run_id,
-                checkpoint=intent.checkpoint,
-                image_ref=intent.image_ref,
+                checkpoint=training_intent.checkpoint,
+                image_ref=training_intent.image_ref,
             ),
             timeout_seconds=900,
             skip_result=ConcretizeDependenciesOutput(
-                image_ref=intent.image_ref,
+                image_ref=training_intent.image_ref,
                 image_digest="sha256:replayed",
                 lockfile_sha256="replayed",
             ),
         )
 
-        checkpoint = intent.checkpoint or "scratch"
-        digest_ref = (
-            f"{concretized.image_ref}@{concretized.image_digest}"
-            if concretized.image_digest.startswith("sha256:")
-            else concretized.image_ref
+    def _build_image_digest_ref(
+        self, dependency_resolution: ConcretizeDependenciesOutput
+    ) -> str:
+        if dependency_resolution.image_digest.startswith("sha256:"):
+            return f"{dependency_resolution.image_ref}@{dependency_resolution.image_digest}"
+        return dependency_resolution.image_ref
+
+    async def _execute_training_stage(
+        self,
+        input: TrainingWorkflowInput,
+        stage: StageConfig,
+        stage_index: int,
+        training_intent: TrainingIntent,
+        digest_ref: str,
+        ir_name: str,
+        checkpoint: str,
+    ) -> str:
+        resource_allocation = await self._execute_tracked_training_step(
+            input=input,
+            stage=stage,
+            stage_index=stage_index,
+            step_name="allocate_resources",
+            activity_fn=activities.allocate_resources,
+            activity_input=AllocateResourcesInput(
+                run_id=input.run_config.run_id,
+                stage_id=stage.stage_id,
+                stage_index=stage_index,
+                dataset_uri=stage.dataset_profile.uri,
+                cpus=training_intent.cpus,
+                memory_gb=training_intent.memory_gb,
+            ),
+            timeout_seconds=180,
+            retry_attempts=6,
+            skip_result=ResourceAllocationOutput(
+                allocation_id=f"skip-allocation-{stage.stage_id}",
+                cluster="local-k3s",
+                cpus=1,
+                memory_gb=1,
+            ),
         )
+
+        if resource_allocation.quota_decision is not None:
+            await self._persist_supplementary_step_artifact(
+                input=input,
+                stage=stage,
+                step_name="allocate_resources",
+                artifact_label="quota_decision",
+                payload=resource_allocation.quota_decision,
+            )
+
+        training_bundle = await self._execute_tracked_training_step(
+            input=input,
+            stage=stage,
+            stage_index=stage_index,
+            step_name="materialize_training_bundle",
+            activity_fn=activities.materialize_training_bundle,
+            activity_input=MaterializeTrainingBundleInput(
+                ir_name=f"{ir_name}-{stage.stage_id}",
+                checkpoint=checkpoint,
+                config_snapshot=training_intent.workflow_config_uri,
+                allocation=resource_allocation,
+                stage_index=stage_index,
+                train_stage=stage.stage_id,
+                task_type="train",
+                image_ref=digest_ref,
+                trainer_env=dict(training_intent.trainer_env or {}),
+                model=training_intent.component_profile.get("model", "model-x"),
+                run_id=input.run_config.run_id,
+            ),
+            timeout_seconds=60,
+            skip_result=MaterializedBundleOutput(
+                bundle_id=f"skip-bundle-{stage.stage_id}",
+                bundle_path="skipped://bundle",
+                job_manifest={},
+                env_vars={},
+                launch_plan=[],
+                health_checks=[],
+            ),
+        )
+
+        if training_bundle.env_vars:
+            await self._persist_supplementary_step_artifact(
+                input=input,
+                stage=stage,
+                step_name="materialize_training_bundle",
+                artifact_label="env_vars",
+                payload=training_bundle.env_vars,
+            )
+
+        k8s_submission = await self._execute_tracked_training_step(
+            input=input,
+            stage=stage,
+            stage_index=stage_index,
+            step_name="submit_k8s_job",
+            activity_fn=activities.submit_k8s_job,
+            activity_input=SubmitK8sInput(
+                stage_id=stage.stage_id,
+                bundle=training_bundle,
+                namespace="kilvin-training",
+            ),
+            timeout_seconds=120,
+            skip_result=SubmitK8sOutput(
+                job_name=f"replay-skip-{stage.stage_id}",
+                job_uid="skip-replay",
+                k8s_namespace="kilvin-training",
+            ),
+        )
+
+        training_monitor_result = await self._execute_tracked_training_step(
+            input=input,
+            stage=stage,
+            stage_index=stage_index,
+            step_name="monitor_training",
+            activity_fn=activities.monitor_training,
+            activity_input=MonitorTrainingInput(
+                job_name=k8s_submission.job_name,
+                job_uid=k8s_submission.job_uid,
+                ir_name=f"{ir_name}-{stage.stage_id}",
+                k8s_namespace=k8s_submission.k8s_namespace,
+                allocation_id=resource_allocation.allocation_id,
+            ),
+            timeout_seconds=3600,
+            skip_result=MonitorOutput(final_status="SUCCEEDED"),
+        )
+
+        # Persist log pointers before the failure check so a failed stage
+        # still leaves its logs artifact open for debugging.
+        if training_monitor_result.logs_uri:
+            await self._persist_supplementary_step_artifact(
+                input=input,
+                stage=stage,
+                step_name="monitor_training",
+                artifact_label="logs",
+                payload={
+                    "logs_uri": training_monitor_result.logs_uri,
+                    "log_tail": training_monitor_result.log_tail or [],
+                    "final_status": training_monitor_result.final_status,
+                },
+            )
+
+        if _is_failed_status(training_monitor_result.final_status):
+            raise temporalio.exceptions.ApplicationError(
+                f"stage {stage.stage_id} failed for {k8s_submission.job_name}: "
+                f"{training_monitor_result.final_status}"
+            )
+
+        if (
+            self._replay_target
+            and self._replay_target.scope == "step"
+            and self._replay_target.target_stage_id == stage.stage_id
+        ):
+            self._replay_target = None
+
+        return f"{checkpoint}/{stage.stage_id}"
+
+    @temporalio.workflow.run
+    async def run(self, input: TrainingWorkflowInput) -> str:
+        stages = self._prepare_training_run(input)
+
+        training_intent = await self._interpret_training_intent(input, stages)
+        dependency_resolution = await self._concretize_training_dependencies(
+            input, stages, training_intent
+        )
+
+        checkpoint = training_intent.checkpoint or "scratch"
+        digest_ref = self._build_image_digest_ref(dependency_resolution)
         ir_name = f"kilvin-ir-{input.run_config.run_id}"
 
         for stage_index, stage in enumerate(stages):
             if self._cancelled:
                 break
-
-            allocation = await self._run_step(
+            checkpoint = await self._execute_training_stage(
                 input=input,
                 stage=stage,
                 stage_index=stage_index,
-                step_name="allocate_resources",
-                activity_fn=activities.allocate_resources,
-                activity_input=AllocateResourcesInput(
-                    run_id=input.run_config.run_id,
-                    stage_id=stage.stage_id,
-                    stage_index=stage_index,
-                    dataset_uri=stage.dataset_profile.uri,
-                    cpus=intent.cpus,
-                    memory_gb=intent.memory_gb,
-                ),
-                timeout_seconds=180,
-                retry_attempts=6,
-                skip_result=ResourceAllocationOutput(
-                    allocation_id=f"skip-allocation-{stage.stage_id}",
-                    cluster="local-k3s",
-                    cpus=1,
-                    memory_gb=1,
-                ),
+                training_intent=training_intent,
+                digest_ref=digest_ref,
+                ir_name=ir_name,
+                checkpoint=checkpoint,
             )
-
-            if allocation.quota_decision is not None:
-                await self._persist_named_artifact(
-                    input=input,
-                    stage=stage,
-                    step_name="allocate_resources",
-                    artifact_label="quota_decision",
-                    payload=allocation.quota_decision,
-                )
-
-            bundle = await self._run_step(
-                input=input,
-                stage=stage,
-                stage_index=stage_index,
-                step_name="materialize_training_bundle",
-                activity_fn=activities.materialize_training_bundle,
-                activity_input=MaterializeTrainingBundleInput(
-                    ir_name=f"{ir_name}-{stage.stage_id}",
-                    checkpoint=checkpoint,
-                    config_snapshot=intent.workflow_config_uri,
-                    allocation=allocation,
-                    stage_index=stage_index,
-                    train_stage=stage.stage_id,
-                    task_type="train",
-                    image_ref=digest_ref,
-                    trainer_env=dict(intent.trainer_env or {}),
-                    model=intent.component_profile.get("model", "model-x"),
-                    run_id=input.run_config.run_id,
-                ),
-                timeout_seconds=60,
-                skip_result=MaterializedBundleOutput(
-                    bundle_id=f"skip-bundle-{stage.stage_id}",
-                    bundle_path="skipped://bundle",
-                    job_manifest={},
-                    env_vars={},
-                    launch_plan=[],
-                    health_checks=[],
-                ),
-            )
-
-            if bundle.env_vars:
-                await self._persist_named_artifact(
-                    input=input,
-                    stage=stage,
-                    step_name="materialize_training_bundle",
-                    artifact_label="env_vars",
-                    payload=bundle.env_vars,
-                )
-
-            submit_out = await self._run_step(
-                input=input,
-                stage=stage,
-                stage_index=stage_index,
-                step_name="submit_k8s_job",
-                activity_fn=activities.submit_k8s_job,
-                activity_input=SubmitK8sInput(
-                    stage_id=stage.stage_id,
-                    bundle=bundle,
-                    namespace="kilvin-training",
-                ),
-                timeout_seconds=120,
-                skip_result=SubmitK8sOutput(
-                    job_name=f"replay-skip-{stage.stage_id}",
-                    job_uid="skip-replay",
-                    k8s_namespace="kilvin-training",
-                ),
-            )
-
-            monitor_out = await self._run_step(
-                input=input,
-                stage=stage,
-                stage_index=stage_index,
-                step_name="monitor_training",
-                activity_fn=activities.monitor_training,
-                activity_input=MonitorTrainingInput(
-                    job_name=submit_out.job_name,
-                    job_uid=submit_out.job_uid,
-                    ir_name=f"{ir_name}-{stage.stage_id}",
-                    k8s_namespace=submit_out.k8s_namespace,
-                    allocation_id=allocation.allocation_id,
-                ),
-                timeout_seconds=3600,
-                skip_result=MonitorOutput(final_status="SUCCEEDED"),
-            )
-
-            # Persist log pointers before the failure check so a failed stage
-            # still leaves its logs artifact open for debugging.
-            if monitor_out.logs_uri:
-                await self._persist_named_artifact(
-                    input=input,
-                    stage=stage,
-                    step_name="monitor_training",
-                    artifact_label="logs",
-                    payload={
-                        "logs_uri": monitor_out.logs_uri,
-                        "log_tail": monitor_out.log_tail or [],
-                        "final_status": monitor_out.final_status,
-                    },
-                )
-
-            if _is_failed_status(monitor_out.final_status):
-                raise ApplicationError(
-                    f"stage {stage.stage_id} failed for {submit_out.job_name}: {monitor_out.final_status}"
-                )
-
-            checkpoint = f"{checkpoint}/{stage.stage_id}"
-
-            if self._replay_target and self._replay_target.scope == "step" and self._replay_target.target_stage_id == stage.stage_id:
-                self._replay_target = None
 
         self.state = "COMPLETED"
         return f"KILVIN_TRAINING_COMPLETED:{input.run_config.run_id}"
