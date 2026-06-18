@@ -1,0 +1,44 @@
+{
+  "cli": {
+    "branch": "main",
+    "head": "7e5ba380c9a4a117333045a3dace75555b906aa1",
+    "remote": "git@github.com:temporalio/cli.git",
+    "github": "https://github.com/temporalio/cli"
+  },
+  "sdk-core": {
+    "branch": "main",
+    "head": "6a8355ac4c49884433b0502f31bddace0c6ce884",
+    "remote": "git@github.com:temporalio/sdk-core.git",
+    "github": "https://github.com/temporalio/sdk-core"
+  },
+  "sdk-go": {
+    "branch": "main",
+    "head": "f2fb1ce1200a9373b21e32c0c4937d64d9c05e17",
+    "remote": "git@github.com:temporalio/sdk-go.git",
+    "github": "https://github.com/temporalio/sdk-go"
+  },
+  "sdk-python": {
+    "branch": "main",
+    "head": "d53a604d694bd5dcef0c4c9da6650aa7bc199be0",
+    "remote": "git@github.com:temporalio/sdk-python.git",
+    "github": "https://github.com/temporalio/sdk-python"
+  },
+  "sdk-rust": {
+    "branch": "main",
+    "head": "6a8355ac4c49884433b0502f31bddace0c6ce884",
+    "remote": "git@github.com:temporalio/sdk-rust.git",
+    "github": "https://github.com/temporalio/sdk-rust"
+  },
+  "temporal": {
+    "branch": "main",
+    "head": "c2c4bc1928c3606ebad477ae6c0bf3728115ef42",
+    "remote": "git@github.com:temporalio/temporal.git",
+    "github": "https://github.com/temporalio/temporal"
+  },
+  "ui": {
+    "branch": "main",
+    "head": "83b2d4ec55bce7e268a16304471fc1bfeb58a6f9",
+    "remote": "git@github.com:temporalio/ui.git",
+    "github": "https://github.com/temporalio/ui"
+  }
+}

@@ -1,0 +1,7 @@
+[
+  {
+    "slug": "kilvin-asyncio-happy-path",
+    "label": "Kilvin asyncio happy path",
+    "manifest": "lifecycle/kilvin-asyncio-happy-path.json"
+  }
+]

@@ -1,0 +1,126 @@
+{
+  "slug": "replay",
+  "label": "Replay",
+  "summary": "History events rebuild workflow state before new commands are accepted.",
+  "highlight_node_ids": [
+    "history-service",
+    "core-worker",
+    "workflow-activation"
+  ],
+  "highlight_edge_ids": [
+    "activation-up",
+    "workflow-complete"
+  ],
+  "details": [
+    "History is the authoritative log of prior workflow decisions.",
+    "sdk-core rebuilds workflow state machines from that log.",
+    "sdk-python re-executes deterministic workflow code without re-running activity side effects."
+  ],
+  "steps": [
+    {
+      "id": "replay-history-read",
+      "seq": 1,
+      "kind": "history-event",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "message": "GetWorkflowExecutionHistory",
+      "summary": "sdk-core reads durable history before accepting new workflow commands.",
+      "details": [
+        "History is the authoritative log of prior workflow decisions.",
+        "Worker memory is an optimization, not the source of truth."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "workflow-activation"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core fetches workflow history",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 218,
+          "symbol": "get_workflow_execution_history",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        },
+        {
+          "repo": "ui",
+          "label": "UI fetch event history",
+          "path": "src/lib/services/events-service.ts",
+          "line": 90,
+          "symbol": "fetchAllEvents",
+          "url": "https://github.com/temporalio/ui/blob/83b2d4ec55bce7e268a16304471fc1bfeb58a6f9/src/lib/services/events-service.ts"
+        }
+      ]
+    },
+    {
+      "id": "replay-activation",
+      "seq": 2,
+      "kind": "activation",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "message": "WorkflowActivation(replay)",
+      "summary": "sdk-core replays history into Python workflow code deterministically.",
+      "details": [
+        "Python re-executes workflow code to rebuild local state.",
+        "Activity side effects are not re-run during workflow replay."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "workflow-activation"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core replay from history",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 446,
+          "symbol": "get_wf_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
+      ]
+    },
+    {
+      "id": "replay-command-check",
+      "seq": 3,
+      "kind": "completion",
+      "from": "workflow-activation",
+      "to": "core-worker",
+      "edge_id": "workflow-complete",
+      "message": "RespondWorkflowTaskCompleted",
+      "summary": "New commands are accepted only after replay catches up to history.",
+      "details": [
+        "Determinism requires replayed commands to match recorded history.",
+        "After catch-up, newly emitted commands can advance the execution."
+      ],
+      "affected_node_ids": [
+        "workflow-activation",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "workflow-complete"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core applies replayed workflow task",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 565,
+          "symbol": "apply_next_wft_from_history",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
+      ]
+    }
+  ],
+  "guide_anchor": "history-as-source-of-truth-and-replay",
+  "guide_title": "7. History as source of truth and replay",
+  "hack_script": "hacks/004_history_replay.py",
+  "hack_summary": "Show how History, sdk-core, and Python activation refs explain replay."
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "slug": "pause-resume",
+    "label": "Pause / resume",
+    "manifest": "control-paths/pause-resume.json"
+  },
+  {
+    "slug": "retry",
+    "label": "Retry",
+    "manifest": "control-paths/retry.json"
+  },
+  {
+    "slug": "replay",
+    "label": "Replay",
+    "manifest": "control-paths/replay.json"
+  },
+  {
+    "slug": "heartbeat-cancellation",
+    "label": "Heartbeat cancellation",
+    "manifest": "control-paths/heartbeat-cancellation.json"
+  },
+  {
+    "slug": "sticky-cache-eviction",
+    "label": "Sticky cache eviction",
+    "manifest": "control-paths/sticky-cache-eviction.json"
+  }
+]

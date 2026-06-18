@@ -1,0 +1,125 @@
+{
+  "slug": "pause-resume",
+  "label": "Pause / resume",
+  "summary": "Signals or updates change durable workflow state; replay rebuilds the same pause decision before the workflow continues.",
+  "highlight_node_ids": [
+    "workflow-activation",
+    "history-service"
+  ],
+  "highlight_edge_ids": [
+    "workflow-complete",
+    "schedule-wft"
+  ],
+  "details": [
+    "Python workflow code records pause state through deterministic workflow state.",
+    "History stores signal or update events so the decision survives worker restarts.",
+    "sdk-core replays the event history before delivering a new activation."
+  ],
+  "steps": [
+    {
+      "id": "pause-resume-signal-recorded",
+      "seq": 1,
+      "kind": "signal",
+      "from": "frontend-service",
+      "to": "history-service",
+      "edge_id": "frontend-history",
+      "message": "SignalWorkflowExecution",
+      "summary": "A pause or resume request enters workflow history through the server.",
+      "details": [
+        "External control arrives as a signal or update instead of mutating worker memory directly.",
+        "History records the event so the control state survives worker restarts."
+      ],
+      "affected_node_ids": [
+        "frontend-service",
+        "history-service"
+      ],
+      "affected_edge_ids": [
+        "frontend-history"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Frontend SignalWorkflowExecution",
+          "path": "service/frontend/workflow_handler.go",
+          "line": 2247,
+          "symbol": "SignalWorkflowExecution",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/frontend/workflow_handler.go"
+        },
+        {
+          "repo": "temporal",
+          "label": "History SignalWorkflowExecution",
+          "path": "service/history/handler.go",
+          "line": 966,
+          "symbol": "SignalWorkflowExecution",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "pause-resume-activation",
+      "seq": 2,
+      "kind": "activation",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "message": "WorkflowActivation(signal/update)",
+      "summary": "The next activation delivers the durable control event to Python workflow code.",
+      "details": [
+        "sdk-core includes the signal or update job in the activation.",
+        "Python workflow code updates deterministic pause state from that activation."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "workflow-activation"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python handles signal activation",
+          "path": "temporalio/worker/_workflow.py",
+          "line": 244,
+          "symbol": "_handle_activation",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_workflow.py"
+        }
+      ]
+    },
+    {
+      "id": "pause-resume-command",
+      "seq": 3,
+      "kind": "command",
+      "from": "workflow-activation",
+      "to": "core-worker",
+      "edge_id": "workflow-complete",
+      "message": "RespondWorkflowTaskCompleted",
+      "summary": "Python emits commands that either wait while paused or continue after resume.",
+      "details": [
+        "The pause decision is encoded in deterministic workflow state.",
+        "Completion commands return through sdk-core and History like the happy path."
+      ],
+      "affected_node_ids": [
+        "workflow-activation",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "workflow-complete"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core completes paused workflow task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 170,
+          "symbol": "async fn complete_workflow_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
+      ]
+    }
+  ],
+  "guide_anchor": "pause-resume-as-signalupdate-driven-coordination",
+  "guide_title": "9. Pause/resume as signal/update-driven coordination",
+  "hack_script": "hacks/005_control_paths.py",
+  "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
+}

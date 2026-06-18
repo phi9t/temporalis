@@ -1,0 +1,118 @@
+{
+  "slug": "sticky-cache-eviction",
+  "label": "Sticky cache eviction",
+  "summary": "Core cache eviction falls back to replay because History, not worker memory, is authoritative.",
+  "highlight_node_ids": [
+    "core-worker",
+    "history-service",
+    "matching-service"
+  ],
+  "highlight_edge_ids": [
+    "core-matching",
+    "activation-up"
+  ],
+  "details": [
+    "sdk-core may keep workflow state warm in a sticky cache.",
+    "Eviction or sticky miss sends execution back through history replay.",
+    "Python receives a rebuilt activation after core catches up to the latest history."
+  ],
+  "steps": [
+    {
+      "id": "sticky-cache-eviction-miss",
+      "seq": 1,
+      "kind": "cache",
+      "from": "matching-service",
+      "to": "core-worker",
+      "edge_id": "core-matching",
+      "message": "Sticky cache miss",
+      "summary": "sdk-core discovers that warm workflow state is unavailable.",
+      "details": [
+        "Sticky cache state is an optimization for faster activations.",
+        "Eviction or worker movement requires rebuilding from history."
+      ],
+      "affected_node_ids": [
+        "matching-service",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "core-matching"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core evicts sticky workflow run",
+          "path": "crates/sdk-core/src/worker/workflow/workflow_stream.rs",
+          "line": 451,
+          "symbol": "request_eviction_of_lru_run",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/workflow_stream.rs"
+        }
+      ]
+    },
+    {
+      "id": "sticky-cache-eviction-replay",
+      "seq": 2,
+      "kind": "history-event",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "message": "Replay from History",
+      "summary": "Core falls back to history replay because History is authoritative.",
+      "details": [
+        "The replay path reconstructs workflow state without relying on sticky memory.",
+        "This keeps correctness independent of worker cache residency."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "workflow-activation"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core replays after sticky miss",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 565,
+          "symbol": "apply_next_wft_from_history",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
+      ]
+    },
+    {
+      "id": "sticky-cache-eviction-rebuilt-activation",
+      "seq": 3,
+      "kind": "activation",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "message": "WorkflowActivation(rebuilt)",
+      "summary": "Python receives a rebuilt activation after core catches up to history.",
+      "details": [
+        "The workflow continues with deterministic state restored.",
+        "Future tasks may become sticky again after the rebuilt activation."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "workflow-activation"
+      ],
+      "affected_edge_ids": [
+        "activation-up"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core rebuilds activation after replay",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 446,
+          "symbol": "get_wf_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
+      ]
+    }
+  ],
+  "guide_anchor": "sticky-workflow-cache-and-eviction",
+  "guide_title": "10. Sticky workflow cache and eviction",
+  "hack_script": "hacks/005_control_paths.py",
+  "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
+}

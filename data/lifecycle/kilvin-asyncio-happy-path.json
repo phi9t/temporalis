@@ -1,0 +1,1253 @@
+{
+  "generated_at": "2026-06-12T14:18:51Z",
+  "slug": "kilvin-asyncio-happy-path",
+  "label": "Kilvin asyncio happy path",
+  "phases": [
+    {
+      "id": "start",
+      "label": "Start workflow",
+      "summary": "Kilvin submits the model X training run.",
+      "node_ids": [
+        "kilvin-client",
+        "frontend-service",
+        "history-service"
+      ],
+      "guide_anchor": "happy-path-start-workflow-to-first-activation",
+      "guide_title": "4. Happy path: start workflow to first activation",
+      "hack_script": "hacks/002_lifecycle_manifest.py",
+      "hack_summary": "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
+    },
+    {
+      "id": "poll",
+      "label": "Poll task queue",
+      "summary": "Worker polling crosses Python, bridge, core, and Matching.",
+      "node_ids": [
+        "python-worker",
+        "bridge-worker",
+        "core-worker",
+        "matching-service"
+      ],
+      "guide_anchor": "workflow-task-polling-matching---sdk-core---bridge---python",
+      "guide_title": "5. Workflow task polling: Matching -> sdk-core -> bridge -> Python",
+      "hack_script": "hacks/003_task_queue_polling.py",
+      "hack_summary": "Trace Matching -> sdk-core -> bridge -> Python workflow-task polling."
+    },
+    {
+      "id": "activate",
+      "label": "Activate workflow",
+      "summary": "Core delivers a workflow activation to Python asyncio code.",
+      "node_ids": [
+        "core-worker",
+        "workflow-activation",
+        "python-worker"
+      ],
+      "guide_anchor": "workflow-task-polling-matching---sdk-core---bridge---python",
+      "guide_title": "5. Workflow task polling: Matching -> sdk-core -> bridge -> Python",
+      "hack_script": "hacks/003_task_queue_polling.py",
+      "hack_summary": "Trace Matching -> sdk-core -> bridge -> Python workflow-task polling."
+    },
+    {
+      "id": "schedule-activity",
+      "label": "Schedule activity",
+      "summary": "Workflow commands become durable history events and activity tasks.",
+      "node_ids": [
+        "workflow-activation",
+        "core-worker",
+        "frontend-service",
+        "history-service",
+        "matching-service"
+      ],
+      "guide_anchor": "activity-execution-and-heartbeats",
+      "guide_title": "6. Activity execution and heartbeats",
+      "hack_script": "hacks/002_lifecycle_manifest.py",
+      "hack_summary": "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
+    },
+    {
+      "id": "execute-activity",
+      "label": "Execute activity",
+      "summary": "Python runs side-effecting activity code and heartbeats progress.",
+      "node_ids": [
+        "activity-task",
+        "core-worker",
+        "frontend-service",
+        "history-service"
+      ],
+      "guide_anchor": "activity-execution-and-heartbeats",
+      "guide_title": "6. Activity execution and heartbeats",
+      "hack_script": "hacks/002_lifecycle_manifest.py",
+      "hack_summary": "Walk the Kilvin asyncio happy-path lifecycle manifest in phase order."
+    },
+    {
+      "id": "complete",
+      "label": "Complete turn",
+      "summary": "Completions update history and may schedule the next workflow task.",
+      "node_ids": [
+        "workflow-activation",
+        "core-worker",
+        "frontend-service",
+        "history-service",
+        "matching-service"
+      ],
+      "guide_anchor": "history-as-source-of-truth-and-replay",
+      "guide_title": "7. History as source of truth and replay",
+      "hack_script": "hacks/004_history_replay.py",
+      "hack_summary": "Show how History, sdk-core, and Python activation refs explain replay."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "kilvin-client",
+      "label": "Kilvin client",
+      "layer": "kilvin",
+      "kind": "client",
+      "summary": "Starts the single training workflow with the model X on FineWeb training config.",
+      "notes": "The sample config asks for one clean thing: train model X on FineWeb with 64 A100 GPUs. One KilvinTrainingWorkflow materializes that intent end to end and exposes task queues, activities, retries, heartbeats, and hood-open artifacts.",
+      "refs": [
+        {
+          "repo": "kilvin",
+          "ref": "phi9t-mainline",
+          "label": "start_workflow.py",
+          "path": "kilvin-py/start_workflow.py",
+          "line": 81,
+          "symbol": "await client.execute_workflow(",
+          "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/start_workflow.py"
+        }
+      ]
+    },
+    {
+      "id": "python-worker",
+      "label": "Python Worker.run",
+      "layer": "sdk-python",
+      "kind": "worker",
+      "summary": "Runs asyncio poll loops for workflow activations and activity tasks.",
+      "notes": "Python owns user-code execution and asyncio scheduling; sdk-core owns task polling, workflow cache, state machines, and server completions.",
+      "refs": [
+        {
+          "repo": "kilvin",
+          "ref": "phi9t-mainline",
+          "label": "kilvin worker",
+          "path": "kilvin-py/worker.py",
+          "line": 14,
+          "symbol": "Worker(",
+          "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/worker.py"
+        },
+        {
+          "repo": "sdk-python",
+          "label": "sdk-python Worker",
+          "path": "temporalio/worker/_worker.py",
+          "line": 88,
+          "symbol": "class Worker",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_worker.py"
+        },
+        {
+          "repo": "sdk-python",
+          "label": "workflow poll loop",
+          "path": "temporalio/worker/_workflow.py",
+          "line": 183,
+          "symbol": "async def run",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_workflow.py"
+        },
+        {
+          "repo": "sdk-python",
+          "label": "activity poll loop",
+          "path": "temporalio/worker/_activity.py",
+          "line": 135,
+          "symbol": "async def run",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_activity.py"
+        }
+      ]
+    },
+    {
+      "id": "bridge-worker",
+      "label": "Bridge worker",
+      "layer": "bridge",
+      "kind": "bridge",
+      "summary": "Serializes Python async calls into sdk-core worker operations.",
+      "notes": "The Python bridge exposes poll_workflow_activation, poll_activity_task, completion, and heartbeat calls backed by the Rust C bridge.",
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python bridge poll activation",
+          "path": "temporalio/bridge/worker.py",
+          "line": 209,
+          "symbol": "poll_workflow_activation",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/bridge/worker.py"
+        },
+        {
+          "repo": "sdk-python",
+          "label": "Python bridge complete activation",
+          "path": "temporalio/bridge/worker.py",
+          "line": 235,
+          "symbol": "complete_workflow_activation",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/bridge/worker.py"
+        },
+        {
+          "repo": "sdk-core",
+          "label": "C bridge poll activation",
+          "path": "crates/sdk-core-c-bridge/src/worker.rs",
+          "line": 664,
+          "symbol": "temporal_core_worker_poll_workflow_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core-c-bridge/src/worker.rs"
+        }
+      ]
+    },
+    {
+      "id": "core-runtime",
+      "label": "Core runtime",
+      "layer": "sdk-core",
+      "kind": "runtime",
+      "summary": "Hosts the Tokio runtime, telemetry, heartbeat interval, and worker initialization.",
+      "notes": "CoreRuntime is created before workers or clients call async core functions so tracing and runtime state are attached correctly.",
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "CoreRuntime",
+          "path": "crates/sdk-core/src/lib.rs",
+          "line": 165,
+          "symbol": "pub struct CoreRuntime",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/lib.rs"
+        }
+      ]
+    },
+    {
+      "id": "core-worker",
+      "label": "Core worker",
+      "layer": "sdk-core",
+      "kind": "worker",
+      "summary": "Manages pollers, slots, sticky cache, workflow activations, activity tasks, and completions.",
+      "notes": "Core converts server workflow-task responses into activations for Python and converts Python completions back into Temporal commands.",
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "init_worker",
+          "path": "crates/sdk-core/src/lib.rs",
+          "line": 80,
+          "symbol": "pub fn init_worker",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/lib.rs"
+        },
+        {
+          "repo": "sdk-core",
+          "label": "WorkerConfig",
+          "path": "crates/sdk-core/src/worker/mod.rs",
+          "line": 125,
+          "symbol": "pub struct WorkerConfig",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/mod.rs"
+        }
+      ]
+    },
+    {
+      "id": "frontend-service",
+      "label": "Frontend",
+      "layer": "server",
+      "kind": "service",
+      "summary": "Accepts client RPCs such as starting workflows and completing tasks.",
+      "notes": "Frontend is the public gRPC entrypoint and routes workflow operations into History and task polling behavior.",
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "StartWorkflowExecution",
+          "path": "service/frontend/workflow_handler.go",
+          "line": 536,
+          "symbol": "StartWorkflowExecution",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/frontend/workflow_handler.go"
+        }
+      ]
+    },
+    {
+      "id": "history-service",
+      "label": "History",
+      "layer": "server",
+      "kind": "history",
+      "summary": "Owns durable workflow history and turns commands into new events and tasks.",
+      "notes": "History is the source of truth for replay. Workflow progress is event-sourced, not stored in Python process memory.",
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "RespondWorkflowTaskCompleted",
+          "path": "service/history/handler.go",
+          "line": 545,
+          "symbol": "RespondWorkflowTaskCompleted",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "matching-service",
+      "label": "Matching",
+      "layer": "server",
+      "kind": "task-queue",
+      "summary": "Matches workflow and activity tasks to polling workers on task queues.",
+      "notes": "Matching is why workers poll instead of the server directly invoking user processes.",
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "PollWorkflowTaskQueue",
+          "path": "service/matching/handler.go",
+          "line": 252,
+          "symbol": "PollWorkflowTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/handler.go"
+        }
+      ]
+    },
+    {
+      "id": "workflow-activation",
+      "label": "Activation",
+      "layer": "sdk-python",
+      "kind": "workflow",
+      "summary": "Python receives a WorkflowActivation and resumes deterministic workflow code.",
+      "notes": "For the Kilvin-inspired flow, activation drives the training workflow deterministically until it blocks on its next command.",
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "_handle_activation",
+          "path": "temporalio/worker/_workflow.py",
+          "line": 244,
+          "symbol": "_handle_activation",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_workflow.py"
+        }
+      ]
+    },
+    {
+      "id": "activity-task",
+      "label": "Activity task",
+      "layer": "sdk-python",
+      "kind": "activity",
+      "summary": "Python executes async activities such as resource allocation, bundle materialization, and monitoring.",
+      "notes": "Activities perform side effects and heartbeat progress while workflow code remains deterministic.",
+      "refs": [
+        {
+          "repo": "kilvin",
+          "ref": "phi9t-mainline",
+          "label": "allocate_resources",
+          "path": "kilvin-py/kilvin_py/activities.py",
+          "line": 141,
+          "symbol": "async def allocate_resources",
+          "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/activities.py"
+        },
+        {
+          "repo": "kilvin",
+          "ref": "phi9t-mainline",
+          "label": "monitor_training",
+          "path": "kilvin-py/kilvin_py/activities.py",
+          "line": 214,
+          "symbol": "async def monitor_training",
+          "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/kilvin_py/activities.py"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-rpc",
+      "from": "kilvin-client",
+      "to": "frontend-service",
+      "kind": "rpc",
+      "label": "StartWorkflowExecution"
+    },
+    {
+      "id": "history-start",
+      "from": "frontend-service",
+      "to": "history-service",
+      "kind": "history-event",
+      "label": "append WorkflowExecutionStarted"
+    },
+    {
+      "id": "schedule-wft",
+      "from": "history-service",
+      "to": "matching-service",
+      "kind": "task-dispatch",
+      "label": "enqueue workflow task"
+    },
+    {
+      "id": "worker-poll",
+      "from": "python-worker",
+      "to": "bridge-worker",
+      "kind": "poll",
+      "label": "await poll_workflow_activation"
+    },
+    {
+      "id": "bridge-core",
+      "from": "bridge-worker",
+      "to": "core-worker",
+      "kind": "poll",
+      "label": "core poller"
+    },
+    {
+      "id": "core-matching",
+      "from": "core-worker",
+      "to": "matching-service",
+      "kind": "poll",
+      "label": "PollWorkflowTaskQueue"
+    },
+    {
+      "id": "activation-up",
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "kind": "activation",
+      "label": "WorkflowActivation"
+    },
+    {
+      "id": "workflow-complete",
+      "from": "workflow-activation",
+      "to": "core-worker",
+      "kind": "completion",
+      "label": "WorkflowActivationCompletion"
+    },
+    {
+      "id": "core-frontend",
+      "from": "core-worker",
+      "to": "frontend-service",
+      "kind": "rpc",
+      "label": "worker service RPC"
+    },
+    {
+      "id": "frontend-history",
+      "from": "frontend-service",
+      "to": "history-service",
+      "kind": "history-rpc",
+      "label": "route worker response to History"
+    },
+    {
+      "id": "activity-command",
+      "from": "frontend-service",
+      "to": "history-service",
+      "kind": "command",
+      "label": "ScheduleActivityTask command"
+    },
+    {
+      "id": "activity-dispatch",
+      "from": "history-service",
+      "to": "matching-service",
+      "kind": "task-dispatch",
+      "label": "enqueue activity task"
+    },
+    {
+      "id": "activity-poll",
+      "from": "core-worker",
+      "to": "activity-task",
+      "kind": "activation",
+      "label": "ActivityTask"
+    },
+    {
+      "id": "heartbeat",
+      "from": "activity-task",
+      "to": "core-worker",
+      "kind": "heartbeat",
+      "label": "RecordHeartbeat"
+    },
+    {
+      "id": "activity-complete",
+      "from": "activity-task",
+      "to": "core-worker",
+      "kind": "completion",
+      "label": "ActivityTaskCompleted"
+    }
+  ],
+  "calls": [
+    {
+      "id": "call-start-workflow",
+      "phase_id": "start",
+      "seq": 1,
+      "from": "kilvin-client",
+      "to": "frontend-service",
+      "edge_id": "start-rpc",
+      "kind": "rpc",
+      "message": "StartWorkflowExecution",
+      "summary": "Kilvin asks Temporal Frontend to create the training workflow run.",
+      "details": [
+        "The client sends the workflow type, workflow id, task queue, and the model X training config to the public Temporal API.",
+        "Frontend is the first server boundary for the workflow start request."
+      ],
+      "payload": [
+        "workflow_id",
+        "task_queue",
+        "workflow_type",
+        "model_x_training_config"
+      ],
+      "refs": [
+        {
+          "repo": "kilvin",
+          "ref": "phi9t-mainline",
+          "label": "start_workflow.py",
+          "path": "kilvin-py/start_workflow.py",
+          "line": 81,
+          "symbol": "await client.execute_workflow(",
+          "url": "https://github.com/phi9t/temporalis/blob/phi9t-mainline/kilvin-py/start_workflow.py"
+        }
+      ]
+    },
+    {
+      "id": "call-record-start",
+      "phase_id": "start",
+      "seq": 2,
+      "from": "frontend-service",
+      "to": "history-service",
+      "edge_id": "history-start",
+      "kind": "history-event",
+      "message": "WorkflowExecutionStarted",
+      "summary": "Frontend routes the accepted start request into History for durable recording.",
+      "details": [
+        "History appends the initial WorkflowExecutionStarted event so replay can reconstruct the run from event history.",
+        "This event stores the workflow input and task queue metadata used by later workflow tasks."
+      ],
+      "payload": [
+        "event_type=WorkflowExecutionStarted",
+        "workflow_task_queue",
+        "input"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records WorkflowExecutionStarted",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 2854,
+          "symbol": "AddWorkflowExecutionStartedEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
+    },
+    {
+      "id": "call-enqueue-first-workflow-task",
+      "phase_id": "start",
+      "seq": 3,
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "schedule-wft",
+      "kind": "task-dispatch",
+      "message": "workflow task",
+      "summary": "History schedules the first workflow task for Matching to hand to a worker poller.",
+      "details": [
+        "The durable start event creates work for the configured workflow task queue.",
+        "Matching owns the queueing boundary where a polling worker will later receive the task."
+      ],
+      "payload": [
+        "task_queue",
+        "workflow_task",
+        "scheduled_event_id"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History schedules workflow task",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 3432,
+          "symbol": "AddWorkflowTaskScheduledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
+    },
+    {
+      "id": "call-python-poll-activation",
+      "phase_id": "poll",
+      "seq": 4,
+      "from": "python-worker",
+      "to": "bridge-worker",
+      "edge_id": "worker-poll",
+      "kind": "poll",
+      "message": "poll_workflow_activation",
+      "summary": "The Python worker awaits the next workflow activation through the bridge.",
+      "details": [
+        "Python initiates the poll because Temporal workers pull tasks rather than receiving direct server callbacks.",
+        "The bridge converts the Python await into a core worker poll operation."
+      ],
+      "payload": [
+        "worker_identity",
+        "workflow_task_queue"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python bridge poll activation",
+          "path": "temporalio/bridge/worker.py",
+          "line": 209,
+          "symbol": "poll_workflow_activation",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/bridge/worker.py"
+        }
+      ]
+    },
+    {
+      "id": "call-bridge-core-poll",
+      "phase_id": "poll",
+      "seq": 5,
+      "from": "bridge-worker",
+      "to": "core-worker",
+      "edge_id": "bridge-core",
+      "kind": "poll",
+      "message": "core poller request",
+      "summary": "The bridge asks sdk-core for the next workflow activation.",
+      "details": [
+        "The bridge preserves Python's async boundary while delegating polling, cache, and state-machine work to core.",
+        "Core can satisfy the request only after it obtains or reconstructs a workflow task."
+      ],
+      "payload": [
+        "poller_kind=workflow",
+        "task_queue"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "C bridge poll activation",
+          "path": "crates/sdk-core-c-bridge/src/worker.rs",
+          "line": 664,
+          "symbol": "temporal_core_worker_poll_workflow_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core-c-bridge/src/worker.rs"
+        }
+      ]
+    },
+    {
+      "id": "call-core-poll-matching",
+      "phase_id": "poll",
+      "seq": 6,
+      "from": "core-worker",
+      "to": "matching-service",
+      "edge_id": "core-matching",
+      "kind": "poll",
+      "message": "PollWorkflowTaskQueue",
+      "summary": "sdk-core polls Matching for an available workflow task.",
+      "details": [
+        "Core issues the server poll request on behalf of the Python worker.",
+        "The direction is worker to Matching: the worker is asking the server for work."
+      ],
+      "payload": [
+        "namespace",
+        "task_queue",
+        "identity"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core poll workflow task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 152,
+          "symbol": "async fn poll_workflow_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
+      ]
+    },
+    {
+      "id": "call-matching-workflow-task",
+      "phase_id": "poll",
+      "seq": 7,
+      "from": "matching-service",
+      "to": "core-worker",
+      "edge_id": "core-matching",
+      "kind": "response",
+      "message": "workflow task response",
+      "summary": "Matching responds to the long poll with the workflow task from the queue.",
+      "details": [
+        "The response travels back over the same Core-to-Matching poll edge.",
+        "The reversed call direction makes the server response explicit without introducing a separate diagram edge."
+      ],
+      "payload": [
+        "workflow_task_token",
+        "history",
+        "started_event_id"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Matching PollWorkflowTaskQueue",
+          "path": "service/matching/matching_engine.go",
+          "line": 665,
+          "symbol": "PollWorkflowTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/matching_engine.go"
+        }
+      ]
+    },
+    {
+      "id": "call-core-activation",
+      "phase_id": "activate",
+      "seq": 8,
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "kind": "activation",
+      "message": "WorkflowActivation",
+      "summary": "sdk-core converts the workflow task into a Python workflow activation.",
+      "details": [
+        "Core applies workflow state-machine rules and prepares jobs for the Python workflow instance.",
+        "Python receives an activation rather than raw server history."
+      ],
+      "payload": [
+        "run_id",
+        "activation_jobs",
+        "history_events"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core builds WorkflowActivation",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 446,
+          "symbol": "get_wf_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
+      ]
+    },
+    {
+      "id": "call-workflow-commands-to-core",
+      "phase_id": "schedule-activity",
+      "seq": 9,
+      "from": "workflow-activation",
+      "to": "core-worker",
+      "edge_id": "workflow-complete",
+      "kind": "completion",
+      "message": "WorkflowActivationCompletion",
+      "summary": "Python completes the workflow activation with a ScheduleActivityTask command.",
+      "details": [
+        "The deterministic workflow turn records the intent to run an activity instead of performing the side effect inline.",
+        "The command first returns to sdk-core as part of the workflow activation completion."
+      ],
+      "payload": [
+        "activity_type",
+        "activity_id",
+        "task_queue",
+        "timeouts"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python completes activation",
+          "path": "temporalio/worker/_workflow.py",
+          "line": 240,
+          "symbol": "complete_workflow_activation",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_workflow.py"
+        }
+      ]
+    },
+    {
+      "id": "call-core-respond-workflow-task-completed",
+      "phase_id": "schedule-activity",
+      "seq": 10,
+      "from": "core-worker",
+      "to": "frontend-service",
+      "edge_id": "core-frontend",
+      "kind": "completion",
+      "message": "RespondWorkflowTaskCompleted",
+      "summary": "sdk-core sends the completed workflow task and command batch to Frontend.",
+      "details": [
+        "Core translates the activation completion into the public worker API request.",
+        "The request carries the workflow task token plus commands such as ScheduleActivityTask."
+      ],
+      "payload": [
+        "workflow_task_token",
+        "commands=[ScheduleActivityTask]",
+        "query_results"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core complete workflow task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 170,
+          "symbol": "async fn complete_workflow_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        },
+        {
+          "repo": "temporal",
+          "label": "Frontend RespondWorkflowTaskCompleted",
+          "path": "service/frontend/workflow_handler.go",
+          "line": 1188,
+          "symbol": "RespondWorkflowTaskCompleted",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/frontend/workflow_handler.go"
+        }
+      ]
+    },
+    {
+      "id": "call-history-apply-workflow-task-completed",
+      "phase_id": "schedule-activity",
+      "seq": 11,
+      "from": "frontend-service",
+      "to": "history-service",
+      "edge_id": "frontend-history",
+      "kind": "history-rpc",
+      "message": "RespondWorkflowTaskCompleted",
+      "summary": "Frontend routes the workflow task completion to History.",
+      "details": [
+        "History records WorkflowTaskCompleted and validates the command batch.",
+        "The ScheduleActivityTask command is applied inside the History service transaction."
+      ],
+      "payload": [
+        "event_type=WorkflowTaskCompleted",
+        "commands=[ScheduleActivityTask]",
+        "workflow_task_token"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History applies workflow task completion",
+          "path": "service/history/api/respondworkflowtaskcompleted/api.go",
+          "line": 320,
+          "symbol": "AddWorkflowTaskCompletedEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/respondworkflowtaskcompleted/api.go"
+        }
+      ]
+    },
+    {
+      "id": "call-schedule-activity-command",
+      "phase_id": "schedule-activity",
+      "seq": 12,
+      "from": "frontend-service",
+      "to": "history-service",
+      "edge_id": "activity-command",
+      "kind": "command",
+      "message": "ScheduleActivityTask command",
+      "summary": "History applies the ScheduleActivityTask command into durable activity state.",
+      "details": [
+        "The command creates activity scheduling history and server-side activity state.",
+        "Only after the command is accepted can an activity task be enqueued for Matching."
+      ],
+      "payload": [
+        "event_type=ActivityTaskScheduled",
+        "activity_id",
+        "activity_task_queue"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History handles ScheduleActivityTask",
+          "path": "service/history/api/respondworkflowtaskcompleted/workflow_task_completed_handler.go",
+          "line": 545,
+          "symbol": "AddActivityTaskScheduledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/respondworkflowtaskcompleted/workflow_task_completed_handler.go"
+        }
+      ]
+    },
+    {
+      "id": "call-enqueue-activity-task",
+      "phase_id": "schedule-activity",
+      "seq": 13,
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "activity-dispatch",
+      "kind": "task-dispatch",
+      "message": "activity task",
+      "summary": "History dispatches the scheduled activity task through Matching.",
+      "details": [
+        "After accepting the completed workflow task, History records the activity scheduling event and places the task on the target activity queue.",
+        "Matching will deliver the task when a compatible worker poll is available."
+      ],
+      "payload": [
+        "activity_task_queue",
+        "activity_task",
+        "scheduled_event_id"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records activity task schedule",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 4182,
+          "symbol": "AddActivityTaskScheduledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
+    },
+    {
+      "id": "call-core-poll-activity-task",
+      "phase_id": "execute-activity",
+      "seq": 14,
+      "from": "core-worker",
+      "to": "matching-service",
+      "edge_id": "core-matching",
+      "kind": "poll",
+      "message": "PollActivityTaskQueue",
+      "summary": "sdk-core polls Matching for an available activity task.",
+      "details": [
+        "Core issues an activity task poll after History has enqueued the scheduled activity task.",
+        "The direction is worker to Matching: the worker asks the activity task queue for work."
+      ],
+      "payload": [
+        "namespace",
+        "activity_task_queue",
+        "identity"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core poll activity task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 158,
+          "symbol": "async fn poll_activity_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
+      ]
+    },
+    {
+      "id": "call-matching-activity-task",
+      "phase_id": "execute-activity",
+      "seq": 15,
+      "from": "matching-service",
+      "to": "core-worker",
+      "edge_id": "core-matching",
+      "kind": "response",
+      "message": "activity task response",
+      "summary": "Matching responds to the activity poll with the queued activity task.",
+      "details": [
+        "The activity task response travels back over the same Core-to-Matching poll edge.",
+        "Core must receive this response before it can deliver the activity task to Python."
+      ],
+      "payload": [
+        "activity_task_token",
+        "activity_type",
+        "input"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Matching PollActivityTaskQueue",
+          "path": "service/matching/matching_engine.go",
+          "line": 936,
+          "symbol": "PollActivityTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/matching_engine.go"
+        }
+      ]
+    },
+    {
+      "id": "call-core-activity-task",
+      "phase_id": "execute-activity",
+      "seq": 16,
+      "from": "core-worker",
+      "to": "activity-task",
+      "edge_id": "activity-poll",
+      "kind": "activation",
+      "message": "ActivityTask",
+      "summary": "sdk-core hands an activity task to Python for execution.",
+      "details": [
+        "Core receives activity work through its pollers and presents it to Python as an executable activity task.",
+        "The activity task can perform the external side effects that workflow code must avoid."
+      ],
+      "payload": [
+        "activity_type",
+        "task_token",
+        "input",
+        "heartbeat_details"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python handles activity task",
+          "path": "temporalio/worker/_activity.py",
+          "line": 304,
+          "symbol": "_handle_start_activity_task",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_activity.py"
+        }
+      ]
+    },
+    {
+      "id": "call-activity-heartbeat",
+      "phase_id": "execute-activity",
+      "seq": 17,
+      "from": "activity-task",
+      "to": "core-worker",
+      "edge_id": "heartbeat",
+      "kind": "heartbeat",
+      "message": "RecordHeartbeat",
+      "summary": "The running activity reports progress back through sdk-core.",
+      "details": [
+        "Heartbeats let Temporal observe liveness and persist progress details for retry or cancellation handling.",
+        "Core batches and forwards heartbeat state while Python continues the async activity."
+      ],
+      "payload": [
+        "task_token",
+        "progress",
+        "heartbeat_details"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python activity heartbeat bridge",
+          "path": "temporalio/worker/_activity.py",
+          "line": 290,
+          "symbol": "record_activity_heartbeat",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/worker/_activity.py"
+        }
+      ]
+    },
+    {
+      "id": "call-core-record-activity-heartbeat",
+      "phase_id": "execute-activity",
+      "seq": 18,
+      "from": "core-worker",
+      "to": "frontend-service",
+      "edge_id": "core-frontend",
+      "kind": "heartbeat",
+      "message": "RecordActivityTaskHeartbeat",
+      "summary": "sdk-core forwards heartbeat details to Frontend.",
+      "details": [
+        "Core batches activity heartbeat state and sends it over the worker service API.",
+        "The heartbeat response can carry cancellation, pause, or reset information back toward the activity."
+      ],
+      "payload": [
+        "task_token",
+        "details",
+        "identity"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core record activity heartbeat",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 187,
+          "symbol": "async fn record_activity_heartbeat",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        },
+        {
+          "repo": "temporal",
+          "label": "Frontend RecordActivityTaskHeartbeat",
+          "path": "service/frontend/workflow_handler.go",
+          "line": 1417,
+          "symbol": "RecordActivityTaskHeartbeat",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/frontend/workflow_handler.go"
+        }
+      ]
+    },
+    {
+      "id": "call-history-record-activity-heartbeat",
+      "phase_id": "execute-activity",
+      "seq": 19,
+      "from": "frontend-service",
+      "to": "history-service",
+      "edge_id": "frontend-history",
+      "kind": "history-rpc",
+      "message": "RecordActivityTaskHeartbeat",
+      "summary": "Frontend routes heartbeat state into History.",
+      "details": [
+        "History updates activity progress details and returns cancellation state if requested.",
+        "Heartbeat handling does not complete the activity or enqueue a workflow task by itself."
+      ],
+      "payload": [
+        "task_token",
+        "heartbeat_details",
+        "cancel_requested"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History updates activity progress",
+          "path": "service/history/api/recordactivitytaskheartbeat/api.go",
+          "line": 87,
+          "symbol": "UpdateActivityProgress",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/recordactivitytaskheartbeat/api.go"
+        }
+      ]
+    },
+    {
+      "id": "call-activity-complete",
+      "phase_id": "execute-activity",
+      "seq": 20,
+      "from": "activity-task",
+      "to": "core-worker",
+      "edge_id": "activity-complete",
+      "kind": "completion",
+      "message": "ActivityTaskCompleted",
+      "summary": "The Python activity returns its result to sdk-core.",
+      "details": [
+        "The activity returns its output after the side effect finishes.",
+        "Core receives the activity completion before it can report the result to the server."
+      ],
+      "payload": [
+        "task_token",
+        "activity_result"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python bridge completes activity",
+          "path": "temporalio/bridge/worker.py",
+          "line": 242,
+          "symbol": "complete_activity_task",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/bridge/worker.py"
+        }
+      ]
+    },
+    {
+      "id": "call-core-respond-activity-task-completed",
+      "phase_id": "execute-activity",
+      "seq": 21,
+      "from": "core-worker",
+      "to": "frontend-service",
+      "edge_id": "core-frontend",
+      "kind": "completion",
+      "message": "RespondActivityTaskCompleted",
+      "summary": "sdk-core sends the activity result to Frontend.",
+      "details": [
+        "Core translates the Python activity completion into the worker service completion RPC.",
+        "The RPC carries the activity task token and result payload."
+      ],
+      "payload": [
+        "task_token",
+        "result",
+        "identity"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core complete activity task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 175,
+          "symbol": "async fn complete_activity_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        },
+        {
+          "repo": "temporal",
+          "label": "Frontend RespondActivityTaskCompleted",
+          "path": "service/frontend/workflow_handler.go",
+          "line": 1610,
+          "symbol": "RespondActivityTaskCompleted",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/frontend/workflow_handler.go"
+        }
+      ]
+    },
+    {
+      "id": "call-history-record-activity-task-completed",
+      "phase_id": "execute-activity",
+      "seq": 22,
+      "from": "frontend-service",
+      "to": "history-service",
+      "edge_id": "frontend-history",
+      "kind": "history-rpc",
+      "message": "ActivityTaskCompleted",
+      "summary": "Frontend routes the activity completion to History for durable recording.",
+      "details": [
+        "History appends ActivityTaskCompleted so replay can feed the result back to workflow code.",
+        "Recording the completion makes the workflow eligible for a follow-up workflow task."
+      ],
+      "payload": [
+        "event_type=ActivityTaskCompleted",
+        "activity_result",
+        "completed_event_id"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records activity completion",
+          "path": "service/history/api/respondactivitytaskcompleted/api.go",
+          "line": 110,
+          "symbol": "AddActivityTaskCompletedEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/respondactivitytaskcompleted/api.go"
+        }
+      ]
+    },
+    {
+      "id": "call-enqueue-followup-workflow-task",
+      "phase_id": "complete",
+      "seq": 23,
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "schedule-wft",
+      "kind": "task-dispatch",
+      "message": "follow-up workflow task",
+      "summary": "History enqueues another workflow task when new events require workflow code to run again.",
+      "details": [
+        "Activity completion or command application can make the workflow ready for another deterministic turn.",
+        "Matching holds that follow-up workflow task until a worker polls the task queue."
+      ],
+      "payload": [
+        "task_queue",
+        "workflow_task",
+        "new_history_events"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History schedules follow-up workflow task",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 3432,
+          "symbol": "AddWorkflowTaskScheduledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
+    },
+    {
+      "id": "call-core-poll-followup-workflow-task",
+      "phase_id": "complete",
+      "seq": 24,
+      "from": "core-worker",
+      "to": "matching-service",
+      "edge_id": "core-matching",
+      "kind": "poll",
+      "message": "PollWorkflowTaskQueue",
+      "summary": "sdk-core long-polls Matching for the follow-up workflow task.",
+      "details": [
+        "After History enqueues the follow-up task, Core must poll Matching again before the task can be returned.",
+        "This preserves the worker-pull model for follow-up workflow turns as well as the first workflow task."
+      ],
+      "payload": [
+        "namespace",
+        "task_queue",
+        "identity"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core poll follow-up workflow task",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 152,
+          "symbol": "async fn poll_workflow_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
+      ]
+    },
+    {
+      "id": "call-followup-workflow-task",
+      "phase_id": "complete",
+      "seq": 25,
+      "from": "matching-service",
+      "to": "core-worker",
+      "edge_id": "core-matching",
+      "kind": "response",
+      "message": "follow-up workflow task response",
+      "summary": "Matching returns the follow-up workflow task to sdk-core on the next poll.",
+      "details": [
+        "The completed activity produced new history, so the next workflow task carries those events back to the worker.",
+        "This response uses the same Core-to-Matching poll edge in reverse to show the server response."
+      ],
+      "payload": [
+        "workflow_task_token",
+        "activity_completed_event",
+        "history"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Matching returns follow-up workflow task",
+          "path": "service/matching/matching_engine.go",
+          "line": 665,
+          "symbol": "PollWorkflowTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/matching_engine.go"
+        }
+      ]
+    },
+    {
+      "id": "call-followup-activation",
+      "phase_id": "complete",
+      "seq": 26,
+      "from": "core-worker",
+      "to": "workflow-activation",
+      "edge_id": "activation-up",
+      "kind": "activation",
+      "message": "WorkflowActivation",
+      "summary": "sdk-core delivers the follow-up activation so Python can observe the activity result.",
+      "details": [
+        "Core converts the follow-up workflow task into another deterministic Python activation.",
+        "The workflow can now continue from the completed activity result or emit final completion commands."
+      ],
+      "payload": [
+        "activation_jobs",
+        "activity_result",
+        "history_events"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core builds follow-up activation",
+          "path": "crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs",
+          "line": 446,
+          "symbol": "get_wf_activation",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/workflow/machines/workflow_machines.rs"
+        }
+      ]
+    }
+  ]
+}

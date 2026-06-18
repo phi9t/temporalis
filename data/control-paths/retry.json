@@ -1,0 +1,118 @@
+{
+  "slug": "retry",
+  "label": "Retry",
+  "summary": "Activity failure is recorded durably, then server retry policy and worker polling produce the next attempt.",
+  "highlight_node_ids": [
+    "activity-task",
+    "history-service",
+    "matching-service"
+  ],
+  "highlight_edge_ids": [
+    "activity-complete",
+    "activity-dispatch"
+  ],
+  "details": [
+    "The Python activity reports failure, timeout, or cancellation through sdk-core.",
+    "History records the outcome and computes retry scheduling from policy.",
+    "Matching dispatches the next activity task when the retry is due."
+  ],
+  "steps": [
+    {
+      "id": "retry-failure",
+      "seq": 1,
+      "kind": "failure",
+      "from": "activity-task",
+      "to": "core-worker",
+      "edge_id": "activity-complete",
+      "message": "RespondActivityTaskFailed",
+      "summary": "The Python activity reports failure, timeout, or cancellation through sdk-core.",
+      "details": [
+        "The failed attempt is not retried in Python user code directly.",
+        "The failure is reported back to the server as an activity completion outcome."
+      ],
+      "affected_node_ids": [
+        "activity-task",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "activity-complete"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-core",
+          "label": "Core reports activity failure",
+          "path": "crates/sdk-core/src/worker/client.rs",
+          "line": 199,
+          "symbol": "async fn fail_activity_task",
+          "url": "https://github.com/temporalio/sdk-core/blob/6a8355ac4c49884433b0502f31bddace0c6ce884/crates/sdk-core/src/worker/client.rs"
+        }
+      ]
+    },
+    {
+      "id": "retry-policy",
+      "seq": 2,
+      "kind": "timer",
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "activity-dispatch",
+      "message": "Activity retry timer",
+      "summary": "History records the failed attempt and applies retry policy timing.",
+      "details": [
+        "Retry state is durable server state.",
+        "Backoff determines when the next attempt becomes eligible."
+      ],
+      "affected_node_ids": [
+        "history-service",
+        "matching-service"
+      ],
+      "affected_edge_ids": [
+        "activity-dispatch"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records failed activity attempt",
+          "path": "service/history/workflow/mutable_state_impl.go",
+          "line": 4506,
+          "symbol": "AddActivityTaskFailedEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/workflow/mutable_state_impl.go"
+        }
+      ]
+    },
+    {
+      "id": "retry-dispatch",
+      "seq": 3,
+      "kind": "task-dispatch",
+      "from": "history-service",
+      "to": "matching-service",
+      "edge_id": "activity-dispatch",
+      "message": "PollActivityTaskQueueResponse",
+      "summary": "Matching dispatches the next activity task attempt when the retry is due.",
+      "details": [
+        "A worker poll receives the next attempt as normal activity work.",
+        "The retry re-enters Python through the same activity execution path."
+      ],
+      "affected_node_ids": [
+        "history-service",
+        "matching-service"
+      ],
+      "affected_edge_ids": [
+        "activity-dispatch"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "Matching dispatches retry activity",
+          "path": "service/matching/matching_engine.go",
+          "line": 936,
+          "symbol": "PollActivityTaskQueue",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/matching/matching_engine.go"
+        }
+      ]
+    }
+  ],
+  "guide_anchor": "retry-and-failure-handling",
+  "guide_title": "8. Retry and failure handling",
+  "hack_script": "hacks/005_control_paths.py",
+  "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
+}

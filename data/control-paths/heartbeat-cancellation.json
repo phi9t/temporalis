@@ -1,0 +1,118 @@
+{
+  "slug": "heartbeat-cancellation",
+  "label": "Heartbeat cancellation",
+  "summary": "Activity heartbeats carry progress and provide cancellation checkpoints across Python, sdk-core, and server state.",
+  "highlight_node_ids": [
+    "activity-task",
+    "core-worker",
+    "history-service"
+  ],
+  "highlight_edge_ids": [
+    "heartbeat",
+    "activity-complete"
+  ],
+  "details": [
+    "The Python activity heartbeats while performing side effects.",
+    "sdk-core forwards heartbeat state and observes cancellation delivery.",
+    "The server tracks cancellation/progress state for the activity attempt."
+  ],
+  "steps": [
+    {
+      "id": "heartbeat-cancellation-progress",
+      "seq": 1,
+      "kind": "heartbeat",
+      "from": "activity-task",
+      "to": "core-worker",
+      "edge_id": "heartbeat",
+      "message": "RecordActivityTaskHeartbeat",
+      "summary": "The Python activity heartbeats progress while performing side effects.",
+      "details": [
+        "Heartbeat details let retry resume with known progress.",
+        "Heartbeat cadence defines where cancellation can be observed."
+      ],
+      "affected_node_ids": [
+        "activity-task",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "heartbeat"
+      ],
+      "refs": [
+        {
+          "repo": "sdk-python",
+          "label": "Python activity heartbeat API",
+          "path": "temporalio/activity.py",
+          "line": 320,
+          "symbol": "def heartbeat",
+          "url": "https://github.com/temporalio/sdk-python/blob/d53a604d694bd5dcef0c4c9da6650aa7bc199be0/temporalio/activity.py"
+        }
+      ]
+    },
+    {
+      "id": "heartbeat-cancellation-server-state",
+      "seq": 2,
+      "kind": "heartbeat",
+      "from": "core-worker",
+      "to": "activity-task",
+      "edge_id": "heartbeat",
+      "message": "RecordActivityTaskHeartbeatRequest",
+      "summary": "sdk-core forwards heartbeat details and receives cancellation state.",
+      "details": [
+        "The server tracks the latest heartbeat details for the activity attempt.",
+        "Cancellation requested state can be delivered in the heartbeat response."
+      ],
+      "affected_node_ids": [
+        "core-worker",
+        "activity-task"
+      ],
+      "affected_edge_ids": [
+        "heartbeat"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History heartbeat cancellation state",
+          "path": "service/history/api/recordactivitytaskheartbeat/api.go",
+          "line": 87,
+          "symbol": "UpdateActivityProgress",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/recordactivitytaskheartbeat/api.go"
+        }
+      ]
+    },
+    {
+      "id": "heartbeat-cancellation-cancel-complete",
+      "seq": 3,
+      "kind": "completion",
+      "from": "activity-task",
+      "to": "core-worker",
+      "edge_id": "activity-complete",
+      "message": "RespondActivityTaskCanceled",
+      "summary": "The activity reports cancellation after observing it at a heartbeat checkpoint.",
+      "details": [
+        "Python cleanup runs at the activity boundary.",
+        "History records the canceled activity outcome durably."
+      ],
+      "affected_node_ids": [
+        "activity-task",
+        "core-worker"
+      ],
+      "affected_edge_ids": [
+        "activity-complete"
+      ],
+      "refs": [
+        {
+          "repo": "temporal",
+          "label": "History records canceled activity",
+          "path": "service/history/api/respondactivitytaskcanceled/api.go",
+          "line": 90,
+          "symbol": "AddActivityTaskCanceledEvent",
+          "url": "https://github.com/temporalio/temporal/blob/c2c4bc1928c3606ebad477ae6c0bf3728115ef42/service/history/api/respondactivitytaskcanceled/api.go"
+        }
+      ]
+    }
+  ],
+  "guide_anchor": "activity-execution-and-heartbeats",
+  "guide_title": "6. Activity execution and heartbeats",
+  "hack_script": "hacks/005_control_paths.py",
+  "hack_summary": "Print control-path overlays for retry, replay, pause/resume, heartbeat cancellation, and sticky eviction."
+}
